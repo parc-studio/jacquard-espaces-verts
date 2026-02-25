@@ -1,0 +1,51 @@
+{
+  "name": "astro-svelte-sanity",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm -r --parallel dev",
+    "dev:frontend": "pnpm --filter frontend dev",
+    "dev:studio": "pnpm --filter studio dev",
+    "predev": "pnpm run types",
+    "build": "pnpm -r --parallel build",
+    "build:frontend": "pnpm --filter frontend build",
+    "build:studio": "pnpm --filter studio build",
+    "prebuild": "pnpm run types",
+    "preview:frontend": "pnpm --filter frontend preview",
+    "deploy:frontend": "pnpm --filter frontend deploy",
+    "deploy:studio": "pnpm --filter studio deploy",
+    "types": "pnpm run -F studio types",
+    "check": "pnpm --filter frontend run check",
+    "lint": "eslint \"**/*.{js,ts,tsx,astro,svelte}\" --fix",
+    "format": "prettier --write .",
+    "validate": "pnpm run check && pnpm run lint",
+    "tunnel": "pnpm --filter frontend run tunnel",
+    "scaffold:route": "pnpm --filter frontend run scaffold:route",
+    "pull:annotations": "node frontend/pull-annotations.mjs",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@typescript-eslint/parser": "^8.56.0",
+    "eslint": "^10.0.1",
+    "eslint-plugin-astro": "^1.6.0",
+    "eslint-plugin-svelte": "^3.15.0",
+    "globals": "^17.3.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7",
+    "prettier": "^3.8.1",
+    "prettier-plugin-astro": "^0.14.1",
+    "prettier-plugin-svelte": "^3.5.0",
+    "svelte-eslint-parser": "^1.4.1",
+    "typescript-eslint": "^8.56.0"
+  },
+  "lint-staged": {
+    "*.{js,ts,tsx,astro,svelte}": [
+      "eslint --fix"
+    ],
+    "*": [
+      "prettier --write --ignore-unknown"
+    ]
+  }
+}

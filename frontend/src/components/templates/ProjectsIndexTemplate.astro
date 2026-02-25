@@ -1,0 +1,103 @@
+---
+/**
+ * Projects Index Template
+ *
+ * Self-fetching template for the projects index page.
+ * Fetches its own data and all projects based on preview mode.
+ */
+import BaseLayout from '../../layouts/BaseLayout.astro'
+import { getProjectsIndex, getAllProjects } from '../../data/sanity'
+import Media from '../media/Media.svelte'
+
+interface Props {
+  isPreview?: boolean
+}
+
+const { isPreview = false } = Astro.props
+
+const projectsIndex = await getProjectsIndex({ preview: isPreview })
+const projects = await getAllProjects({ preview: isPreview })
+
+// Extract SEO
+const title = projectsIndex?.seo?.title || projectsIndex?.title || 'Projects'
+const description = projectsIndex?.seo?.description || ''
+---
+
+<BaseLayout title={title} description={description} isPreview={isPreview} pagePath="/projects">
+  <main class="projects-index main-grid">
+    <section class="projects-header">
+      <h1>{projectsIndex?.title || 'Projects'}</h1>
+    </section>
+
+    {
+      projectsIndex?.filters && projectsIndex.filters.length > 0 && (
+        <nav class="filters">
+          {projectsIndex.filters.map((tag) => (
+            <span class="filter-tag" data-slug={tag?.slug}>
+              {tag?.name}
+            </span>
+          ))}
+        </nav>
+      )
+    }
+
+    {
+      projects && projects.length > 0 && (
+        <section class="projects-grid">
+          {projects.map((project) => (
+            <a href={`/projects/${project.slug?.current}`} class="project-card">
+              <div class="media-wrapper">
+                <Media media={{ image: project.coverImage }} layout="cover" client:visible />
+              </div>
+              <h3>{project.name}</h3>
+            </a>
+          ))}
+        </section>
+      )
+    }
+  </main>
+
+  <style>
+    .projects-header {
+      grid-column: 1 / -1;
+      margin-block: var(--size-64) var(--size-32);
+    }
+
+    .filters {
+      grid-column: 1 / -1;
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--size-8);
+      margin-block-end: var(--size-32);
+    }
+
+    .filter-tag {
+      padding: var(--size-4) var(--size-12);
+      font-size: var(--text-14);
+      border: 1px solid var(--color-border);
+      border-radius: var(--size-4);
+    }
+
+    .projects-grid {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: subgrid;
+    }
+
+    .project-card {
+      grid-column: span 4;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .media-wrapper {
+      aspect-ratio: 3 / 2;
+      overflow: hidden;
+      margin-block-end: var(--size-12);
+    }
+
+    .project-card h3 {
+      font-size: var(--text-18);
+    }
+  </style>
+</BaseLayout>

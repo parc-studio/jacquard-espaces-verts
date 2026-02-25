@@ -1,0 +1,113 @@
+---
+export const prerender = false
+
+/**
+ * Preview catch-all route
+ *
+ * Mirrors all public routes with SSR, drafts perspective, and Visual Editing overlays.
+ * Templates fetch their own data internally using isPreview={true}.
+ * Each template wraps itself in BaseLayout, so no outer layout is needed here.
+ *
+ * SCAFFOLDING: To add a new preview route:
+ * 1. Create a self-fetching template in src/components/templates/
+ * 2. Add a RouteConfig entry to PREVIEW_ROUTES in src/data/preview-routes.ts
+ * 3. Add the template import and conditional rendering below
+ */
+import BaseLayout from '../../layouts/BaseLayout.astro'
+import AboutTemplate from '../../components/templates/AboutTemplate.astro'
+import HomeTemplate from '../../components/templates/HomeTemplate.astro'
+import PageTemplate from '../../components/templates/PageTemplate.astro'
+import ProjectTemplate from '../../components/templates/ProjectTemplate.astro'
+import ProjectsIndexTemplate from '../../components/templates/ProjectsIndexTemplate.astro'
+import { matchPreviewRoute, getSupportedRoutePatterns } from '../../data/preview-routes'
+import type { TemplateId } from '../../data/preview-routes'
+
+// Get the route from URL
+const route = Astro.url.pathname.replace(/^\/preview\/?/, '')
+
+// Match route against configuration
+const match = matchPreviewRoute(route)
+const isMatched = match !== null
+
+// Log unmatched routes with guidance
+if (!isMatched) {
+  const patterns = getSupportedRoutePatterns()
+  console.error(`
+[Preview] Route not mapped: /preview/${route || ''}
+
+To add support for this route:
+1. Create a self-fetching template in src/components/templates/
+2. Add a RouteConfig entry to PREVIEW_ROUTES in src/data/preview-routes.ts
+3. Add the template to src/pages/preview/[...route].astro
+
+Supported routes:
+${patterns.map((p) => `- ${p}`).join('\n')}
+`)
+}
+
+const templateId: TemplateId | null = match?.templateId ?? null
+const slug: string | undefined = match?.slug
+---
+
+{/* SCAFFOLDING: add new templates here */}
+{templateId === 'home' && <HomeTemplate isPreview={true} />}
+{templateId === 'about' && <AboutTemplate isPreview={true} />}
+{templateId === 'projectsIndex' && <ProjectsIndexTemplate isPreview={true} />}
+{templateId === 'page' && slug && <PageTemplate currentSlug={slug} isPreview={true} />}
+{templateId === 'project' && slug && <ProjectTemplate currentSlug={slug} isPreview={true} />}
+
+{/* Unknown route fallback — uses standalone BaseLayout */}
+{
+  !isMatched && (
+    <BaseLayout title="Preview" description="" isPreview={true}>
+      <main class="container">
+        <div class="preview-error">
+          <h1>Preview Route Not Mapped</h1>
+          <p>
+            The route <code>/preview/{route || ''}</code> is not yet configured for preview.
+          </p>
+          <p>Check the console for details on how to add support for this route.</p>
+          <a href="/preview">← Back to Preview Home</a>
+        </div>
+      </main>
+    </BaseLayout>
+  )
+}
+
+<style>
+  .preview-error {
+    min-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: var(--size-16);
+    padding: var(--size-32);
+  }
+
+  .preview-error h1 {
+    font-size: var(--text-30);
+    font-weight: var(--font-weight-bold);
+    color: var(--color-warning);
+  }
+
+  .preview-error p {
+    font-size: var(--text-16);
+    color: var(--color-text-light);
+    max-width: 500px;
+  }
+
+  .preview-error code {
+    background: var(--color-surface, #f3f4f6);
+    padding: var(--size-4) var(--size-8);
+    border-radius: 4px;
+    font-family: monospace;
+  }
+
+  .preview-error a {
+    margin-top: var(--size-16);
+    color: var(--color-primary);
+    text-decoration: underline;
+  }
+</style>

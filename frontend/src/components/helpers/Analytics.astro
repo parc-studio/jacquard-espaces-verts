@@ -1,0 +1,25 @@
+---
+/**
+ * Cloudflare Web Analytics
+ *
+ * SCAFFOLDING: Opt-in analytics component. To activate:
+ * 1. Add your Cloudflare Analytics token to your environment:
+ *    PUBLIC_CF_ANALYTICS_TOKEN=your-token-here
+ * 2. Import and add to BaseLayout.astro inside <head>:
+ *    import Analytics from '@/components/helpers/Analytics.astro'
+ *    <Analytics token={import.meta.env.PUBLIC_CF_ANALYTICS_TOKEN} />
+ *
+ * Swap the beacon src for any other provider's script as needed.
+ */
+const { token } = Astro.props as { token: string }
+
+if (!token) {
+  throw new Error('Analytics: missing token prop')
+}
+---
+
+<script
+  is:inline
+  defer
+  src="https://static.cloudflareinsights.com/beacon.min.js"
+  data-cf-beacon={JSON.stringify({ token })}></script>

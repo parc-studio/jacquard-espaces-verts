@@ -1,0 +1,90 @@
+---
+import '@/styles/reset.css'
+import '@/styles/tokens.css'
+import '@/styles/globals.css'
+import '@/styles/utils.css'
+
+import { ClientRouter } from 'astro:transitions'
+import { SEO } from 'astro-seo'
+// TODO: Uncomment when using custom fonts
+// import { Font } from 'astro:assets'
+
+import AgentationWrapper from '@/components/helpers/AgentationWrapper'
+import MainGrid from '@/components/helpers/MainGrid.svelte'
+import PageTransitions from '@/components/helpers/PageTransitions.astro'
+import ParcCredits from '@/components/helpers/ParcCredits.astro'
+import { isDevMode } from '@/utils'
+
+import App from '../components/App.svelte'
+import VisualEditing from '../components/VisualEditing.svelte'
+
+interface Props {
+  title?: string
+  description?: string
+  image?: string
+  isPreview?: boolean
+  pagePath?: string
+}
+
+const {
+  title = 'Astro + Svelte + Sanity',
+  description = 'A modern web development template by Parc Studio',
+  image = '/og-image.png',
+  isPreview = false,
+  pagePath = '',
+} = Astro.props
+
+const siteUrl = import.meta.env.SITE_URL || 'http://localhost:4321'
+const enableFeedback = import.meta.env.PUBLIC_ENABLE_FEEDBACK === 'true'
+const showAgentation = isDevMode || enableFeedback
+const agentationMode = isDevMode ? 'dev' : 'review'
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="sitemap" href="/sitemap-index.xml" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="generator" content={Astro.generator} />
+
+    <!-- TODO: Uncomment for custom fonts with preload -->
+    <!-- <Font cssVariable="--font-sans" preload /> -->
+    <!-- <Font cssVariable="--font-classic" preload /> -->
+    <SEO
+      title={title}
+      description={description}
+      openGraph={{
+        basic: {
+          title: title,
+          type: 'website',
+          image: image,
+          url: siteUrl,
+        },
+        optional: {
+          description: description,
+        },
+      }}
+    />
+    <ClientRouter />
+    {!isPreview && <PageTransitions />}
+  </head>
+  <body>
+    <App client:load />
+    <MainGrid client:only="svelte" />
+    <slot />
+    {isPreview && <VisualEditing pagePath={pagePath} client:only="svelte" transition:persist />}
+    {showAgentation && <AgentationWrapper client:only="react" mode={agentationMode} />}
+  </body>
+</html>
+
+<style is:global>
+  /* Disable default View Transition root animations — GSAP controls these */
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
+  }
+</style>
+
+{isDevMode && <ParcCredits />}

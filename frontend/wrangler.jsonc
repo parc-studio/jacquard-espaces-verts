@@ -1,0 +1,8 @@
+{
+  // TODO: Replace "your-project-name" with your Cloudflare Pages project name.
+  //       Run `npx wrangler pages project list` to see existing projects,
+  //       or `npx wrangler pages project create <name>` to create one.
+  "name": "your-project-name",
+  "compatibility_date": "2024-12-01",
+  "pages_build_output_dir": "./dist",
+}

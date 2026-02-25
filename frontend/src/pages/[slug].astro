@@ -1,0 +1,15 @@
+---
+import PageTemplate from '@/components/templates/PageTemplate.astro'
+import { getAllPages } from '../data/sanity'
+
+export async function getStaticPaths() {
+  const pages = await getAllPages()
+  return (pages ?? []).map((page: { slug: { current: string } }) => ({
+    params: { slug: page.slug.current },
+  }))
+}
+
+const { slug } = Astro.params
+---
+
+<PageTemplate currentSlug={slug!} isPreview={false} />

@@ -1,0 +1,56 @@
+---
+/**
+ * About Template
+ *
+ * Self-fetching template for the about page.
+ * Fetches its own data based on preview mode.
+ */
+import BaseLayout from '../../layouts/BaseLayout.astro'
+import { getAboutPage } from '../../data/sanity'
+import PortableText from '../portable-text/PortableText.svelte'
+
+interface Props {
+  isPreview?: boolean
+}
+
+const { isPreview = false } = Astro.props
+
+const aboutPage = await getAboutPage({ preview: isPreview })
+
+// Extract SEO
+const title = aboutPage?.seo?.title || aboutPage?.title || 'About'
+const description = aboutPage?.seo?.description || ''
+---
+
+<BaseLayout title={title} description={description} isPreview={isPreview} pagePath="/about">
+  <main class="about main-grid">
+    <section class="about-content">
+      <h1>{aboutPage?.title || 'About'}</h1>
+
+      {
+        aboutPage?.content && (
+          <div class="body">
+            <PortableText value={aboutPage.content} client:load />
+          </div>
+        )
+      }
+    </section>
+  </main>
+
+  <style>
+    .about-content {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: subgrid;
+    }
+
+    h1 {
+      grid-column: 1 / -1;
+      margin-block: var(--size-64) var(--size-32);
+    }
+
+    .body {
+      grid-column: 1 / -1;
+    }
+  </style>
+</BaseLayout>

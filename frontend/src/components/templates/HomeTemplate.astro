@@ -1,0 +1,137 @@
+---
+/**
+ * Home Template
+ *
+ * Self-fetching template for the home page.
+ * Fetches its own data based on preview mode.
+ *
+ * SCAFFOLDING: Customize this template for your home page:
+ * 1. Update the data fetching in getHomePage query
+ * 2. Create Svelte components for interactive sections
+ * 3. Add your content blocks rendering
+ */
+import BaseLayout from '../../layouts/BaseLayout.astro'
+import { getHomePage } from '../../data/sanity'
+import Media from '../media/Media.svelte'
+import PortableText from '../portable-text/PortableText.svelte'
+
+interface Props {
+  isPreview?: boolean
+}
+
+const { isPreview = false } = Astro.props
+
+// Fetch home page data (includes featuredProjects via HOME_PAGE_QUERY)
+const homePage = await getHomePage({ preview: isPreview })
+const projects = homePage?.featuredProjects
+
+// Extract SEO
+const title = homePage?.seo?.title || homePage?.title || 'Home'
+const description = homePage?.seo?.description || homePage?.description || 'Welcome to our website'
+---
+
+<BaseLayout title={title} description={description} isPreview={isPreview} pagePath="/">
+  <main class="container">
+    <section class="hero">
+      <h1>{homePage?.title || 'Welcome'}</h1>
+      <p>{homePage?.description || 'This is the home page. Start building your site!'}</p>
+    </section>
+
+    {/* Project Gallery */}
+    {
+      projects && projects.length > 0 && (
+        <section class="projects-grid main-grid">
+          {projects.map((project) => (
+            <a href={`/projects/${project.slug?.current}`} class="project-card">
+              <div class="media-wrapper">
+                <Media media={{ image: project.coverImage }} layout="cover" client:visible />
+              </div>
+              <h3>{project.name}</h3>
+            </a>
+          ))}
+        </section>
+      )
+    }
+
+    {/* Portable Text Content */}
+    {
+      homePage?.content && (
+        <section class="content main-grid">
+          <div class="content-inner">
+            <PortableText value={homePage.content} client:load />
+          </div>
+        </section>
+      )
+    }
+  </main>
+
+  <style>
+    .hero {
+      padding-block: var(--size-128);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      gap: var(--size-24);
+    }
+
+    h1 {
+      font-size: var(--text-48);
+      font-weight: var(--font-weight-bold);
+      color: var(--color-primary);
+    }
+
+    p {
+      font-size: var(--text-18);
+      color: var(--color-text-light);
+      max-width: 60ch;
+    }
+
+    .projects-grid {
+      padding-bottom: var(--size-96);
+    }
+
+    .project-card {
+      grid-column: span 8;
+      display: flex;
+      flex-direction: column;
+      gap: var(--size-8);
+      text-decoration: none;
+      color: inherit;
+    }
+
+    @media (min-width: 768px) {
+      .project-card {
+        grid-column: span 4;
+      }
+    }
+
+    .media-wrapper {
+      aspect-ratio: 4 / 3;
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      background-color: var(--color-surface);
+    }
+
+    h3 {
+      font-size: var(--text-24);
+      font-weight: var(--font-weight-medium);
+      margin-bottom: var(--size-16);
+    }
+
+    .content {
+      padding-bottom: var(--size-96);
+    }
+
+    .content-inner {
+      grid-column: 2 / 8;
+    }
+
+    @media (max-width: 767px) {
+      .content-inner {
+        grid-column: 1 / -1;
+      }
+    }
+  </style>
+</BaseLayout>

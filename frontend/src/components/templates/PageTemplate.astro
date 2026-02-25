@@ -1,0 +1,76 @@
+---
+/**
+ * Page Template
+ *
+ * Self-fetching template for generic pages.
+ * Fetches its own data based on slug and preview mode.
+ *
+ * SCAFFOLDING: Customize this template for your pages:
+ * 1. Update the getPage query to include needed fields
+ * 2. Add portable text rendering for body content
+ * 3. Add your content blocks rendering
+ */
+import BaseLayout from '../../layouts/BaseLayout.astro'
+import { getPage } from '../../data/sanity'
+
+interface Props {
+  currentSlug: string
+  isPreview?: boolean
+}
+
+const { currentSlug, isPreview = false } = Astro.props
+
+// Fetch page data
+const page = await getPage(currentSlug, { preview: isPreview })
+
+// Extract SEO
+const title = page?.seo?.title || page?.title
+const description = page?.seo?.description || ''
+---
+
+<BaseLayout
+  title={title}
+  description={description}
+  isPreview={isPreview}
+  pagePath={`/${currentSlug}`}
+>
+  <main class="page-template main-grid">
+    <article class="page">
+      <header class="page-header">
+        <h1>{page?.title || 'Page Not Found'}</h1>
+      </header>
+
+      <!-- SCAFFOLDING: Add portable text or content blocks rendering here -->
+      <div class="page-content">
+        <p>Page content goes here. Connect your content blocks from Sanity.</p>
+      </div>
+    </article>
+  </main>
+
+  <style>
+    .page-template {
+      min-height: 100vh;
+    }
+
+    .page {
+      grid-column: 2 / -2;
+      padding: var(--size-64) 0;
+    }
+
+    .page-header {
+      margin-bottom: var(--size-48);
+    }
+
+    h1 {
+      font-size: var(--text-36);
+      font-weight: var(--font-weight-bold);
+      color: var(--color-primary);
+    }
+
+    .page-content {
+      font-size: var(--text-16);
+      line-height: var(--line-height-relaxed);
+      color: var(--color-text);
+    }
+  </style>
+</BaseLayout>

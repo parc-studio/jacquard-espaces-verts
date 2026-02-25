@@ -1,0 +1,20 @@
+name: Sync Comments Branch
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  sync:
+    name: Mirror main → comments
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Push to comments branch
+        run: git push origin main:comments --force

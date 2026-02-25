@@ -1,0 +1,15 @@
+---
+import ProjectTemplate from '@/components/templates/ProjectTemplate.astro'
+import { getAllProjects } from '@/data/sanity'
+
+export async function getStaticPaths() {
+  const projects = await getAllProjects()
+  return (projects ?? []).map((project) => ({
+    params: { slug: project.slug?.current },
+  }))
+}
+
+const { slug } = Astro.params
+---
+
+<ProjectTemplate currentSlug={slug!} isPreview={false} />

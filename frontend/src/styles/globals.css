@@ -1,0 +1,55 @@
+/* Global Styles */
+html {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  color: var(--color-text);
+  background-color: var(--color-background);
+}
+
+body {
+  overflow-x: hidden;
+}
+
+/* Global Grid System */
+.main-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  column-gap: var(--size-16);
+  margin-inline: var(--size-16);
+}
+
+@media (min-width: 768px) {
+  .main-grid {
+    column-gap: var(--size-24);
+    margin-inline: var(--size-32);
+  }
+}
+
+@media (min-width: 1024px) {
+  .main-grid {
+    column-gap: var(--size-24);
+    margin-inline: var(--size-64);
+  }
+}
+
+/* Smooth Scrolling with Lenis */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+.lenis.lenis-smooth iframe {
+  pointer-events: none;
+}
