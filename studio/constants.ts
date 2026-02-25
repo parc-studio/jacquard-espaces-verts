@@ -6,16 +6,14 @@
  */
 
 // Sanity project ID (from sanity.io/manage)
-export const PROJECT_ID = 'xycs2vyu'
+export const PROJECT_ID = 'dxjqqptu'
 
-// TODO: Replace with your studio hostname (used for sanity deploy)
-export const STUDIO_HOST = 'astro-svelte-sanity'
+export const STUDIO_HOST = 'jacquard-espaces-verts'
 
 // Local development URL
 export const LOCAL_URL = 'http://localhost:4321'
 
-// TODO: Replace with your production site URL
-export const SITE_URL = 'https://astro-svelte-sanity.parc.studio'
+export const SITE_URL = 'https://jacquard-espaces-verts.parc.studio'
 
 // Document types that can be referenced in internal links
 // TODO: Update with your document types

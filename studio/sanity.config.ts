@@ -19,8 +19,8 @@ const PREVIEW_URL = isDev ? `${LOCAL_URL}/preview` : `${SITE_URL}/preview`
 
 export default defineConfig({
   // TODO: Update studio name and title
-  name: 'my-studio',
-  title: 'My Studio',
+  name: 'jacquard-espaces-verts',
+  title: 'Jacquard Espaces Verts Studio',
   projectId: PROJECT_ID,
   dataset: 'production',
   plugins: [
