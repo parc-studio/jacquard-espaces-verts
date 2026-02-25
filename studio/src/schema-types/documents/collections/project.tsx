@@ -3,13 +3,10 @@ import { orderRankField } from '@sanity/orderable-document-list'
 import { defineArrayMember, defineField, defineType } from 'sanity'
 import { mediaAssetSource } from 'sanity-plugin-media'
 
-import { ReferenceCheckbox } from '../../../components/ReferenceCheckbox'
-
 /**
  * Project document type
  *
- * A portfolio/case study item with cover image, gallery, and tags.
- * TODO: Rename "Project" to match your content (e.g., "Work", "Case Study", "Talent")
+ * Project content model used by the public project page wireframe.
  */
 export const projectType = defineType({
   name: 'project',
@@ -19,8 +16,8 @@ export const projectType = defineType({
   fields: [
     orderRankField({ type: 'project' }),
     defineField({
-      name: 'name',
-      title: 'Name',
+      name: 'titre',
+      title: 'Titre',
       type: 'string',
       validation: (Rule) => Rule.required(),
     }),
@@ -29,44 +26,69 @@ export const projectType = defineType({
       title: 'Slug',
       type: 'slug',
       options: {
-        source: 'name',
+        source: 'titre',
         maxLength: 96,
       },
       validation: (Rule) => Rule.required(),
     }),
     defineField({
-      name: 'coverImage',
-      title: 'Cover Image',
-      type: 'image',
-      description: 'Main image displayed in listings and as hero',
-      options: {
-        hotspot: true,
-        sources: [mediaAssetSource],
-      },
+      name: 'localisation',
+      title: 'Localisation',
+      type: 'string',
       validation: (Rule) => Rule.required(),
     }),
     defineField({
-      name: 'description',
-      title: 'Description',
-      type: 'text',
-      rows: 3,
+      name: 'anneeDebut',
+      title: 'Année début',
+      type: 'number',
+      validation: (Rule) => Rule.required().integer(),
     }),
     defineField({
-      name: 'tags',
-      title: 'Tags',
+      name: 'anneeFin',
+      title: 'Année fin',
+      type: 'number',
+      validation: (Rule) => Rule.integer().min(1900),
+    }),
+    defineField({
+      name: 'techniques',
+      title: 'Techniques',
       type: 'array',
-      of: [
-        defineArrayMember({
-          type: 'reference',
-          to: [{ type: 'tag' }],
-        }),
-      ],
-      description: 'Categorize this project with tags',
-      components: { input: ReferenceCheckbox },
+      of: [defineArrayMember({ type: 'string' })],
     }),
     defineField({
-      name: 'gallery',
-      title: 'Image Gallery',
+      name: 'budget',
+      title: 'Budget',
+      type: 'number',
+    }),
+    defineField({
+      name: 'aireM2',
+      title: 'Aire (m²)',
+      type: 'number',
+    }),
+    defineField({
+      name: 'maitreOuvrage',
+      title: "Maître d'ouvrage",
+      type: 'string',
+    }),
+    defineField({
+      name: 'maitreOeuvre',
+      title: "Maître d'œuvre",
+      type: 'string',
+    }),
+    defineField({
+      name: 'architecte',
+      title: 'Architecte',
+      type: 'string',
+    }),
+    defineField({
+      name: 'heroMedia',
+      title: 'Hero Media',
+      type: 'media',
+      validation: (Rule) => Rule.required(),
+    }),
+    defineField({
+      name: 'mediaCarousel',
+      title: 'Media Carousel',
       type: 'array',
       of: [
         defineArrayMember({
@@ -80,7 +102,6 @@ export const projectType = defineType({
               name: 'caption',
               title: 'Caption',
               type: 'string',
-              description: 'Optional caption displayed below image',
             }),
           ],
         }),
@@ -88,19 +109,7 @@ export const projectType = defineType({
       options: {
         layout: 'grid',
       },
-    }),
-    defineField({
-      name: 'sections',
-      title: 'Sections',
-      type: 'array',
-      of: [defineArrayMember({ type: 'carouselSection' })],
-      description: 'Additional content sections',
-    }),
-    defineField({
-      name: 'ctas',
-      title: 'Call to Actions',
-      type: 'array',
-      of: [defineArrayMember({ type: 'cta' })],
+      validation: (Rule) => Rule.required().min(1),
     }),
     defineField({
       name: 'seo',
@@ -110,16 +119,14 @@ export const projectType = defineType({
   ],
   preview: {
     select: {
-      name: 'name',
-      media: 'coverImage',
-      tag0: 'tags.0.name',
-      tag1: 'tags.1.name',
+      titre: 'titre',
+      localisation: 'localisation',
+      media: 'heroMedia.image',
     },
-    prepare({ name, media, tag0, tag1 }) {
-      const tags = [tag0, tag1].filter(Boolean)
+    prepare({ titre, localisation, media }) {
       return {
-        title: name,
-        subtitle: tags.length > 0 ? tags.join(', ') : undefined,
+        title: titre,
+        subtitle: localisation,
         media,
       }
     },

@@ -1,14 +1,14 @@
 import type { OrderableDocument, OrderablePaneConfig } from '../types'
 
 export interface ProjectOrderDocument extends OrderableDocument {
-  name?: string
+  titre?: string
   slug?: { current?: string }
-  coverImageUrl?: string
+  heroImageUrl?: string
 }
 
 function getProjectLabel(document: ProjectOrderDocument): string {
-  const name = document.name?.trim()
-  if (name) return name
+  const titre = document.titre?.trim()
+  if (titre) return titre
   return document._id
 }
 
@@ -17,9 +17,9 @@ export const projectOrderConfig: OrderablePaneConfig<ProjectOrderDocument> = {
   title: 'Projects',
   apiVersion: '2025-01-12',
   projection: `
-    name,
+    titre,
     slug,
-    "coverImageUrl": coverImage.asset->url
+    "heroImageUrl": heroMedia.image.asset->url
   `,
   getItemLabel: getProjectLabel,
   getSearchText: (document) => {
@@ -27,6 +27,6 @@ export const projectOrderConfig: OrderablePaneConfig<ProjectOrderDocument> = {
     const slug = document.slug?.current ?? ''
     return `${name} ${slug}`.trim()
   },
-  getImageUrl: (document) => document.coverImageUrl,
+  getImageUrl: (document) => document.heroImageUrl,
   getEditPath: (document) => `/structure/all-projects;${document._id.replace(/^drafts\./, '')}`,
 }

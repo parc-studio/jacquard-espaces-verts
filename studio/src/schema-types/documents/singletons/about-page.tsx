@@ -1,5 +1,6 @@
 import { defineField, defineType } from 'sanity'
 import { UserIcon } from '@sanity/icons'
+import { mediaAssetSource } from 'sanity-plugin-media'
 
 export const aboutPageType = defineType({
   name: 'aboutPage',
@@ -8,15 +9,20 @@ export const aboutPageType = defineType({
   icon: UserIcon,
   fields: [
     defineField({
-      name: 'title',
-      title: 'Title',
-      type: 'string',
+      name: 'coverImage',
+      title: 'Cover Image',
+      type: 'image',
+      options: {
+        hotspot: true,
+        sources: [mediaAssetSource],
+      },
       validation: (Rule) => Rule.required(),
     }),
     defineField({
       name: 'content',
       title: 'Content',
       type: 'blockContent',
+      validation: (Rule) => Rule.required(),
     }),
     defineField({
       name: 'seo',
@@ -26,13 +32,13 @@ export const aboutPageType = defineType({
   ],
   preview: {
     select: {
-      title: 'title',
+      media: 'coverImage',
     },
-    prepare({ title }) {
+    prepare({ media }) {
       return {
-        title,
+        title: 'About Page',
         subtitle: 'About Page',
-        media: <UserIcon />,
+        media,
       }
     },
   },

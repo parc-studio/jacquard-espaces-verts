@@ -47,9 +47,9 @@ const description = projectsIndex?.seo?.description || ''
           {projects.map((project) => (
             <a href={`/projects/${project.slug?.current}`} class="project-card">
               <div class="media-wrapper">
-                <Media media={{ image: project.coverImage }} layout="cover" client:visible />
+                <Media media={project.heroMedia} layout="cover" client:visible />
               </div>
-              <h3>{project.name}</h3>
+              <h3>{project.titre}</h3>
             </a>
           ))}
         </section>

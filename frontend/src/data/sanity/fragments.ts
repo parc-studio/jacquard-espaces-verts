@@ -78,19 +78,59 @@ export const blockContentFragment = `
 export const projectFragment = `
   _id,
   _type,
-  name,
+  titre,
   slug,
-  coverImage { ${imageFragment} },
-  description
+  localisation,
+  anneeDebut,
+  anneeFin,
+  heroMedia { ${mediaFragment} }
 `
 
 export const projectDetailFragment = `
   ${projectFragment},
-  gallery[] {
+  techniques,
+  budget,
+  aireM2,
+  maitreOuvrage,
+  maitreOeuvre,
+  architecte,
+  mediaCarousel[] {
     ${galleryItemFragment}
   },
-  tags[]->{
-    ${tagFragment}
-  },
   ${seoFragment}
+`
+
+export const homeSectionFragment = `
+  ...,
+  _type == "homeSectionMedia" => {
+    _key,
+    _type,
+    text,
+    media { ${mediaFragment} }
+  },
+  _type == "homeSectionDoubleMedia" => {
+    _key,
+    _type,
+    items[] {
+      _key,
+      text,
+      media { ${mediaFragment} }
+    }
+  },
+  _type == "homeSectionTextCta" => {
+    _key,
+    _type,
+    title,
+    text,
+    cta { ${ctaFragment} }
+  },
+  _type == "homeSectionMediaCarousel" => {
+    _key,
+    _type,
+    title,
+    subtitle,
+    images[] {
+      ${galleryItemFragment}
+    }
+  }
 `

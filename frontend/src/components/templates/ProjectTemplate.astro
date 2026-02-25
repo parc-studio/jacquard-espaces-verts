@@ -1,14 +1,6 @@
 ---
 /**
  * Project Template
- *
- * Self-fetching template for project pages.
- * Displays project with cover image, gallery, and tags.
- *
- * SCAFFOLDING: Customize this template:
- * 1. Update the getProject query for your needs
- * 2. Add Svelte components for interactive galleries
- * 3. Connect Media components for images/video
  */
 import BaseLayout from '../../layouts/BaseLayout.astro'
 import { getProject } from '../../data/sanity'
@@ -22,21 +14,36 @@ interface Props {
 
 const { currentSlug, isPreview = false } = Astro.props
 
-// Fetch project data
 const project = await getProject(currentSlug, { preview: isPreview })
-
-// Extract data with defaults
-const gallery = project?.gallery || []
-const tags = project?.tags || []
-
-// Extract SEO
-const title = project?.seo?.title || project?.name
-const description = project?.seo?.description || project?.description || ''
+const title = project?.seo?.title || project?.titre
+const description = project?.seo?.description || project?.localisation || ''
 let image: string | undefined
-const rawImage = project?.seo?.image || project?.coverImage
+const rawImage = project?.seo?.image || project?.heroMedia?.image
 if (rawImage) {
   image = urlFor(rawImage).width(1200).height(630).url()
 }
+
+const infoRows = [
+  { label: 'Localisation', value: project?.localisation },
+  {
+    label: 'Année',
+    value: project?.anneeFin
+      ? `${project?.anneeDebut} – ${project?.anneeFin}`
+      : project?.anneeDebut,
+  },
+  { label: 'Techniques', value: project?.techniques?.join(', ') },
+  {
+    label: 'Budget',
+    value: project?.budget ? `${project.budget.toLocaleString('fr-FR')} €` : undefined,
+  },
+  {
+    label: 'Aire',
+    value: project?.aireM2 ? `${project.aireM2.toLocaleString('fr-FR')} m²` : undefined,
+  },
+  { label: "Maître d'ouvrage", value: project?.maitreOuvrage },
+  { label: "Maître d'œuvre", value: project?.maitreOeuvre },
+  { label: 'Architecte', value: project?.architecte },
+].filter((row) => !!row.value)
 ---
 
 <BaseLayout
@@ -47,126 +54,179 @@ if (rawImage) {
   pagePath={`/projects/${currentSlug}`}
 >
   <main class="project-template main-grid">
+    <section class="project-main">
+      <aside class="project-sidebar">
+        <a href="/projects" class="back-link">← Retour</a>
+        <h1 class="project-title">{project?.titre || 'Projet'}</h1>
+        {project?.localisation && <p class="project-location">{project.localisation}</p>}
+        {
+          project?.anneeDebut && (
+            <p class="project-years">
+              {project.anneeDebut}
+              {project.anneeFin ? `–${project.anneeFin}` : ''}
+            </p>
+          )
+        }
+      </aside>
+
+      <div class="project-hero">
+        {
+          project?.heroMedia && (
+            <Media media={project.heroMedia} layout="cover" sizes="100vw" client:load />
+          )
+        }
+      </div>
+    </section>
+
     {
-      project?.coverImage && (
-        <div class="cover">
-          <Media media={{ image: project.coverImage }} sizes="100vw" layout="contain" client:load />
-        </div>
+      infoRows.length > 0 && (
+        <section class="project-info">
+          <h2>Informations</h2>
+          <dl>
+            {infoRows.map((row) => (
+              <>
+                <dt>{row.label}</dt>
+                <dd>{row.value}</dd>
+              </>
+            ))}
+          </dl>
+        </section>
       )
     }
 
-    <article class="project-content">
-      <header class="header">
-        <h1 class="name">{project?.name || 'Project Not Found'}</h1>
-        {project?.description && <p class="description">{project.description}</p>}
-
-        {
-          tags.length > 0 && (
-            <div class="tags">
-              {tags.map((tag) => (
-                <span class="tag">{tag.name}</span>
-              ))}
-            </div>
-          )
-        }
-      </header>
-
-      {
-        gallery.length > 0 && (
-          <section class="gallery">
-            <h2 class="section-title">Gallery</h2>
-            <div class="gallery-grid">
-              {gallery.map((item) => (
-                <figure class="gallery-item">
-                  <Media
-                    media={{ image: item }}
-                    sizes="(max-width: 768px) 100vw, 50vw"
-                    layout="contain"
-                    client:load
-                  />
-                  {item.caption && <figcaption>{item.caption}</figcaption>}
-                </figure>
-              ))}
-            </div>
-          </section>
-        )
-      }
-    </article>
+    {
+      project?.mediaCarousel && project.mediaCarousel.length > 0 && (
+        <section class="project-carousel">
+          <h2>Aire</h2>
+          <div class="project-carousel-track">
+            {project.mediaCarousel.map((item) => (
+              <figure class="project-carousel-item">
+                <Media
+                  media={{ image: item }}
+                  layout="cover"
+                  sizes="(max-width: 767px) 60vw, 12vw"
+                  client:load
+                />
+              </figure>
+            ))}
+          </div>
+        </section>
+      )
+    }
   </main>
 
   <style>
     .project-template {
-      min-height: 100vh;
+      padding-top: var(--size-24);
+      padding-bottom: var(--size-64);
     }
 
-    .cover {
+    .project-main {
       grid-column: 1 / -1;
-      aspect-ratio: 16 / 9;
-      position: relative;
-      overflow: hidden;
-      max-height: 70vh;
-      margin: auto;
-      margin-top: 10vh;
-    }
-
-    .project-content {
-      grid-column: 2 / -2;
-    }
-
-    .header {
-      margin-bottom: var(--size-48);
-    }
-
-    .name {
-      font-size: var(--text-48);
-      font-weight: var(--font-weight-bold);
-      margin-bottom: var(--size-16);
-    }
-
-    .description {
-      font-size: var(--text-18);
-      color: var(--color-text-light);
-      line-height: var(--line-height-relaxed);
-      max-width: 600px;
-    }
-
-    .tags {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--size-8);
-      margin-top: var(--size-24);
-    }
-
-    .tag {
-      background: var(--color-surface);
-      padding: var(--size-4) var(--size-12);
-      border-radius: var(--radius-full);
-      font-size: var(--text-12);
-      color: var(--color-text-light);
-    }
-
-    .section-title {
-      font-size: var(--text-24);
-      font-weight: var(--font-weight-bold);
-      margin-bottom: var(--size-24);
-    }
-
-    .gallery-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      gap: var(--size-24);
+      grid-template-columns: repeat(8, minmax(0, 1fr));
+      gap: var(--size-16);
     }
 
-    .gallery-item {
+    .project-sidebar {
+      grid-column: 1 / -1;
+      display: grid;
+      align-content: start;
+      gap: var(--size-12);
+    }
+
+    .back-link {
+      text-transform: uppercase;
+      text-decoration: none;
+      color: var(--color-primary);
+      font-size: var(--text-12);
+      width: fit-content;
+    }
+
+    .back-link:focus-visible,
+    .back-link:hover {
+      opacity: 0.7;
+    }
+
+    .project-title {
+      font-size: var(--text-30);
+      font-weight: var(--font-weight-medium);
+      text-transform: uppercase;
+    }
+
+    .project-location,
+    .project-years {
+      font-size: var(--text-16);
+      text-transform: uppercase;
+    }
+
+    .project-hero {
+      grid-column: 1 / -1;
+      aspect-ratio: 16 / 10;
       overflow: hidden;
-      border-radius: var(--radius-md);
     }
 
-    .gallery-item figcaption {
-      padding: var(--size-12);
+    .project-info,
+    .project-carousel {
+      grid-column: 1 / -1;
+      display: grid;
+      gap: var(--size-16);
+    }
+
+    .project-info h2,
+    .project-carousel h2 {
+      font-size: var(--text-12);
+      text-transform: uppercase;
+      text-decoration: underline;
+    }
+
+    .project-info dl {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: var(--size-8) var(--size-32);
+    }
+
+    .project-info dt {
       font-size: var(--text-14);
-      color: var(--color-text-light);
-      text-align: center;
+      font-weight: var(--font-weight-medium);
+      text-transform: uppercase;
+    }
+
+    .project-info dd {
+      font-size: var(--text-16);
+      margin: 0;
+    }
+
+    .project-carousel-track {
+      display: flex;
+      gap: var(--size-8);
+      overflow-x: auto;
+    }
+
+    .project-carousel-item {
+      flex: 0 0 120px;
+      aspect-ratio: 5 / 4;
+      overflow: hidden;
+      margin: 0;
+    }
+
+    @media (min-width: 1024px) {
+      .project-sidebar {
+        grid-column: span 2;
+      }
+
+      .project-hero {
+        grid-column: span 6;
+      }
+
+      .project-info dl {
+        grid-template-columns: auto 1fr;
+        align-items: start;
+      }
+
+      .project-carousel-item {
+        flex-basis: 75px;
+      }
     }
   </style>
 </BaseLayout>

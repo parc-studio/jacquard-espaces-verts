@@ -1,6 +1,4 @@
-# AGENTS Runtime (Compressed)
-
-Token-optimized runtime rules. Human-readable full version: `AGENTS-backup.md`.
+# AGENTS Instructions
 
 ## Core mode
 
@@ -23,6 +21,7 @@ Token-optimized runtime rules. Human-readable full version: `AGENTS-backup.md`.
 ## Styling + data + animation constraints
 
 - Use design tokens from `frontend/src/styles/tokens.css`; no hardcoded product UI colors/spacing/type sizes.
+- Avoid duplicate declaration in CSS. Keep the CSS lean and structured.
 - Prefer `.main-grid` + `subgrid`; include `:focus-visible` with hover interactions.
 - Keep GROQ in `frontend/src/data/sanity/`, use `defineQuery()` + fragments; no inline GROQ in pages/components.
 - Use generated types from `frontend/sanity.types.ts`; do not handwrite duplicate GROQ response interfaces.

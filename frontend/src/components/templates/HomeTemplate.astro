@@ -1,19 +1,10 @@
 ---
 /**
  * Home Template
- *
- * Self-fetching template for the home page.
- * Fetches its own data based on preview mode.
- *
- * SCAFFOLDING: Customize this template for your home page:
- * 1. Update the data fetching in getHomePage query
- * 2. Create Svelte components for interactive sections
- * 3. Add your content blocks rendering
  */
 import BaseLayout from '../../layouts/BaseLayout.astro'
 import { getHomePage } from '../../data/sanity'
 import Media from '../media/Media.svelte'
-import PortableText from '../portable-text/PortableText.svelte'
 
 interface Props {
   isPreview?: boolean
@@ -21,116 +12,274 @@ interface Props {
 
 const { isPreview = false } = Astro.props
 
-// Fetch home page data (includes featuredProjects via HOME_PAGE_QUERY)
 const homePage = await getHomePage({ preview: isPreview })
-const projects = homePage?.featuredProjects
 
-// Extract SEO
-const title = homePage?.seo?.title || homePage?.title || 'Home'
-const description = homePage?.seo?.description || homePage?.description || 'Welcome to our website'
+const title = homePage?.seo?.title || homePage?.title || 'Accueil'
+const description = homePage?.seo?.description || 'Jacquard Espaces Verts'
+
+type LinkValue = {
+  type?: string
+  url?: string
+  email?: string
+  phone?: string
+  value?: string
+  blank?: boolean
+  parameters?: string
+  anchor?: string
+  internalLink?: {
+    _type?: string
+    slug?: string | null
+  } | null
+} | null
+
+function resolveLink(link: LinkValue): { href: string; isExternal: boolean } {
+  if (!link) return { href: '#', isExternal: false }
+
+  if (link.type === 'internal' && link.internalLink) {
+    const ref = link.internalLink
+    let path = '/'
+
+    if (ref._type === 'page' && ref.slug) {
+      path = `/${ref.slug}`
+    } else if (ref._type === 'project' && ref.slug) {
+      path = `/projects/${ref.slug}`
+    } else if (ref._type === 'aboutPage') {
+      path = '/about'
+    } else if (ref._type === 'projectsIndex') {
+      path = '/projects'
+    }
+
+    const params = link.parameters ? `?${link.parameters}` : ''
+    const anchor = link.anchor ? `#${link.anchor}` : ''
+
+    return { href: `${path}${params}${anchor}`, isExternal: false }
+  }
+
+  if (link.type === 'external' && link.url) {
+    return { href: link.url, isExternal: true }
+  }
+
+  if (link.type === 'email' && link.email) {
+    return { href: `mailto:${link.email}`, isExternal: false }
+  }
+
+  if (link.type === 'phone' && link.phone) {
+    return { href: `tel:${link.phone}`, isExternal: false }
+  }
+
+  return { href: link.url || link.value || '#', isExternal: !!link.blank }
+}
 ---
 
 <BaseLayout title={title} description={description} isPreview={isPreview} pagePath="/">
-  <main class="container">
-    <section class="hero">
-      <h1>{homePage?.title || 'Welcome'}</h1>
-      <p>{homePage?.description || 'This is the home page. Start building your site!'}</p>
-    </section>
-
-    {/* Project Gallery */}
+  <main class="home-page">
     {
-      projects && projects.length > 0 && (
-        <section class="projects-grid main-grid">
-          {projects.map((project) => (
-            <a href={`/projects/${project.slug?.current}`} class="project-card">
-              <div class="media-wrapper">
-                <Media media={{ image: project.coverImage }} layout="cover" client:visible />
+      homePage?.sections?.map((section) => {
+        if (section._type === 'homeSectionMedia') {
+          return (
+            <section class="section section-media">
+              <Media media={section.media} layout="cover" client:visible />
+              {section.text && <p class="overlay-text">{section.text}</p>}
+            </section>
+          )
+        }
+
+        if (section._type === 'homeSectionDoubleMedia') {
+          return (
+            <section class="section section-double-media">
+              {section.items?.map((item) => (
+                <article class="double-media-item">
+                  <Media media={item.media} layout="cover" client:visible />
+                  {item.text && <p class="overlay-text">{item.text}</p>}
+                </article>
+              ))}
+            </section>
+          )
+        }
+
+        if (section._type === 'homeSectionTextCta') {
+          const cta = section.cta?.link ? resolveLink(section.cta.link) : null
+
+          return (
+            <section class="section section-text main-grid">
+              <div class="section-text-content">
+                {section.title && <h2>{section.title}</h2>}
+                <p>{section.text}</p>
+                {cta && section.cta?.title && (
+                  <a
+                    href={cta.href}
+                    target={cta.isExternal ? '_blank' : undefined}
+                    rel={cta.isExternal ? 'noopener noreferrer' : undefined}
+                    class="cta-link"
+                  >
+                    {section.cta.title}
+                  </a>
+                )}
               </div>
-              <h3>{project.name}</h3>
-            </a>
-          ))}
-        </section>
-      )
-    }
+            </section>
+          )
+        }
 
-    {/* Portable Text Content */}
-    {
-      homePage?.content && (
-        <section class="content main-grid">
-          <div class="content-inner">
-            <PortableText value={homePage.content} client:load />
-          </div>
-        </section>
-      )
+        if (section._type === 'homeSectionMediaCarousel') {
+          return (
+            <section class="section section-carousel main-grid">
+              {(section.title || section.subtitle) && (
+                <header class="carousel-header">
+                  {section.title && <h2>{section.title}</h2>}
+                  {section.subtitle && <p>{section.subtitle}</p>}
+                </header>
+              )}
+              <div class="carousel-track">
+                {section.images?.map((image) => (
+                  <figure class="carousel-item">
+                    <Media media={{ image }} layout="cover" client:visible />
+                    {image.caption && <figcaption>{image.caption}</figcaption>}
+                  </figure>
+                ))}
+              </div>
+            </section>
+          )
+        }
+
+        return null
+      })
     }
   </main>
 
   <style>
-    .hero {
-      padding-block: var(--size-128);
+    .home-page {
       display: flex;
       flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
       gap: var(--size-24);
+      padding-bottom: var(--size-64);
     }
 
-    h1 {
-      font-size: var(--text-48);
-      font-weight: var(--font-weight-bold);
-      color: var(--color-primary);
+    .section {
+      position: relative;
     }
 
-    p {
+    .section-media {
+      aspect-ratio: 1440 / 766;
+      min-height: 50vh;
+    }
+
+    .section-double-media {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: var(--size-16);
+    }
+
+    .double-media-item {
+      aspect-ratio: 3 / 2;
+      position: relative;
+      min-height: 40vh;
+    }
+
+    .overlay-text {
+      position: absolute;
+      inset-inline: var(--size-24);
+      bottom: var(--size-24);
+      color: var(--color-secondary);
+      font-size: var(--text-16);
+      font-weight: var(--font-weight-medium);
+      text-transform: uppercase;
+      text-align: center;
+      z-index: var(--z-base);
+    }
+
+    .section-text-content {
+      grid-column: 1 / -1;
+      text-align: center;
+      display: grid;
+      gap: var(--size-16);
+      padding-block: var(--size-24);
+    }
+
+    .section-text-content h2 {
+      font-size: var(--text-24);
+      font-weight: var(--font-weight-medium);
+    }
+
+    .section-text-content p {
       font-size: var(--text-18);
-      color: var(--color-text-light);
-      max-width: 60ch;
+      line-height: var(--line-height-normal);
+      max-width: 56ch;
+      margin-inline: auto;
     }
 
-    .projects-grid {
-      padding-bottom: var(--size-96);
-    }
-
-    .project-card {
-      grid-column: span 8;
-      display: flex;
-      flex-direction: column;
-      gap: var(--size-8);
+    .cta-link {
+      color: var(--color-primary);
       text-decoration: none;
-      color: inherit;
+      text-transform: uppercase;
+      font-size: var(--text-14);
+      justify-self: center;
+      border-bottom: 1px solid var(--color-primary);
+    }
+
+    .cta-link:focus-visible,
+    .cta-link:hover {
+      opacity: 0.7;
+    }
+
+    .carousel-header {
+      grid-column: 1 / -1;
+      display: grid;
+      gap: var(--size-8);
+      margin-bottom: var(--size-16);
+      text-align: center;
+    }
+
+    .carousel-header h2 {
+      font-size: var(--text-24);
+      font-weight: var(--font-weight-medium);
+    }
+
+    .carousel-header p {
+      font-size: var(--text-16);
+    }
+
+    .carousel-track {
+      grid-column: 1 / -1;
+      display: flex;
+      gap: var(--size-12);
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      padding-bottom: var(--size-8);
+    }
+
+    .carousel-item {
+      flex: 0 0 85%;
+      aspect-ratio: 4 / 3;
+      scroll-snap-align: start;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .carousel-item figcaption {
+      position: absolute;
+      inset-inline: var(--size-12);
+      bottom: var(--size-12);
+      color: var(--color-secondary);
+      text-transform: uppercase;
+      font-size: var(--text-12);
+      text-align: center;
     }
 
     @media (min-width: 768px) {
-      .project-card {
-        grid-column: span 4;
+      .section-double-media {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0;
       }
-    }
 
-    .media-wrapper {
-      aspect-ratio: 4 / 3;
-      border-radius: var(--radius-md);
-      overflow: hidden;
-      background-color: var(--color-surface);
-    }
+      .carousel-track {
+        overflow: visible;
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
 
-    h3 {
-      font-size: var(--text-24);
-      font-weight: var(--font-weight-medium);
-      margin-bottom: var(--size-16);
-    }
-
-    .content {
-      padding-bottom: var(--size-96);
-    }
-
-    .content-inner {
-      grid-column: 2 / 8;
-    }
-
-    @media (max-width: 767px) {
-      .content-inner {
-        grid-column: 1 / -1;
+      .carousel-item {
+        flex: unset;
+        aspect-ratio: 1 / 1;
       }
     }
   </style>

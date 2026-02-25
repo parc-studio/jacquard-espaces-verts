@@ -7,6 +7,7 @@
  */
 import BaseLayout from '../../layouts/BaseLayout.astro'
 import { getAboutPage } from '../../data/sanity'
+import Media from '../media/Media.svelte'
 import PortableText from '../portable-text/PortableText.svelte'
 
 interface Props {
@@ -17,16 +18,13 @@ const { isPreview = false } = Astro.props
 
 const aboutPage = await getAboutPage({ preview: isPreview })
 
-// Extract SEO
-const title = aboutPage?.seo?.title || aboutPage?.title || 'About'
+const title = aboutPage?.seo?.title || 'À propos'
 const description = aboutPage?.seo?.description || ''
 ---
 
 <BaseLayout title={title} description={description} isPreview={isPreview} pagePath="/about">
   <main class="about main-grid">
     <section class="about-content">
-      <h1>{aboutPage?.title || 'About'}</h1>
-
       {
         aboutPage?.content && (
           <div class="body">
@@ -34,23 +32,58 @@ const description = aboutPage?.seo?.description || ''
           </div>
         )
       }
+
+      {
+        aboutPage?.coverImage && (
+          <div class="cover">
+            <Media
+              media={{ image: aboutPage.coverImage }}
+              layout="cover"
+              sizes="(max-width: 1023px) 100vw, 33vw"
+              client:load
+            />
+          </div>
+        )
+      }
     </section>
   </main>
 
   <style>
+    .about {
+      padding-block: var(--size-24) var(--size-64);
+    }
+
     .about-content {
       grid-column: 1 / -1;
       display: grid;
-      grid-template-columns: subgrid;
-    }
-
-    h1 {
-      grid-column: 1 / -1;
-      margin-block: var(--size-64) var(--size-32);
+      gap: var(--size-24);
     }
 
     .body {
       grid-column: 1 / -1;
+    }
+
+    .cover {
+      grid-column: 1 / -1;
+      aspect-ratio: 4 / 3;
+      overflow: hidden;
+      max-width: 460px;
+    }
+
+    @media (min-width: 1024px) {
+      .about-content {
+        grid-template-columns: repeat(8, minmax(0, 1fr));
+      }
+
+      .body {
+        grid-column: 1 / 6;
+      }
+
+      .cover {
+        grid-column: 6 / -1;
+        justify-self: end;
+        width: 100%;
+      }
     }
   </style>
 </BaseLayout>

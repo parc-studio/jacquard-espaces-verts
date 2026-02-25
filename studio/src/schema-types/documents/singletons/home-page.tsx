@@ -14,28 +14,17 @@ export const homePageType = defineType({
       validation: (Rule) => Rule.required(),
     }),
     defineField({
-      name: 'description',
-      title: 'Description',
-      type: 'text',
-      rows: 3,
-    }),
-    defineField({
-      name: 'featuredProjects',
-      title: 'Featured Projects',
+      name: 'sections',
+      title: 'Page Builder',
       type: 'array',
       of: [
-        defineArrayMember({
-          type: 'reference',
-          to: [{ type: 'project' }],
-        }),
+        defineArrayMember({ type: 'homeSectionMedia' }),
+        defineArrayMember({ type: 'homeSectionDoubleMedia' }),
+        defineArrayMember({ type: 'homeSectionTextCta' }),
+        defineArrayMember({ type: 'homeSectionMediaCarousel' }),
       ],
-      description: 'Select projects to feature on the home page',
-    }),
-    defineField({
-      name: 'content',
-      title: 'Content',
-      type: 'blockContent',
-      description: 'Additional content for the home page',
+      validation: (Rule) => Rule.required().min(1),
+      description: 'Build the home page by stacking section blocks',
     }),
     defineField({
       name: 'seo',
