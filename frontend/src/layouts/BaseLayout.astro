@@ -97,7 +97,7 @@ const agentationMode = isDevMode ? 'dev' : 'review'
             <h2>Expert en</h2>
             <ul>
               {settings.expertise?.map((item) => (
-                <li>{item}</li>
+                <li>{item?.title}</li>
               ))}
             </ul>
           </section>

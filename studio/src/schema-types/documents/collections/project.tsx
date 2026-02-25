@@ -2,6 +2,7 @@ import { ProjectsIcon } from '@sanity/icons'
 import { orderRankField } from '@sanity/orderable-document-list'
 import { defineArrayMember, defineField, defineType } from 'sanity'
 import { mediaAssetSource } from 'sanity-plugin-media'
+import { ReferenceCheckbox } from '../../../components/ReferenceCheckbox'
 
 /**
  * Project document type
@@ -54,6 +55,20 @@ export const projectType = defineType({
       title: 'Techniques',
       type: 'array',
       of: [defineArrayMember({ type: 'string' })],
+    }),
+    defineField({
+      name: 'expertises',
+      title: 'Types de travaux (Expertises)',
+      type: 'array',
+      of: [
+        defineArrayMember({
+          type: 'reference',
+          to: [{ type: 'expertise' }],
+        }),
+      ],
+      components: {
+        input: ReferenceCheckbox,
+      },
     }),
     defineField({
       name: 'budget',

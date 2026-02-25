@@ -31,6 +31,13 @@ const infoRows = [
       ? `${project?.anneeDebut} – ${project?.anneeFin}`
       : project?.anneeDebut,
   },
+  {
+    label: 'Expertises',
+    value: project?.expertises
+      ?.map((item) => item?.title)
+      .filter(Boolean)
+      .join(', '),
+  },
   { label: 'Techniques', value: project?.techniques?.join(', ') },
   {
     label: 'Budget',

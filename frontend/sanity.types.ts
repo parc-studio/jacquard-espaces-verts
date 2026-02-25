@@ -32,6 +32,40 @@ export type Media = {
   videoUrl?: string
 }
 
+export type ExpertiseReference = {
+  _ref: string
+  _type: 'reference'
+  _weak?: boolean
+  [internalGroqTypeReferenceTo]?: 'expertise'
+}
+
+export type HomeSectionExpertiseReference = {
+  _type: 'homeSectionExpertiseReference'
+  expertise: ExpertiseReference
+}
+
+export type ProjectReference = {
+  _ref: string
+  _type: 'reference'
+  _weak?: boolean
+  [internalGroqTypeReferenceTo]?: 'project'
+}
+
+export type HomeSectionProjectPair = {
+  _type: 'homeSectionProjectPair'
+  projects: Array<
+    {
+      _key: string
+    } & ProjectReference
+  >
+}
+
+export type HomeSectionProjectReference = {
+  _type: 'homeSectionProjectReference'
+  project: ProjectReference
+  displayMode: 'fullScreenImage' | 'carouselImage'
+}
+
 export type HomeSectionMediaCarousel = {
   _type: 'homeSectionMediaCarousel'
   title?: string
@@ -47,11 +81,33 @@ export type HomeSectionMediaCarousel = {
   }>
 }
 
+export type SanityImageCrop = {
+  _type: 'sanity.imageCrop'
+  top: number
+  bottom: number
+  left: number
+  right: number
+}
+
+export type SanityImageHotspot = {
+  _type: 'sanity.imageHotspot'
+  x: number
+  y: number
+  height: number
+  width: number
+}
+
 export type HomeSectionTextCta = {
   _type: 'homeSectionTextCta'
   title?: string
   text: string
   cta?: Cta
+}
+
+export type Cta = {
+  _type: 'cta'
+  title: string
+  link?: Link
 }
 
 export type HomeSectionDoubleMedia = {
@@ -79,10 +135,51 @@ export type CarouselSection = {
   }>
 }
 
-export type Cta = {
-  _type: 'cta'
-  title: string
-  link?: Link
+export type AboutPageReference = {
+  _ref: string
+  _type: 'reference'
+  _weak?: boolean
+  [internalGroqTypeReferenceTo]?: 'aboutPage'
+}
+
+export type HomePageReference = {
+  _ref: string
+  _type: 'reference'
+  _weak?: boolean
+  [internalGroqTypeReferenceTo]?: 'homePage'
+}
+
+export type PageReference = {
+  _ref: string
+  _type: 'reference'
+  _weak?: boolean
+  [internalGroqTypeReferenceTo]?: 'page'
+}
+
+export type ProjectsIndexReference = {
+  _ref: string
+  _type: 'reference'
+  _weak?: boolean
+  [internalGroqTypeReferenceTo]?: 'projectsIndex'
+}
+
+export type Link = {
+  _type: 'link'
+  text?: string
+  type: string
+  internalLink?:
+    | AboutPageReference
+    | HomePageReference
+    | PageReference
+    | ProjectReference
+    | ProjectsIndexReference
+  url?: string
+  email?: string
+  phone?: string
+  value?: string
+  blank?: boolean
+  parameters?: string
+  anchor?: string
 }
 
 export type BlockContent = Array<
@@ -143,6 +240,16 @@ export type Slug = {
   source?: string
 }
 
+export type Expertise = {
+  _id: string
+  _type: 'expertise'
+  _createdAt: string
+  _updatedAt: string
+  _rev: string
+  title: string
+  description: string
+}
+
 export type Annotation = {
   _id: string
   _type: 'annotation'
@@ -166,65 +273,15 @@ export type Settings = {
   _rev: string
   shortDescription: string
   longDescription: string
-  expertise: Array<string>
+  expertise: Array<
+    {
+      _key: string
+    } & ExpertiseReference
+  >
   telephone: string
   email: string
   instagram?: string
   linkedin?: string
-}
-
-export type AboutPageReference = {
-  _ref: string
-  _type: 'reference'
-  _weak?: boolean
-  [internalGroqTypeReferenceTo]?: 'aboutPage'
-}
-
-export type HomePageReference = {
-  _ref: string
-  _type: 'reference'
-  _weak?: boolean
-  [internalGroqTypeReferenceTo]?: 'homePage'
-}
-
-export type PageReference = {
-  _ref: string
-  _type: 'reference'
-  _weak?: boolean
-  [internalGroqTypeReferenceTo]?: 'page'
-}
-
-export type ProjectReference = {
-  _ref: string
-  _type: 'reference'
-  _weak?: boolean
-  [internalGroqTypeReferenceTo]?: 'project'
-}
-
-export type ProjectsIndexReference = {
-  _ref: string
-  _type: 'reference'
-  _weak?: boolean
-  [internalGroqTypeReferenceTo]?: 'projectsIndex'
-}
-
-export type Link = {
-  _type: 'link'
-  text?: string
-  type: string
-  internalLink?:
-    | AboutPageReference
-    | HomePageReference
-    | PageReference
-    | ProjectReference
-    | ProjectsIndexReference
-  url?: string
-  email?: string
-  phone?: string
-  value?: string
-  blank?: boolean
-  parameters?: string
-  anchor?: string
 }
 
 export type TagReference = {
@@ -262,6 +319,11 @@ export type Project = {
   anneeDebut: number
   anneeFin?: number
   techniques?: Array<string>
+  expertises?: Array<
+    {
+      _key: string
+    } & ExpertiseReference
+  >
   budget?: number
   aireM2?: number
   maitreOuvrage?: string
@@ -278,22 +340,6 @@ export type Project = {
     _key: string
   }>
   seo?: Seo
-}
-
-export type SanityImageCrop = {
-  _type: 'sanity.imageCrop'
-  top: number
-  bottom: number
-  left: number
-  right: number
-}
-
-export type SanityImageHotspot = {
-  _type: 'sanity.imageHotspot'
-  x: number
-  y: number
-  height: number
-  width: number
 }
 
 export type Page = {
@@ -318,16 +364,13 @@ export type HomePage = {
   sections: Array<
     | ({
         _key: string
-      } & HomeSectionMedia)
+      } & HomeSectionProjectReference)
     | ({
         _key: string
-      } & HomeSectionDoubleMedia)
+      } & HomeSectionProjectPair)
     | ({
         _key: string
-      } & HomeSectionTextCta)
-    | ({
-        _key: string
-      } & HomeSectionMediaCarousel)
+      } & HomeSectionExpertiseReference)
   >
   seo?: Seo
 }
@@ -491,29 +534,34 @@ export type Geopoint = {
 export type AllSanitySchemaTypes =
   | SanityImageAssetReference
   | Media
+  | ExpertiseReference
+  | HomeSectionExpertiseReference
+  | ProjectReference
+  | HomeSectionProjectPair
+  | HomeSectionProjectReference
   | HomeSectionMediaCarousel
+  | SanityImageCrop
+  | SanityImageHotspot
   | HomeSectionTextCta
+  | Cta
   | HomeSectionDoubleMedia
   | HomeSectionMedia
   | CarouselSection
-  | Cta
+  | AboutPageReference
+  | HomePageReference
+  | PageReference
+  | ProjectsIndexReference
+  | Link
   | BlockContent
   | Seo
   | Tag
   | Slug
+  | Expertise
   | Annotation
   | Settings
-  | AboutPageReference
-  | HomePageReference
-  | PageReference
-  | ProjectReference
-  | ProjectsIndexReference
-  | Link
   | TagReference
   | ProjectsIndex
   | Project
-  | SanityImageCrop
-  | SanityImageHotspot
   | Page
   | HomePage
   | AboutPage
@@ -535,13 +583,18 @@ export declare const internalGroqTypeReferenceTo: unique symbol
 
 // Source: ../frontend/src/data/sanity/queries.ts
 // Variable: SETTINGS_QUERY
-// Query: *[_type == "settings"][0] {  _id,  _type,  shortDescription,  longDescription,  expertise,  telephone,  email,  instagram,  linkedin}
+// Query: *[_type == "settings"][0] {  _id,  _type,  shortDescription,  longDescription,  expertise[]->{   _id,  _type,  title,  description },  telephone,  email,  instagram,  linkedin}
 export type SETTINGS_QUERY_RESULT = {
   _id: string
   _type: 'settings'
   shortDescription: string
   longDescription: string
-  expertise: Array<string>
+  expertise: Array<{
+    _id: string
+    _type: 'expertise'
+    title: string
+    description: string
+  }>
   telephone: string
   email: string
   instagram: string | null
@@ -550,7 +603,7 @@ export type SETTINGS_QUERY_RESULT = {
 
 // Source: ../frontend/src/data/sanity/queries.ts
 // Variable: HOME_PAGE_QUERY
-// Query: *[_type == "homePage"][0] {  _id,  _type,  title,  sections[] {   ...,  _type == "homeSectionMedia" => {    _key,    _type,    text,    media {   image {   asset->{    _id,    url,    mimeType,    metadata {      lqip,      dimensions { width, height, aspectRatio }    }  },  hotspot,  crop },  videoUrl }  },  _type == "homeSectionDoubleMedia" => {    _key,    _type,    items[] {      _key,      text,      media {   image {   asset->{    _id,    url,    mimeType,    metadata {      lqip,      dimensions { width, height, aspectRatio }    }  },  hotspot,  crop },  videoUrl }    }  },  _type == "homeSectionTextCta" => {    _key,    _type,    title,    text,    cta {   title,  link {   ...,  internalLink->{ _type, _id, "slug": slug.current, title } } }  },  _type == "homeSectionMediaCarousel" => {    _key,    _type,    title,    subtitle,    images[] {        _key,    asset->{    _id,    url,    mimeType,    metadata {      lqip,      dimensions { width, height, aspectRatio }    }  },  hotspot,  crop,  caption    }  } },    seo {    title,    description,    image  }}
+// Query: *[_type == "homePage"][0] {  _id,  _type,  title,  sections[] {   ...,  _type == "homeSectionProjectReference" => {    _key,    _type,    displayMode,    project->{      _id,      titre,      slug,      heroMedia {   image {   asset->{    _id,    url,    mimeType,    metadata {      lqip,      dimensions { width, height, aspectRatio }    }  },  hotspot,  crop },  videoUrl },      mediaCarousel[] {          _key,    asset->{    _id,    url,    mimeType,    metadata {      lqip,      dimensions { width, height, aspectRatio }    }  },  hotspot,  crop,  caption      }    }  },  _type == "homeSectionProjectPair" => {    _key,    _type,    projects[]->{      _id,      titre,      slug,      heroMedia {   image {   asset->{    _id,    url,    mimeType,    metadata {      lqip,      dimensions { width, height, aspectRatio }    }  },  hotspot,  crop },  videoUrl }    }  },  _type == "homeSectionExpertiseReference" => {    _key,    _type,    expertise->{   _id,  _type,  title,  description }  } },    seo {    title,    description,    image  }}
 export type HOME_PAGE_QUERY_RESULT = {
   _id: string
   _type: 'homePage'
@@ -558,11 +611,22 @@ export type HOME_PAGE_QUERY_RESULT = {
   sections: Array<
     | {
         _key: string
-        _type: 'homeSectionDoubleMedia'
-        items: Array<{
-          _key: string
-          text: string | null
-          media: {
+        _type: 'homeSectionExpertiseReference'
+        expertise: {
+          _id: string
+          _type: 'expertise'
+          title: string
+          description: string
+        }
+      }
+    | {
+        _key: string
+        _type: 'homeSectionProjectPair'
+        projects: Array<{
+          _id: string
+          titre: string
+          slug: Slug
+          heroMedia: {
             image: {
               asset: {
                 _id: string
@@ -586,9 +650,33 @@ export type HOME_PAGE_QUERY_RESULT = {
       }
     | {
         _key: string
-        _type: 'homeSectionMedia'
-        media: {
-          image: {
+        _type: 'homeSectionProjectReference'
+        project: {
+          _id: string
+          titre: string
+          slug: Slug
+          heroMedia: {
+            image: {
+              asset: {
+                _id: string
+                url: string | null
+                mimeType: string | null
+                metadata: {
+                  lqip: string | null
+                  dimensions: {
+                    width: number
+                    height: number
+                    aspectRatio: number
+                  } | null
+                } | null
+              } | null
+              hotspot: SanityImageHotspot | null
+              crop: SanityImageCrop | null
+            } | null
+            videoUrl: string | null
+          }
+          mediaCarousel: Array<{
+            _key: string
             asset: {
               _id: string
               url: string | null
@@ -604,88 +692,10 @@ export type HOME_PAGE_QUERY_RESULT = {
             } | null
             hotspot: SanityImageHotspot | null
             crop: SanityImageCrop | null
-          } | null
-          videoUrl: string | null
+            caption: string | null
+          }>
         }
-        text: string | null
-      }
-    | {
-        _key: string
-        _type: 'homeSectionMediaCarousel'
-        title: string | null
-        subtitle: string | null
-        images: Array<{
-          _key: string
-          asset: {
-            _id: string
-            url: string | null
-            mimeType: string | null
-            metadata: {
-              lqip: string | null
-              dimensions: {
-                width: number
-                height: number
-                aspectRatio: number
-              } | null
-            } | null
-          } | null
-          hotspot: SanityImageHotspot | null
-          crop: SanityImageCrop | null
-          caption: string | null
-        }>
-      }
-    | {
-        _key: string
-        _type: 'homeSectionTextCta'
-        title: string | null
-        text: string
-        cta: {
-          title: string
-          link: {
-            _type: 'link'
-            text?: string
-            type: string
-            internalLink:
-              | {
-                  _type: 'aboutPage'
-                  _id: string
-                  slug: null
-                  title: null
-                }
-              | {
-                  _type: 'homePage'
-                  _id: string
-                  slug: null
-                  title: string
-                }
-              | {
-                  _type: 'page'
-                  _id: string
-                  slug: string
-                  title: string
-                }
-              | {
-                  _type: 'project'
-                  _id: string
-                  slug: string
-                  title: null
-                }
-              | {
-                  _type: 'projectsIndex'
-                  _id: string
-                  slug: null
-                  title: string
-                }
-              | null
-            url?: string
-            email?: string
-            phone?: string
-            value?: string
-            blank?: boolean
-            parameters?: string
-            anchor?: string
-          } | null
-        } | null
+        displayMode: 'carouselImage' | 'fullScreenImage'
       }
   >
   seo: {
@@ -802,7 +812,7 @@ export type ALL_PAGES_QUERY_RESULT = Array<{
 
 // Source: ../frontend/src/data/sanity/queries.ts
 // Variable: PROJECT_QUERY
-// Query: *[_type == "project" && slug.current == $slug][0] {      _id,  _type,  titre,  slug,  localisation,  anneeDebut,  anneeFin,  heroMedia {   image {   asset->{    _id,    url,    mimeType,    metadata {      lqip,      dimensions { width, height, aspectRatio }    }  },  hotspot,  crop },  videoUrl },  techniques,  budget,  aireM2,  maitreOuvrage,  maitreOeuvre,  architecte,  mediaCarousel[] {      _key,    asset->{    _id,    url,    mimeType,    metadata {      lqip,      dimensions { width, height, aspectRatio }    }  },  hotspot,  crop,  caption  },    seo {    title,    description,    image  }}
+// Query: *[_type == "project" && slug.current == $slug][0] {      _id,  _type,  titre,  slug,  localisation,  anneeDebut,  anneeFin,  expertises[]->{   _id,  _type,  title,  description },  heroMedia {   image {   asset->{    _id,    url,    mimeType,    metadata {      lqip,      dimensions { width, height, aspectRatio }    }  },  hotspot,  crop },  videoUrl },  techniques,  budget,  aireM2,  maitreOuvrage,  maitreOeuvre,  architecte,  mediaCarousel[] {      _key,    asset->{    _id,    url,    mimeType,    metadata {      lqip,      dimensions { width, height, aspectRatio }    }  },  hotspot,  crop,  caption  },    seo {    title,    description,    image  }}
 export type PROJECT_QUERY_RESULT = {
   _id: string
   _type: 'project'
@@ -811,6 +821,12 @@ export type PROJECT_QUERY_RESULT = {
   localisation: string
   anneeDebut: number
   anneeFin: number | null
+  expertises: Array<{
+    _id: string
+    _type: 'expertise'
+    title: string
+    description: string
+  }> | null
   heroMedia: {
     image: {
       asset: {
@@ -871,7 +887,7 @@ export type PROJECT_QUERY_RESULT = {
 
 // Source: ../frontend/src/data/sanity/queries.ts
 // Variable: ALL_PROJECTS_QUERY
-// Query: *[_type == "project" && defined(slug.current)] | order(orderRank asc, name asc) {    _id,  _type,  titre,  slug,  localisation,  anneeDebut,  anneeFin,  heroMedia {   image {   asset->{    _id,    url,    mimeType,    metadata {      lqip,      dimensions { width, height, aspectRatio }    }  },  hotspot,  crop },  videoUrl }}
+// Query: *[_type == "project" && defined(slug.current)] | order(orderRank asc, name asc) {    _id,  _type,  titre,  slug,  localisation,  anneeDebut,  anneeFin,  expertises[]->{   _id,  _type,  title,  description },  heroMedia {   image {   asset->{    _id,    url,    mimeType,    metadata {      lqip,      dimensions { width, height, aspectRatio }    }  },  hotspot,  crop },  videoUrl }}
 export type ALL_PROJECTS_QUERY_RESULT = Array<{
   _id: string
   _type: 'project'
@@ -880,6 +896,12 @@ export type ALL_PROJECTS_QUERY_RESULT = Array<{
   localisation: string
   anneeDebut: number
   anneeFin: number | null
+  expertises: Array<{
+    _id: string
+    _type: 'expertise'
+    title: string
+    description: string
+  }> | null
   heroMedia: {
     image: {
       asset: {
@@ -1037,12 +1059,12 @@ export type PROJECTS_INDEX_QUERY_RESULT = {
 import '@sanity/client'
 declare module '@sanity/client' {
   interface SanityQueries {
-    '*[_type == "settings"][0] {\n  _id,\n  _type,\n  shortDescription,\n  longDescription,\n  expertise,\n  telephone,\n  email,\n  instagram,\n  linkedin\n}': SETTINGS_QUERY_RESULT
-    '*[_type == "homePage"][0] {\n  _id,\n  _type,\n  title,\n  sections[] { \n  ...,\n  _type == "homeSectionMedia" => {\n    _key,\n    _type,\n    text,\n    media { \n  image { \n  asset->{\n    _id,\n    url,\n    mimeType,\n    metadata {\n      lqip,\n      dimensions { width, height, aspectRatio }\n    }\n  },\n  hotspot,\n  crop\n },\n  videoUrl\n }\n  },\n  _type == "homeSectionDoubleMedia" => {\n    _key,\n    _type,\n    items[] {\n      _key,\n      text,\n      media { \n  image { \n  asset->{\n    _id,\n    url,\n    mimeType,\n    metadata {\n      lqip,\n      dimensions { width, height, aspectRatio }\n    }\n  },\n  hotspot,\n  crop\n },\n  videoUrl\n }\n    }\n  },\n  _type == "homeSectionTextCta" => {\n    _key,\n    _type,\n    title,\n    text,\n    cta { \n  title,\n  link { \n  ...,\n  internalLink->{ _type, _id, "slug": slug.current, title }\n }\n }\n  },\n  _type == "homeSectionMediaCarousel" => {\n    _key,\n    _type,\n    title,\n    subtitle,\n    images[] {\n      \n  _key,\n  \n  asset->{\n    _id,\n    url,\n    mimeType,\n    metadata {\n      lqip,\n      dimensions { width, height, aspectRatio }\n    }\n  },\n  hotspot,\n  crop\n,\n  caption\n\n    }\n  }\n },\n  \n  seo {\n    title,\n    description,\n    image\n  }\n\n}': HOME_PAGE_QUERY_RESULT
+    '*[_type == "settings"][0] {\n  _id,\n  _type,\n  shortDescription,\n  longDescription,\n  expertise[]->{ \n  _id,\n  _type,\n  title,\n  description\n },\n  telephone,\n  email,\n  instagram,\n  linkedin\n}': SETTINGS_QUERY_RESULT
+    '*[_type == "homePage"][0] {\n  _id,\n  _type,\n  title,\n  sections[] { \n  ...,\n  _type == "homeSectionProjectReference" => {\n    _key,\n    _type,\n    displayMode,\n    project->{\n      _id,\n      titre,\n      slug,\n      heroMedia { \n  image { \n  asset->{\n    _id,\n    url,\n    mimeType,\n    metadata {\n      lqip,\n      dimensions { width, height, aspectRatio }\n    }\n  },\n  hotspot,\n  crop\n },\n  videoUrl\n },\n      mediaCarousel[] {\n        \n  _key,\n  \n  asset->{\n    _id,\n    url,\n    mimeType,\n    metadata {\n      lqip,\n      dimensions { width, height, aspectRatio }\n    }\n  },\n  hotspot,\n  crop\n,\n  caption\n\n      }\n    }\n  },\n  _type == "homeSectionProjectPair" => {\n    _key,\n    _type,\n    projects[]->{\n      _id,\n      titre,\n      slug,\n      heroMedia { \n  image { \n  asset->{\n    _id,\n    url,\n    mimeType,\n    metadata {\n      lqip,\n      dimensions { width, height, aspectRatio }\n    }\n  },\n  hotspot,\n  crop\n },\n  videoUrl\n }\n    }\n  },\n  _type == "homeSectionExpertiseReference" => {\n    _key,\n    _type,\n    expertise->{ \n  _id,\n  _type,\n  title,\n  description\n }\n  }\n },\n  \n  seo {\n    title,\n    description,\n    image\n  }\n\n}': HOME_PAGE_QUERY_RESULT
     '*[_type == "page" && slug.current == $slug][0] {\n  _id,\n  _type,\n  title,\n  slug,\n  content[] { \n  ...,\n  markDefs[] {\n    ...,\n    _type == "link" => { \n  ...,\n  internalLink->{ _type, _id, "slug": slug.current, title }\n }\n  }\n },\n  \n  seo {\n    title,\n    description,\n    image\n  }\n\n}': PAGE_QUERY_RESULT
     '*[_type == "page" && defined(slug.current)] {\n  _id,\n  title,\n  slug\n}': ALL_PAGES_QUERY_RESULT
-    '*[_type == "project" && slug.current == $slug][0] {\n  \n  \n  _id,\n  _type,\n  titre,\n  slug,\n  localisation,\n  anneeDebut,\n  anneeFin,\n  heroMedia { \n  image { \n  asset->{\n    _id,\n    url,\n    mimeType,\n    metadata {\n      lqip,\n      dimensions { width, height, aspectRatio }\n    }\n  },\n  hotspot,\n  crop\n },\n  videoUrl\n }\n,\n  techniques,\n  budget,\n  aireM2,\n  maitreOuvrage,\n  maitreOeuvre,\n  architecte,\n  mediaCarousel[] {\n    \n  _key,\n  \n  asset->{\n    _id,\n    url,\n    mimeType,\n    metadata {\n      lqip,\n      dimensions { width, height, aspectRatio }\n    }\n  },\n  hotspot,\n  crop\n,\n  caption\n\n  },\n  \n  seo {\n    title,\n    description,\n    image\n  }\n\n\n}': PROJECT_QUERY_RESULT
-    '*[_type == "project" && defined(slug.current)] | order(orderRank asc, name asc) {\n  \n  _id,\n  _type,\n  titre,\n  slug,\n  localisation,\n  anneeDebut,\n  anneeFin,\n  heroMedia { \n  image { \n  asset->{\n    _id,\n    url,\n    mimeType,\n    metadata {\n      lqip,\n      dimensions { width, height, aspectRatio }\n    }\n  },\n  hotspot,\n  crop\n },\n  videoUrl\n }\n\n}': ALL_PROJECTS_QUERY_RESULT
+    '*[_type == "project" && slug.current == $slug][0] {\n  \n  \n  _id,\n  _type,\n  titre,\n  slug,\n  localisation,\n  anneeDebut,\n  anneeFin,\n  expertises[]->{ \n  _id,\n  _type,\n  title,\n  description\n },\n  heroMedia { \n  image { \n  asset->{\n    _id,\n    url,\n    mimeType,\n    metadata {\n      lqip,\n      dimensions { width, height, aspectRatio }\n    }\n  },\n  hotspot,\n  crop\n },\n  videoUrl\n }\n,\n  techniques,\n  budget,\n  aireM2,\n  maitreOuvrage,\n  maitreOeuvre,\n  architecte,\n  mediaCarousel[] {\n    \n  _key,\n  \n  asset->{\n    _id,\n    url,\n    mimeType,\n    metadata {\n      lqip,\n      dimensions { width, height, aspectRatio }\n    }\n  },\n  hotspot,\n  crop\n,\n  caption\n\n  },\n  \n  seo {\n    title,\n    description,\n    image\n  }\n\n\n}': PROJECT_QUERY_RESULT
+    '*[_type == "project" && defined(slug.current)] | order(orderRank asc, name asc) {\n  \n  _id,\n  _type,\n  titre,\n  slug,\n  localisation,\n  anneeDebut,\n  anneeFin,\n  expertises[]->{ \n  _id,\n  _type,\n  title,\n  description\n },\n  heroMedia { \n  image { \n  asset->{\n    _id,\n    url,\n    mimeType,\n    metadata {\n      lqip,\n      dimensions { width, height, aspectRatio }\n    }\n  },\n  hotspot,\n  crop\n },\n  videoUrl\n }\n\n}': ALL_PROJECTS_QUERY_RESULT
     '*[_type == "aboutPage"][0] {\n  _id,\n  _type,\n  coverImage { \n  asset->{\n    _id,\n    url,\n    mimeType,\n    metadata {\n      lqip,\n      dimensions { width, height, aspectRatio }\n    }\n  },\n  hotspot,\n  crop\n },\n  content[] { \n  ...,\n  markDefs[] {\n    ...,\n    _type == "link" => { \n  ...,\n  internalLink->{ _type, _id, "slug": slug.current, title }\n }\n  }\n },\n  \n  seo {\n    title,\n    description,\n    image\n  }\n\n}': ABOUT_PAGE_QUERY_RESULT
     '*[_type == "projectsIndex"][0] {\n  _id,\n  _type,\n  title,\n  filters[]->{ \n  _id,\n  _type,\n  name,\n  "slug": slug.current\n },\n  \n  seo {\n    title,\n    description,\n    image\n  }\n\n}': PROJECTS_INDEX_QUERY_RESULT
   }

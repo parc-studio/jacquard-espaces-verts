@@ -1,5 +1,6 @@
 import { defineArrayMember, defineField, defineType } from 'sanity'
 import { CogIcon } from '@sanity/icons'
+import { ReferenceCheckbox } from '../../../components/ReferenceCheckbox'
 
 export const settingsType = defineType({
   name: 'settings',
@@ -25,7 +26,15 @@ export const settingsType = defineType({
       name: 'expertise',
       title: 'Expertise',
       type: 'array',
-      of: [defineArrayMember({ type: 'string' })],
+      of: [
+        defineArrayMember({
+          type: 'reference',
+          to: [{ type: 'expertise' }],
+        }),
+      ],
+      components: {
+        input: ReferenceCheckbox,
+      },
       validation: (Rule) => Rule.required().min(1),
     }),
     defineField({

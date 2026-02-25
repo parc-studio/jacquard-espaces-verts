@@ -18,10 +18,9 @@ export const homePageType = defineType({
       title: 'Page Builder',
       type: 'array',
       of: [
-        defineArrayMember({ type: 'homeSectionMedia' }),
-        defineArrayMember({ type: 'homeSectionDoubleMedia' }),
-        defineArrayMember({ type: 'homeSectionTextCta' }),
-        defineArrayMember({ type: 'homeSectionMediaCarousel' }),
+        defineArrayMember({ type: 'homeSectionProjectReference' }),
+        defineArrayMember({ type: 'homeSectionProjectPair' }),
+        defineArrayMember({ type: 'homeSectionExpertiseReference' }),
       ],
       validation: (Rule) => Rule.required().min(1),
       description: 'Build the home page by stacking section blocks',

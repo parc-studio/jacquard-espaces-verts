@@ -16,126 +16,75 @@ const homePage = await getHomePage({ preview: isPreview })
 
 const title = homePage?.seo?.title || homePage?.title || 'Accueil'
 const description = homePage?.seo?.description || 'Jacquard Espaces Verts'
-
-type LinkValue = {
-  type?: string
-  url?: string
-  email?: string
-  phone?: string
-  value?: string
-  blank?: boolean
-  parameters?: string
-  anchor?: string
-  internalLink?: {
-    _type?: string
-    slug?: string | null
-  } | null
-} | null
-
-function resolveLink(link: LinkValue): { href: string; isExternal: boolean } {
-  if (!link) return { href: '#', isExternal: false }
-
-  if (link.type === 'internal' && link.internalLink) {
-    const ref = link.internalLink
-    let path = '/'
-
-    if (ref._type === 'page' && ref.slug) {
-      path = `/${ref.slug}`
-    } else if (ref._type === 'project' && ref.slug) {
-      path = `/projects/${ref.slug}`
-    } else if (ref._type === 'aboutPage') {
-      path = '/about'
-    } else if (ref._type === 'projectsIndex') {
-      path = '/projects'
-    }
-
-    const params = link.parameters ? `?${link.parameters}` : ''
-    const anchor = link.anchor ? `#${link.anchor}` : ''
-
-    return { href: `${path}${params}${anchor}`, isExternal: false }
-  }
-
-  if (link.type === 'external' && link.url) {
-    return { href: link.url, isExternal: true }
-  }
-
-  if (link.type === 'email' && link.email) {
-    return { href: `mailto:${link.email}`, isExternal: false }
-  }
-
-  if (link.type === 'phone' && link.phone) {
-    return { href: `tel:${link.phone}`, isExternal: false }
-  }
-
-  return { href: link.url || link.value || '#', isExternal: !!link.blank }
-}
 ---
 
 <BaseLayout title={title} description={description} isPreview={isPreview} pagePath="/">
   <main class="home-page">
     {
       homePage?.sections?.map((section) => {
-        if (section._type === 'homeSectionMedia') {
+        if (section._type === 'homeSectionProjectReference') {
+          const project = section.project
+          if (!project) return null
+
+          const href = project.slug?.current ? `/projects/${project.slug.current}` : '#'
+
+          if (section.displayMode === 'carouselImage') {
+            return (
+              <section class="section section-project-carousel main-grid">
+                <a href={href} class="project-block-link project-block-link-inline">
+                  <h2>{project.titre}</h2>
+                </a>
+                <div class="project-carousel-track">
+                  {project.mediaCarousel?.map((image) => (
+                    <figure class="project-carousel-item">
+                      <Media media={{ image }} layout="cover" client:visible />
+                    </figure>
+                  ))}
+                  {(!project.mediaCarousel || project.mediaCarousel.length === 0) &&
+                    project.heroMedia && (
+                      <figure class="project-carousel-item project-carousel-item-fallback">
+                        <Media media={project.heroMedia} layout="cover" client:visible />
+                      </figure>
+                    )}
+                </div>
+              </section>
+            )
+          }
+
           return (
-            <section class="section section-media">
-              <Media media={section.media} layout="cover" client:visible />
-              {section.text && <p class="overlay-text">{section.text}</p>}
+            <section class="section section-project-fullscreen">
+              <a href={href} class="project-block-link">
+                <Media media={project.heroMedia} layout="cover" client:visible />
+                <p class="overlay-text">{project.titre}</p>
+              </a>
             </section>
           )
         }
 
-        if (section._type === 'homeSectionDoubleMedia') {
+        if (section._type === 'homeSectionProjectPair') {
+          const projects = section.projects?.filter((project) => !!project) || []
+
           return (
-            <section class="section section-double-media">
-              {section.items?.map((item) => (
-                <article class="double-media-item">
-                  <Media media={item.media} layout="cover" client:visible />
-                  {item.text && <p class="overlay-text">{item.text}</p>}
-                </article>
+            <section class="section section-project-pair main-grid">
+              {projects.map((project) => (
+                <a
+                  href={project.slug?.current ? `/projects/${project.slug.current}` : '#'}
+                  class="project-pair-item"
+                >
+                  <Media media={project.heroMedia} layout="cover" client:visible />
+                  <p class="overlay-text">{project.titre}</p>
+                </a>
               ))}
             </section>
           )
         }
 
-        if (section._type === 'homeSectionTextCta') {
-          const cta = section.cta?.link ? resolveLink(section.cta.link) : null
-
+        if (section._type === 'homeSectionExpertiseReference') {
           return (
-            <section class="section section-text main-grid">
-              <div class="section-text-content">
-                {section.title && <h2>{section.title}</h2>}
-                <p>{section.text}</p>
-                {cta && section.cta?.title && (
-                  <a
-                    href={cta.href}
-                    target={cta.isExternal ? '_blank' : undefined}
-                    rel={cta.isExternal ? 'noopener noreferrer' : undefined}
-                    class="cta-link"
-                  >
-                    {section.cta.title}
-                  </a>
-                )}
-              </div>
-            </section>
-          )
-        }
-
-        if (section._type === 'homeSectionMediaCarousel') {
-          return (
-            <section class="section section-carousel main-grid">
-              {(section.title || section.subtitle) && (
-                <header class="carousel-header">
-                  {section.title && <h2>{section.title}</h2>}
-                  {section.subtitle && <p>{section.subtitle}</p>}
-                </header>
-              )}
-              <div class="carousel-track">
-                {section.images?.map((image) => (
-                  <figure class="carousel-item">
-                    <Media media={{ image }} layout="cover" client:visible />
-                    {image.caption && <figcaption>{image.caption}</figcaption>}
-                  </figure>
-                ))}
+            <section class="section section-expertise main-grid">
+              <div class="section-expertise-content">
+                <h2>{section.expertise?.title}</h2>
+                {section.expertise?.description && <p>{section.expertise.description}</p>}
               </div>
             </section>
           )
@@ -158,21 +107,47 @@ function resolveLink(link: LinkValue): { href: string; isExternal: boolean } {
       position: relative;
     }
 
-    .section-media {
+    .section-project-fullscreen {
       aspect-ratio: 1440 / 766;
       min-height: 50vh;
     }
 
-    .section-double-media {
-      display: grid;
-      grid-template-columns: 1fr;
+    .project-block-link {
+      display: block;
+      position: relative;
+      width: 100%;
+      height: 100%;
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .project-block-link-inline {
+      grid-column: 1 / -1;
+      display: inline-flex;
+      width: fit-content;
+      color: var(--color-primary);
+      text-decoration: none;
+      border-bottom: 1px solid var(--color-primary);
+      margin-bottom: var(--size-16);
+    }
+
+    .project-block-link-inline h2 {
+      font-size: var(--text-18);
+      text-transform: uppercase;
+      margin: 0;
+    }
+
+    .section-project-pair {
       gap: var(--size-16);
     }
 
-    .double-media-item {
-      aspect-ratio: 3 / 2;
+    .project-pair-item {
+      grid-column: 1 / -1;
       position: relative;
+      aspect-ratio: 3 / 2;
       min-height: 40vh;
+      color: inherit;
+      text-decoration: none;
     }
 
     .overlay-text {
@@ -187,58 +162,7 @@ function resolveLink(link: LinkValue): { href: string; isExternal: boolean } {
       z-index: var(--z-base);
     }
 
-    .section-text-content {
-      grid-column: 1 / -1;
-      text-align: center;
-      display: grid;
-      gap: var(--size-16);
-      padding-block: var(--size-24);
-    }
-
-    .section-text-content h2 {
-      font-size: var(--text-24);
-      font-weight: var(--font-weight-medium);
-    }
-
-    .section-text-content p {
-      font-size: var(--text-18);
-      line-height: var(--line-height-normal);
-      max-width: 56ch;
-      margin-inline: auto;
-    }
-
-    .cta-link {
-      color: var(--color-primary);
-      text-decoration: none;
-      text-transform: uppercase;
-      font-size: var(--text-14);
-      justify-self: center;
-      border-bottom: 1px solid var(--color-primary);
-    }
-
-    .cta-link:focus-visible,
-    .cta-link:hover {
-      opacity: 0.7;
-    }
-
-    .carousel-header {
-      grid-column: 1 / -1;
-      display: grid;
-      gap: var(--size-8);
-      margin-bottom: var(--size-16);
-      text-align: center;
-    }
-
-    .carousel-header h2 {
-      font-size: var(--text-24);
-      font-weight: var(--font-weight-medium);
-    }
-
-    .carousel-header p {
-      font-size: var(--text-16);
-    }
-
-    .carousel-track {
+    .project-carousel-track {
       grid-column: 1 / -1;
       display: flex;
       gap: var(--size-12);
@@ -247,37 +171,54 @@ function resolveLink(link: LinkValue): { href: string; isExternal: boolean } {
       padding-bottom: var(--size-8);
     }
 
-    .carousel-item {
+    .project-carousel-item {
       flex: 0 0 85%;
       aspect-ratio: 4 / 3;
       scroll-snap-align: start;
       position: relative;
       overflow: hidden;
+      margin: 0;
     }
 
-    .carousel-item figcaption {
-      position: absolute;
-      inset-inline: var(--size-12);
-      bottom: var(--size-12);
-      color: var(--color-secondary);
-      text-transform: uppercase;
-      font-size: var(--text-12);
+    .project-carousel-item-fallback {
+      flex-basis: 100%;
+    }
+
+    .section-expertise-content {
+      grid-column: 1 / -1;
       text-align: center;
+      display: grid;
+      gap: var(--size-16);
+      padding-block: var(--size-24);
+    }
+
+    .section-expertise-content h2 {
+      font-size: var(--text-24);
+      font-weight: var(--font-weight-medium);
+      text-transform: uppercase;
+      margin: 0;
+    }
+
+    .section-expertise-content p {
+      font-size: var(--text-18);
+      line-height: var(--line-height-normal);
+      max-width: 56ch;
+      margin-inline: auto;
+      margin-block: 0;
     }
 
     @media (min-width: 768px) {
-      .section-double-media {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 0;
+      .project-pair-item {
+        grid-column: span 4;
       }
 
-      .carousel-track {
+      .project-carousel-track {
         overflow: visible;
         display: grid;
         grid-template-columns: repeat(4, minmax(0, 1fr));
       }
 
-      .carousel-item {
+      .project-carousel-item {
         flex: unset;
         aspect-ratio: 1 / 1;
       }

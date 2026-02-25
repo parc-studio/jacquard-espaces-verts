@@ -1,6 +1,7 @@
 import { defineQuery } from 'groq'
 import {
   blockContentFragment,
+  expertiseFragment,
   homeSectionFragment,
   imageFragment,
   projectDetailFragment,
@@ -14,7 +15,7 @@ export const SETTINGS_QUERY = defineQuery(`*[_type == "settings"][0] {
   _type,
   shortDescription,
   longDescription,
-  expertise,
+  expertise[]->{ ${expertiseFragment} },
   telephone,
   email,
   instagram,

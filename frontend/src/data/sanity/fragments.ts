@@ -53,6 +53,13 @@ export const tagFragment = `
   "slug": slug.current
 `
 
+export const expertiseFragment = `
+  _id,
+  _type,
+  title,
+  description
+`
+
 /**
  * Gallery item - inline image with alt and caption
  */
@@ -83,6 +90,7 @@ export const projectFragment = `
   localisation,
   anneeDebut,
   anneeFin,
+  expertises[]->{ ${expertiseFragment} },
   heroMedia { ${mediaFragment} }
 `
 
@@ -102,35 +110,33 @@ export const projectDetailFragment = `
 
 export const homeSectionFragment = `
   ...,
-  _type == "homeSectionMedia" => {
+  _type == "homeSectionProjectReference" => {
     _key,
     _type,
-    text,
-    media { ${mediaFragment} }
-  },
-  _type == "homeSectionDoubleMedia" => {
-    _key,
-    _type,
-    items[] {
-      _key,
-      text,
-      media { ${mediaFragment} }
+    displayMode,
+    project->{
+      _id,
+      titre,
+      slug,
+      heroMedia { ${mediaFragment} },
+      mediaCarousel[] {
+        ${galleryItemFragment}
+      }
     }
   },
-  _type == "homeSectionTextCta" => {
+  _type == "homeSectionProjectPair" => {
     _key,
     _type,
-    title,
-    text,
-    cta { ${ctaFragment} }
-  },
-  _type == "homeSectionMediaCarousel" => {
-    _key,
-    _type,
-    title,
-    subtitle,
-    images[] {
-      ${galleryItemFragment}
+    projects[]->{
+      _id,
+      titre,
+      slug,
+      heroMedia { ${mediaFragment} }
     }
+  },
+  _type == "homeSectionExpertiseReference" => {
+    _key,
+    _type,
+    expertise->{ ${expertiseFragment} }
   }
 `

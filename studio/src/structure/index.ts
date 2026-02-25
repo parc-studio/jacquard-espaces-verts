@@ -85,6 +85,11 @@ export const structure: StructureResolver = (S) =>
 
       S.listItem().title('Tags').icon(TagIcon).child(S.documentTypeList('tag').title('Tags')),
 
+      S.listItem()
+        .title('Expertises')
+        .icon(TagIcon)
+        .child(S.documentTypeList('expertise').title('Expertises')),
+
       S.divider(),
 
       // Feedback
