@@ -3,19 +3,19 @@ import { defineField, defineType } from 'sanity'
 
 export const homeSectionMediaType = defineType({
   name: 'homeSectionMedia',
-  title: 'Media',
+  title: 'Média',
   type: 'object',
   icon: ImageIcon,
   fields: [
     defineField({
       name: 'media',
-      title: 'Media',
+      title: 'Média',
       type: 'media',
       validation: (Rule) => Rule.required(),
     }),
     defineField({
       name: 'text',
-      title: 'Optional Text',
+      title: 'Texte optionnel',
       type: 'string',
     }),
   ],
@@ -26,8 +26,8 @@ export const homeSectionMediaType = defineType({
     },
     prepare({ media, text }) {
       return {
-        title: text || 'Media block',
-        subtitle: 'Single media with optional text',
+        title: text || 'Bloc média',
+        subtitle: 'Média unique avec texte optionnel',
         media,
       }
     },

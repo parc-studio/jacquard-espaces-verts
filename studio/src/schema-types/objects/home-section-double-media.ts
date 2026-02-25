@@ -3,13 +3,13 @@ import { defineArrayMember, defineField, defineType } from 'sanity'
 
 export const homeSectionDoubleMediaType = defineType({
   name: 'homeSectionDoubleMedia',
-  title: 'Double Media',
+  title: 'Double média',
   type: 'object',
   icon: ImagesIcon,
   fields: [
     defineField({
       name: 'items',
-      title: 'Media Items',
+      title: 'Éléments média',
       type: 'array',
       of: [
         defineArrayMember({
@@ -17,13 +17,13 @@ export const homeSectionDoubleMediaType = defineType({
           fields: [
             defineField({
               name: 'media',
-              title: 'Media',
+              title: 'Média',
               type: 'media',
               validation: (Rule) => Rule.required(),
             }),
             defineField({
               name: 'text',
-              title: 'Optional Text',
+              title: 'Texte optionnel',
               type: 'string',
             }),
           ],
@@ -34,7 +34,7 @@ export const homeSectionDoubleMediaType = defineType({
             },
             prepare({ media, text }) {
               return {
-                title: text || 'Media item',
+                title: text || 'Élément média',
                 media,
               }
             },
@@ -42,7 +42,7 @@ export const homeSectionDoubleMediaType = defineType({
         }),
       ],
       validation: (Rule) => Rule.required().length(2),
-      description: 'Exactly two media items',
+      description: 'Exactement deux éléments média',
     }),
   ],
   preview: {
@@ -52,8 +52,8 @@ export const homeSectionDoubleMediaType = defineType({
     },
     prepare({ item0, count }) {
       return {
-        title: 'Double media block',
-        subtitle: `${count?.length || 0} / 2 items`,
+        title: 'Bloc double média',
+        subtitle: `${count?.length || 0} / 2 éléments`,
         media: item0,
       }
     },

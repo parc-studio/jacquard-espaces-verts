@@ -4,18 +4,18 @@ import { mediaAssetSource } from 'sanity-plugin-media'
 
 export const homeSectionMediaCarouselType = defineType({
   name: 'homeSectionMediaCarousel',
-  title: 'Media Carousel',
+  title: 'Carrousel média',
   type: 'object',
   icon: ImagesIcon,
   fields: [
     defineField({
       name: 'title',
-      title: 'Title',
+      title: 'Titre',
       type: 'string',
     }),
     defineField({
       name: 'subtitle',
-      title: 'Subtitle',
+      title: 'Sous-titre',
       type: 'string',
     }),
     defineField({
@@ -32,14 +32,14 @@ export const homeSectionMediaCarouselType = defineType({
           fields: [
             defineField({
               name: 'caption',
-              title: 'Optional Text',
+              title: 'Texte optionnel',
               type: 'string',
             }),
           ],
         }),
       ],
       validation: (Rule) => Rule.required().min(2).max(4),
-      description: 'Between 2 and 4 images',
+      description: 'Entre 2 et 4 images',
     }),
   ],
   preview: {
@@ -51,7 +51,7 @@ export const homeSectionMediaCarouselType = defineType({
     },
     prepare({ title, subtitle, media, count }) {
       return {
-        title: title || 'Media carousel',
+        title: title || 'Carrousel média',
         subtitle: subtitle || `${count?.length || 0} images`,
         media,
       }

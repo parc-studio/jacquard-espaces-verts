@@ -1,45 +1,22 @@
-import { defineArrayMember, defineField, defineType } from 'sanity'
 import { CogIcon } from '@sanity/icons'
-import { ReferenceCheckbox } from '../../../components/ReferenceCheckbox'
+import { defineField, defineType } from 'sanity'
 
 export const settingsType = defineType({
   name: 'settings',
-  title: 'Settings',
+  title: 'Paramètres',
   type: 'document',
   icon: CogIcon,
   fields: [
     defineField({
       name: 'shortDescription',
-      title: 'Short Description',
+      title: 'Description courte',
       type: 'text',
       rows: 2,
       validation: (Rule) => Rule.required(),
     }),
     defineField({
-      name: 'longDescription',
-      title: 'Long Description',
-      type: 'text',
-      rows: 4,
-      validation: (Rule) => Rule.required(),
-    }),
-    defineField({
-      name: 'expertise',
-      title: 'Expertise',
-      type: 'array',
-      of: [
-        defineArrayMember({
-          type: 'reference',
-          to: [{ type: 'expertise' }],
-        }),
-      ],
-      components: {
-        input: ReferenceCheckbox,
-      },
-      validation: (Rule) => Rule.required().min(1),
-    }),
-    defineField({
       name: 'telephone',
-      title: 'Telephone',
+      title: 'Téléphone',
       type: 'string',
       validation: (Rule) => Rule.required(),
     }),
@@ -48,6 +25,12 @@ export const settingsType = defineType({
       title: 'Email',
       type: 'string',
       validation: (Rule) => Rule.required().email(),
+    }),
+    defineField({
+      name: 'address',
+      title: 'Adresse',
+      type: 'text',
+      rows: 2,
     }),
     defineField({
       name: 'instagram',
@@ -67,7 +50,7 @@ export const settingsType = defineType({
     prepare({ title }) {
       return {
         title,
-        subtitle: 'Site Settings',
+        subtitle: 'Paramètres du site',
       }
     },
   },

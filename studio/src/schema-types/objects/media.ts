@@ -5,7 +5,7 @@ import { requiredIfSiblingFalsy } from '../utils/validation'
 
 export const mediaType = defineType({
   name: 'media',
-  title: 'Media',
+  title: 'Média',
   type: 'object',
   icon: ImagesIcon,
   fields: [
@@ -13,22 +13,25 @@ export const mediaType = defineType({
       name: 'image',
       title: 'Image',
       type: 'image',
-      description: 'Add an image or choose from the media library',
+      description: 'Ajoutez une image ou choisissez-la depuis la médiathèque',
       options: {
         hotspot: true,
         sources: [mediaAssetSource],
       },
       validation: (rule) =>
         rule.custom(
-          requiredIfSiblingFalsy('videoUrl', 'Image is required if no video URL is provided')
+          requiredIfSiblingFalsy(
+            'videoUrl',
+            "L'image est obligatoire si aucune URL vidéo n'est fournie"
+          )
         ),
     }),
     defineField({
       name: 'videoUrl',
-      title: 'Video URL',
+      title: 'URL vidéo',
       type: 'url',
       description:
-        'External video URL (Vimeo, Mux, .mp4 file). The image will be used as a poster.',
+        "URL vidéo externe (Vimeo, Mux, fichier .mp4). L'image sera utilisée comme affiche.",
     }),
   ],
   preview: {
@@ -38,7 +41,7 @@ export const mediaType = defineType({
     },
     prepare({ media, hasVideo }) {
       return {
-        title: hasVideo ? 'Video' : 'Image',
+        title: hasVideo ? 'Vidéo' : 'Image',
         media,
       }
     },

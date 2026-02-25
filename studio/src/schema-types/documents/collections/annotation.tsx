@@ -16,29 +16,29 @@ export const annotationType = defineType({
   fields: [
     defineField({
       name: 'content',
-      title: 'Agentation Data',
+      title: 'Données Agentation',
       type: 'text',
       rows: 12,
-      description: 'Full Agentation payload for copy/paste into your local LLM workflow',
+      description: 'Payload Agentation complet à copier/coller dans votre workflow LLM local',
       readOnly: true,
       validation: (Rule) => Rule.required(),
     }),
     defineField({
       name: 'reviewerName',
-      title: 'Reviewer',
+      title: 'Relecteur',
       type: 'string',
-      description: 'Name of the person who created this annotation',
+      description: 'Nom de la personne qui a créé cette annotation',
       readOnly: true,
     }),
     defineField({
       name: 'status',
-      title: 'Status',
+      title: 'Statut',
       type: 'string',
       options: {
         list: [
-          { title: 'New', value: 'new' },
-          { title: 'In Progress', value: 'in-progress' },
-          { title: 'Done', value: 'done' },
+          { title: 'Nouveau', value: 'new' },
+          { title: 'En cours', value: 'in-progress' },
+          { title: 'Terminé', value: 'done' },
         ],
         layout: 'radio',
         direction: 'horizontal',
@@ -48,15 +48,15 @@ export const annotationType = defineType({
     }),
     defineField({
       name: 'annotationId',
-      title: 'Annotation ID',
+      title: "ID de l'annotation",
       type: 'string',
-      description: 'Unique ID from Agentation',
+      description: 'ID unique provenant de Agentation',
       readOnly: true,
       hidden: true,
     }),
     defineField({
       name: 'pageUrl',
-      title: 'Page URL',
+      title: 'URL de la page',
       type: 'url',
       validation: (Rule) =>
         Rule.uri({
@@ -70,7 +70,7 @@ export const annotationType = defineType({
       name: 'positionX',
       title: 'Position X',
       type: 'number',
-      description: 'Percentage of viewport width (0–100)',
+      description: 'Pourcentage de la largeur du viewport (0–100)',
       readOnly: true,
       hidden: true,
     }),
@@ -78,19 +78,19 @@ export const annotationType = defineType({
       name: 'positionY',
       title: 'Position Y',
       type: 'number',
-      description: 'Pixels from document top',
+      description: 'Pixels depuis le haut du document',
       readOnly: true,
       hidden: true,
     }),
   ],
   orderings: [
     {
-      title: 'Newest First',
+      title: 'Plus récentes en premier',
       name: 'createdAtDesc',
       by: [{ field: '_createdAt', direction: 'desc' }],
     },
     {
-      title: 'Status',
+      title: 'Statut',
       name: 'statusAsc',
       by: [
         { field: 'status', direction: 'asc' },
@@ -107,7 +107,7 @@ export const annotationType = defineType({
     },
     prepare({ content, status, pageUrl, reviewerName }) {
       const statusLabel =
-        status === 'new' ? '🟡 New' : status === 'in-progress' ? '🔵 In Progress' : '✅ Done'
+        status === 'new' ? '🟡 Nouveau' : status === 'in-progress' ? '🔵 En cours' : '✅ Terminé'
 
       let title = 'Annotation'
       if (typeof content === 'string' && content.trim()) {
@@ -131,13 +131,13 @@ export const annotationType = defineType({
           path = pageUrl
         }
       }
-      const subtitle = [statusLabel, reviewerName ? `by ${reviewerName}` : '', path]
+      const subtitleFr = [statusLabel, reviewerName ? `par ${reviewerName}` : '', path]
         .filter(Boolean)
         .join(' · ')
 
       return {
         title,
-        subtitle,
+        subtitle: subtitleFr,
         media: <CommentIcon />,
       }
     },

@@ -3,7 +3,7 @@ import { defineField, defineType } from 'sanity'
 
 export const homeSectionExpertiseReferenceType = defineType({
   name: 'homeSectionExpertiseReference',
-  title: 'Expertise Reference',
+  title: 'Référence expertise',
   type: 'object',
   icon: TagIcon,
   fields: [
@@ -22,7 +22,7 @@ export const homeSectionExpertiseReferenceType = defineType({
     },
     prepare({ title, subtitle }) {
       return {
-        title: title || 'Expertise reference',
+        title: title || 'Référence expertise',
         subtitle,
       }
     },

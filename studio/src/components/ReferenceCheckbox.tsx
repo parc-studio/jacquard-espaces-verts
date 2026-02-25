@@ -82,7 +82,7 @@ export function ReferenceCheckbox(props: ArrayOfObjectsInputProps | ObjectInputP
         const items: ReferenceItem[] = await client.fetch(query, { types: referenceTypes })
         setReferenceItems(items)
       } catch (error) {
-        console.error('Failed to fetch reference items:', error)
+        console.error('Impossible de charger les références :', error)
       } finally {
         setLoading(false)
       }
@@ -163,7 +163,7 @@ export function ReferenceCheckbox(props: ArrayOfObjectsInputProps | ObjectInputP
     return (
       <Card padding={3} tone="transparent">
         <Text size={1} muted>
-          Loading…
+          Chargement…
         </Text>
       </Card>
     )
@@ -174,13 +174,13 @@ export function ReferenceCheckbox(props: ArrayOfObjectsInputProps | ObjectInputP
       <Stack space={3}>
         <Card padding={3} tone="transparent">
           <Text size={1} muted>
-            No items available
+            Aucun élément disponible
           </Text>
         </Card>
         <Flex>
           <Button
             icon={AddIcon}
-            text="Create"
+            text="Créer"
             mode="ghost"
             tone="primary"
             onClick={handleCreate}
@@ -208,7 +208,7 @@ export function ReferenceCheckbox(props: ArrayOfObjectsInputProps | ObjectInputP
                 <Box flex={1} paddingLeft={3}>
                   <Text size={1}>
                     <label htmlFor={item._id} style={{ cursor: 'pointer' }}>
-                      {item.title || 'Untitled'}
+                      {item.title || 'Sans titre'}
                     </label>
                   </Text>
                 </Box>
@@ -220,7 +220,7 @@ export function ReferenceCheckbox(props: ArrayOfObjectsInputProps | ObjectInputP
       <Flex>
         <Button
           icon={AddIcon}
-          text="Create"
+          text="Créer"
           mode="ghost"
           tone="primary"
           onClick={handleCreate}

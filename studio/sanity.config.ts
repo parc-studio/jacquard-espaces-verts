@@ -1,6 +1,6 @@
 import { colorInput } from '@sanity/color-input'
 // Uncomment for French locale:
-// import { frFRLocale } from '@sanity/locale-fr-fr'
+import { frFRLocale } from '@sanity/locale-fr-fr'
 import { visionTool } from '@sanity/vision'
 import { defineConfig, isDev, type TemplateResolver } from 'sanity'
 import { linkField } from 'sanity-plugin-link-field'
@@ -20,13 +20,13 @@ const PREVIEW_URL = isDev ? `${LOCAL_URL}/preview` : `${SITE_URL}/preview`
 export default defineConfig({
   // TODO: Update studio name and title
   name: 'jacquard-espaces-verts',
-  title: 'Jacquard Espaces Verts Studio',
+  title: 'Studio Jacquard Espaces Verts',
   projectId: PROJECT_ID,
   dataset: 'production',
   plugins: [
     structureTool({
       structure,
-      title: 'Content',
+      title: 'Contenu',
 
       defaultDocumentNode: (S) => S.document().views([S.view.form(), referencesView(S)]),
     }),
@@ -38,13 +38,12 @@ export default defineConfig({
     media(),
     references(),
     colorInput(),
-    ...(isDev ? [visionTool({ title: 'Query' })] : []),
+    ...(isDev ? [visionTool({ title: 'Requête' })] : []),
     linkField({
       // Update with your linkable types
-      linkableSchemaTypes: ['aboutPage', 'homePage', 'page', 'project', 'projectsIndex'],
+      linkableSchemaTypes: ['aboutPage', 'homePage', 'page', 'project'],
     }),
-    // TODO: Uncomment for French locale:
-    // frFRLocale(),
+    frFRLocale(),
   ],
   schema: { types: schemaTypes },
 

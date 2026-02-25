@@ -18,10 +18,6 @@ export const resolve: PresentationPluginOptions['resolve'] = {
       type: 'aboutPage',
     },
     {
-      route: '/preview/projects',
-      type: 'projectsIndex',
-    },
-    {
       route: '/preview/projects/:slug',
       filter: `_type == "project" && slug.current == $slug`,
     },
@@ -36,7 +32,7 @@ export const resolve: PresentationPluginOptions['resolve'] = {
     homePage: defineLocations({
       select: { title: 'title' },
       resolve: (doc) => ({
-        locations: [{ title: doc?.title || 'Home', href: '/preview' }],
+        locations: [{ title: doc?.title || 'Accueil', href: '/preview' }],
       }),
     }),
 
@@ -46,7 +42,7 @@ export const resolve: PresentationPluginOptions['resolve'] = {
       resolve: (doc) => ({
         locations: [
           {
-            title: doc?.title || 'Untitled',
+            title: doc?.title || 'Sans titre',
             href: `/preview/${doc?.slug}`,
           },
         ],
@@ -57,35 +53,27 @@ export const resolve: PresentationPluginOptions['resolve'] = {
     aboutPage: defineLocations({
       select: { title: 'title' },
       resolve: (doc) => ({
-        locations: [{ title: doc?.title || 'About', href: '/preview/about' }],
-      }),
-    }),
-
-    // Singleton: Projects Index is always at /projects
-    projectsIndex: defineLocations({
-      select: { title: 'title' },
-      resolve: (doc) => ({
-        locations: [{ title: doc?.title || 'Projects', href: '/preview/projects' }],
+        locations: [{ title: doc?.title || 'À propos', href: '/preview/about' }],
       }),
     }),
 
     // Collection: Projects live under /projects/
     project: defineLocations({
-      select: { title: 'name', slug: 'slug.current' },
+      select: { title: 'titre', slug: 'slug.current' },
       resolve: (doc) => ({
         locations: [
           {
-            title: doc?.title || 'Untitled',
+            title: doc?.title || 'Sans titre',
             href: `/preview/projects/${doc?.slug}`,
           },
-          { title: 'All Projects', href: '/preview/projects' },
+          { title: 'Tous les projets', href: '/preview/projects' },
         ],
       }),
     }),
 
     // Singleton: Settings is used on every page
     settings: defineLocations({
-      message: 'This document is used on all pages',
+      message: 'Ce document est utilisé sur toutes les pages',
     }),
   },
 }

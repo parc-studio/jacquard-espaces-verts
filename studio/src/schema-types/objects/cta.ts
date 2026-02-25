@@ -3,19 +3,19 @@ import { defineField, defineType } from 'sanity'
 
 export const ctaType = defineType({
   name: 'cta',
-  title: 'Call to Action',
+  title: "Appel à l'action",
   type: 'object',
   icon: LinkIcon,
   fields: [
     defineField({
       name: 'title',
-      title: 'Title',
+      title: 'Titre',
       type: 'string',
       validation: (Rule) => Rule.required(),
     }),
     defineField({
       name: 'link',
-      title: 'Link',
+      title: 'Lien',
       type: 'link',
     }),
   ],
@@ -26,14 +26,14 @@ export const ctaType = defineType({
     },
     prepare({ title, linkType }) {
       const subtitles: Record<string, string> = {
-        internal: 'Internal link',
-        external: 'External link',
-        email: 'Email link',
-        phone: 'Phone link',
+        internal: 'Lien interne',
+        external: 'Lien externe',
+        email: 'Lien e-mail',
+        phone: 'Lien téléphone',
       }
       return {
         title,
-        subtitle: subtitles[linkType] ?? 'No link',
+        subtitle: subtitles[linkType] ?? 'Aucun lien',
       }
     },
   },

@@ -16,7 +16,6 @@ import type {
   HOME_PAGE_QUERY_RESULT,
   PAGE_QUERY_RESULT,
   PROJECT_QUERY_RESULT,
-  PROJECTS_INDEX_QUERY_RESULT,
   SETTINGS_QUERY_RESULT,
 } from '../../../sanity.types'
 import { loadQuery } from './load-query'
@@ -27,7 +26,6 @@ import {
   HOME_PAGE_QUERY,
   PAGE_QUERY,
   PROJECT_QUERY,
-  PROJECTS_INDEX_QUERY,
   SETTINGS_QUERY,
 } from './queries'
 
@@ -108,12 +106,4 @@ export async function getAllProjects(options: FetchOptions = {}) {
 
 export async function getAboutPage(options: FetchOptions = {}) {
   return fetchData<ABOUT_PAGE_QUERY_RESULT>(ABOUT_PAGE_QUERY, {}, options)
-}
-
-// =============================================================================
-// Projects Index
-// =============================================================================
-
-export async function getProjectsIndex(options: FetchOptions = {}) {
-  return fetchData<PROJECTS_INDEX_QUERY_RESULT>(PROJECTS_INDEX_QUERY, {}, options)
 }

@@ -17,8 +17,10 @@ const { currentSlug, isPreview = false } = Astro.props
 const project = await getProject(currentSlug, { preview: isPreview })
 const title = project?.seo?.title || project?.titre
 const description = project?.seo?.description || project?.localisation || ''
+const mainImage = project?.mediaGallery?.[0]
+const galleryImages = project?.mediaGallery?.slice(1) || []
 let image: string | undefined
-const rawImage = project?.seo?.image || project?.heroMedia?.image
+const rawImage = project?.seo?.image || mainImage
 if (rawImage) {
   image = urlFor(rawImage).width(1200).height(630).url()
 }
@@ -78,8 +80,8 @@ const infoRows = [
 
       <div class="project-hero">
         {
-          project?.heroMedia && (
-            <Media media={project.heroMedia} layout="cover" sizes="100vw" client:load />
+          mainImage && (
+            <Media media={{ image: mainImage }} layout="cover" sizes="100vw" client:load />
           )
         }
       </div>
@@ -102,11 +104,11 @@ const infoRows = [
     }
 
     {
-      project?.mediaCarousel && project.mediaCarousel.length > 0 && (
+      galleryImages.length > 0 && (
         <section class="project-carousel">
-          <h2>Aire</h2>
+          <h2>Galerie média</h2>
           <div class="project-carousel-track">
-            {project.mediaCarousel.map((item) => (
+            {galleryImages.map((item) => (
               <figure class="project-carousel-item">
                 <Media
                   media={{ image: item }}

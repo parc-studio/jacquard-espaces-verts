@@ -11,7 +11,7 @@ import { ReferenceCheckbox } from '../../../components/ReferenceCheckbox'
  */
 export const projectType = defineType({
   name: 'project',
-  title: 'Project',
+  title: 'Projet',
   type: 'document',
   icon: ProjectsIcon,
   fields: [
@@ -96,14 +96,8 @@ export const projectType = defineType({
       type: 'string',
     }),
     defineField({
-      name: 'heroMedia',
-      title: 'Hero Media',
-      type: 'media',
-      validation: (Rule) => Rule.required(),
-    }),
-    defineField({
-      name: 'mediaCarousel',
-      title: 'Media Carousel',
+      name: 'mediaGallery',
+      title: 'Galerie média',
       type: 'array',
       of: [
         defineArrayMember({
@@ -112,13 +106,6 @@ export const projectType = defineType({
             hotspot: true,
             sources: [mediaAssetSource],
           },
-          fields: [
-            defineField({
-              name: 'caption',
-              title: 'Caption',
-              type: 'string',
-            }),
-          ],
         }),
       ],
       options: {
@@ -136,7 +123,7 @@ export const projectType = defineType({
     select: {
       titre: 'titre',
       localisation: 'localisation',
-      media: 'heroMedia.image',
+      media: 'mediaGallery.0',
     },
     prepare({ titre, localisation, media }) {
       return {

@@ -1,16 +1,16 @@
-import { defineField, defineType } from 'sanity'
 import { UserIcon } from '@sanity/icons'
+import { defineField, defineType } from 'sanity'
 import { mediaAssetSource } from 'sanity-plugin-media'
 
 export const aboutPageType = defineType({
   name: 'aboutPage',
-  title: 'About Page',
+  title: 'Page À propos',
   type: 'document',
   icon: UserIcon,
   fields: [
     defineField({
       name: 'coverImage',
-      title: 'Cover Image',
+      title: 'Image de couverture',
       type: 'image',
       options: {
         hotspot: true,
@@ -20,7 +20,7 @@ export const aboutPageType = defineType({
     }),
     defineField({
       name: 'content',
-      title: 'Content',
+      title: 'Contenu',
       type: 'blockContent',
       validation: (Rule) => Rule.required(),
     }),
@@ -36,8 +36,8 @@ export const aboutPageType = defineType({
     },
     prepare({ media }) {
       return {
-        title: 'About Page',
-        subtitle: 'About Page',
+        title: 'Page À propos',
+        subtitle: 'Page À propos',
         media,
       }
     },

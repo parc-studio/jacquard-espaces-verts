@@ -52,7 +52,7 @@ const slug: string | undefined = match?.slug
 {/* SCAFFOLDING: add new templates here */}
 {templateId === 'home' && <HomeTemplate isPreview={true} />}
 {templateId === 'about' && <AboutTemplate isPreview={true} />}
-{templateId === 'projectsIndex' && <ProjectsIndexTemplate isPreview={true} />}
+{templateId === 'projects' && <ProjectsIndexTemplate isPreview={true} />}
 {templateId === 'page' && slug && <PageTemplate currentSlug={slug} isPreview={true} />}
 {templateId === 'project' && slug && <ProjectTemplate currentSlug={slug} isPreview={true} />}
 

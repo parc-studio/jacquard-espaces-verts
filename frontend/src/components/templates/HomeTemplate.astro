@@ -25,6 +25,7 @@ const description = homePage?.seo?.description || 'Jacquard Espaces Verts'
         if (section._type === 'homeSectionProjectReference') {
           const project = section.project
           if (!project) return null
+          const mainImage = project.mediaGallery?.[0]
 
           const href = project.slug?.current ? `/projects/${project.slug.current}` : '#'
 
@@ -35,17 +36,11 @@ const description = homePage?.seo?.description || 'Jacquard Espaces Verts'
                   <h2>{project.titre}</h2>
                 </a>
                 <div class="project-carousel-track">
-                  {project.mediaCarousel?.map((image) => (
+                  {project.mediaGallery?.map((image) => (
                     <figure class="project-carousel-item">
                       <Media media={{ image }} layout="cover" client:visible />
                     </figure>
                   ))}
-                  {(!project.mediaCarousel || project.mediaCarousel.length === 0) &&
-                    project.heroMedia && (
-                      <figure class="project-carousel-item project-carousel-item-fallback">
-                        <Media media={project.heroMedia} layout="cover" client:visible />
-                      </figure>
-                    )}
                 </div>
               </section>
             )
@@ -54,7 +49,7 @@ const description = homePage?.seo?.description || 'Jacquard Espaces Verts'
           return (
             <section class="section section-project-fullscreen">
               <a href={href} class="project-block-link">
-                <Media media={project.heroMedia} layout="cover" client:visible />
+                {mainImage && <Media media={{ image: mainImage }} layout="cover" client:visible />}
                 <p class="overlay-text">{project.titre}</p>
               </a>
             </section>
@@ -71,7 +66,13 @@ const description = homePage?.seo?.description || 'Jacquard Espaces Verts'
                   href={project.slug?.current ? `/projects/${project.slug.current}` : '#'}
                   class="project-pair-item"
                 >
-                  <Media media={project.heroMedia} layout="cover" client:visible />
+                  {project.mediaGallery?.[0] && (
+                    <Media
+                      media={{ image: project.mediaGallery[0] }}
+                      layout="cover"
+                      client:visible
+                    />
+                  )}
                   <p class="overlay-text">{project.titre}</p>
                 </a>
               ))}
@@ -178,10 +179,6 @@ const description = homePage?.seo?.description || 'Jacquard Espaces Verts'
       position: relative;
       overflow: hidden;
       margin: 0;
-    }
-
-    .project-carousel-item-fallback {
-      flex-basis: 100%;
     }
 
     .section-expertise-content {

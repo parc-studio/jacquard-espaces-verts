@@ -45,8 +45,6 @@
         path = `/projects/${ref.slug}`
       } else if (ref._type === 'aboutPage') {
         path = '/about'
-      } else if (ref._type === 'projectsIndex') {
-        path = '/projects'
       } else if (ref._type === 'homePage') {
         path = '/'
       }

@@ -3,18 +3,18 @@ import { defineArrayMember, defineField, defineType } from 'sanity'
 
 export const carouselSectionType = defineType({
   name: 'carouselSection',
-  title: 'Carousel Section',
+  title: 'Section carrousel',
   type: 'object',
   icon: ImagesIcon,
   fields: [
     defineField({
       name: 'title',
-      title: 'Title',
+      title: 'Titre',
       type: 'string',
     }),
     defineField({
       name: 'items',
-      title: 'Items',
+      title: 'Éléments',
       type: 'array',
       of: [
         defineArrayMember({
@@ -22,13 +22,13 @@ export const carouselSectionType = defineType({
           fields: [
             defineField({
               name: 'media',
-              title: 'Media',
+              title: 'Média',
               type: 'media',
               validation: (Rule) => Rule.required(),
             }),
             defineField({
               name: 'caption',
-              title: 'Caption',
+              title: 'Légende',
               type: 'string',
             }),
           ],
@@ -39,7 +39,7 @@ export const carouselSectionType = defineType({
             },
             prepare({ caption, image }) {
               return {
-                title: caption || 'Carousel item',
+                title: caption || 'Élément de carrousel',
                 media: image,
               }
             },
@@ -56,8 +56,8 @@ export const carouselSectionType = defineType({
     },
     prepare({ title, items }) {
       return {
-        title: title || 'Carousel Section',
-        subtitle: `${items?.length || 0} items`,
+        title: title || 'Section carrousel',
+        subtitle: `${items?.length || 0} éléments`,
       }
     },
   },

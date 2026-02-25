@@ -1,23 +1,20 @@
 import { defineQuery } from 'groq'
 import {
   blockContentFragment,
-  expertiseFragment,
   homeSectionFragment,
   imageFragment,
   projectDetailFragment,
   projectFragment,
   seoFragment,
-  tagFragment,
 } from './fragments'
 
 export const SETTINGS_QUERY = defineQuery(`*[_type == "settings"][0] {
   _id,
   _type,
   shortDescription,
-  longDescription,
-  expertise[]->{ ${expertiseFragment} },
   telephone,
   email,
+  address,
   instagram,
   linkedin
 }`)
@@ -59,13 +56,5 @@ export const ABOUT_PAGE_QUERY = defineQuery(`*[_type == "aboutPage"][0] {
   _type,
   coverImage { ${imageFragment} },
   content[] { ${blockContentFragment} },
-  ${seoFragment}
-}`)
-
-export const PROJECTS_INDEX_QUERY = defineQuery(`*[_type == "projectsIndex"][0] {
-  _id,
-  _type,
-  title,
-  filters[]->{ ${tagFragment} },
   ${seoFragment}
 }`)

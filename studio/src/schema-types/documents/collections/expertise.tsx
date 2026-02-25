@@ -9,7 +9,7 @@ export const expertiseType = defineType({
   fields: [
     defineField({
       name: 'title',
-      title: 'Title',
+      title: 'Titre',
       type: 'string',
       validation: (Rule) => Rule.required(),
     }),
@@ -17,8 +17,15 @@ export const expertiseType = defineType({
       name: 'description',
       title: 'Description',
       type: 'text',
-      rows: 3,
+      rows: 6,
       validation: (Rule) => Rule.required(),
+    }),
+    defineField({
+      name: 'shortDescription',
+      title: 'Description courte',
+      type: 'text',
+      rows: 3,
+      validation: (Rule) => Rule.max(200),
     }),
   ],
   preview: {

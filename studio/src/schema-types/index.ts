@@ -1,7 +1,6 @@
 // Documents - Singletons
 import { aboutPageType } from './documents/singletons/about-page'
 import { homePageType } from './documents/singletons/home-page'
-import { projectsIndexType } from './documents/singletons/projects-index'
 import { settingsType } from './documents/singletons/settings'
 
 // Documents - Collections
@@ -17,8 +16,8 @@ import { carouselSectionType } from './objects/carousel-section'
 import { ctaType } from './objects/cta'
 import { homeSectionDoubleMediaType } from './objects/home-section-double-media'
 import { homeSectionExpertiseReferenceType } from './objects/home-section-expertise-reference'
-import { homeSectionMediaCarouselType } from './objects/home-section-media-carousel'
 import { homeSectionMediaType } from './objects/home-section-media'
+import { homeSectionMediaCarouselType } from './objects/home-section-media-carousel'
 import { homeSectionProjectPairType } from './objects/home-section-project-pair'
 import { homeSectionProjectReferenceType } from './objects/home-section-project-reference'
 import { homeSectionTextCtaType } from './objects/home-section-text-cta'
@@ -31,7 +30,6 @@ export const schemaTypes = [
   // Documents - Singletons
   aboutPageType,
   homePageType,
-  projectsIndexType,
   settingsType,
 
   // Documents - Collections

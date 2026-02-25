@@ -91,7 +91,10 @@ export const projectFragment = `
   anneeDebut,
   anneeFin,
   expertises[]->{ ${expertiseFragment} },
-  heroMedia { ${mediaFragment} }
+  mediaGallery[] {
+    _key,
+    ${imageFragment}
+  }
 `
 
 export const projectDetailFragment = `
@@ -102,9 +105,6 @@ export const projectDetailFragment = `
   maitreOuvrage,
   maitreOeuvre,
   architecte,
-  mediaCarousel[] {
-    ${galleryItemFragment}
-  },
   ${seoFragment}
 `
 
@@ -118,8 +118,7 @@ export const homeSectionFragment = `
       _id,
       titre,
       slug,
-      heroMedia { ${mediaFragment} },
-      mediaCarousel[] {
+      mediaGallery[] {
         ${galleryItemFragment}
       }
     }
@@ -131,7 +130,9 @@ export const homeSectionFragment = `
       _id,
       titre,
       slug,
-      heroMedia { ${mediaFragment} }
+      mediaGallery[] {
+        ${galleryItemFragment}
+      }
     }
   },
   _type == "homeSectionExpertiseReference" => {

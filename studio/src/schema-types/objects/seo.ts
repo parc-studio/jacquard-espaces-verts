@@ -7,26 +7,26 @@ export const seoType = defineType({
   fields: [
     defineField({
       name: 'title',
-      title: 'Title',
+      title: 'Titre',
       type: 'string',
-      description: 'SEO title for search engines and social media',
+      description: 'Titre SEO pour les moteurs de recherche et les réseaux sociaux',
       validation: (Rule) =>
-        Rule.max(60).warning('Titles longer than 60 characters may be truncated'),
+        Rule.max(60).warning('Les titres de plus de 60 caractères peuvent être tronqués'),
     }),
     defineField({
       name: 'description',
       title: 'Description',
       type: 'text',
       rows: 3,
-      description: 'SEO description for search engines and social media',
+      description: 'Description SEO pour les moteurs de recherche et les réseaux sociaux',
       validation: (Rule) =>
-        Rule.max(160).warning('Descriptions longer than 160 characters may be truncated'),
+        Rule.max(160).warning('Les descriptions de plus de 160 caractères peuvent être tronquées'),
     }),
     defineField({
       name: 'image',
-      title: 'Social Share Image',
+      title: 'Image de partage social',
       type: 'image',
-      description: 'Image for social media sharing (recommended: 1200x630px)',
+      description: 'Image pour le partage sur les réseaux sociaux (recommandé : 1200x630px)',
       options: {
         hotspot: true,
       },

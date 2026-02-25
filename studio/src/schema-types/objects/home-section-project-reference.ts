@@ -3,25 +3,25 @@ import { defineField, defineType } from 'sanity'
 
 export const homeSectionProjectReferenceType = defineType({
   name: 'homeSectionProjectReference',
-  title: 'Project Reference',
+  title: 'Référence projet',
   type: 'object',
   icon: ProjectsIcon,
   fields: [
     defineField({
       name: 'project',
-      title: 'Project',
+      title: 'Projet',
       type: 'reference',
       to: [{ type: 'project' }],
       validation: (Rule) => Rule.required(),
     }),
     defineField({
       name: 'displayMode',
-      title: 'Display Mode',
+      title: "Mode d'affichage",
       type: 'string',
       options: {
         list: [
-          { title: 'Full Screen Image', value: 'fullScreenImage' },
-          { title: 'Carousel Image', value: 'carouselImage' },
+          { title: 'Image plein écran', value: 'fullScreenImage' },
+          { title: 'Image carrousel', value: 'carouselImage' },
         ],
         layout: 'radio',
         direction: 'horizontal',
@@ -34,12 +34,12 @@ export const homeSectionProjectReferenceType = defineType({
     select: {
       title: 'project.titre',
       mode: 'displayMode',
-      media: 'project.heroMedia.image',
+      media: 'project.mediaGallery.0',
     },
     prepare({ title, mode, media }) {
       return {
-        title: title || 'Project reference',
-        subtitle: mode === 'carouselImage' ? 'Mode: Carousel Image' : 'Mode: Full Screen Image',
+        title: title || 'Référence projet',
+        subtitle: mode === 'carouselImage' ? 'Mode: Image carrousel' : 'Mode: Image plein écran',
         media,
       }
     },

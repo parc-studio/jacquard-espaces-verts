@@ -8,13 +8,13 @@ import { defineField, defineType } from 'sanity'
  */
 export const tagType = defineType({
   name: 'tag',
-  title: 'Tag',
+  title: 'Étiquette',
   type: 'document',
   icon: TagIcon,
   fields: [
     defineField({
       name: 'name',
-      title: 'Name',
+      title: 'Nom',
       type: 'string',
       validation: (Rule) => Rule.required(),
     }),

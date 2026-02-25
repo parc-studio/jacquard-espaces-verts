@@ -1,21 +1,21 @@
-import { defineArrayMember, defineField, defineType } from 'sanity'
 import { HomeIcon } from '@sanity/icons'
+import { defineArrayMember, defineField, defineType } from 'sanity'
 
 export const homePageType = defineType({
   name: 'homePage',
-  title: 'Home Page',
+  title: "Page d'accueil",
   type: 'document',
   icon: HomeIcon,
   fields: [
     defineField({
       name: 'title',
-      title: 'Title',
+      title: 'Titre',
       type: 'string',
       validation: (Rule) => Rule.required(),
     }),
     defineField({
       name: 'sections',
-      title: 'Page Builder',
+      title: 'Constructeur de page',
       type: 'array',
       of: [
         defineArrayMember({ type: 'homeSectionProjectReference' }),
@@ -23,7 +23,7 @@ export const homePageType = defineType({
         defineArrayMember({ type: 'homeSectionExpertiseReference' }),
       ],
       validation: (Rule) => Rule.required().min(1),
-      description: 'Build the home page by stacking section blocks',
+      description: "Construisez la page d'accueil en empilant des blocs de section",
     }),
     defineField({
       name: 'seo',
@@ -38,7 +38,7 @@ export const homePageType = defineType({
     prepare({ title }) {
       return {
         title,
-        subtitle: 'Home Page',
+        subtitle: "Page d'accueil",
         media: <HomeIcon />,
       }
     },

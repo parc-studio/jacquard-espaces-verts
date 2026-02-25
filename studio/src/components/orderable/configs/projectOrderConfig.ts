@@ -14,12 +14,12 @@ function getProjectLabel(document: ProjectOrderDocument): string {
 
 export const projectOrderConfig: OrderablePaneConfig<ProjectOrderDocument> = {
   type: 'project',
-  title: 'Projects',
+  title: 'Projets',
   apiVersion: '2025-01-12',
   projection: `
     titre,
     slug,
-    "heroImageUrl": heroMedia.image.asset->url
+    "heroImageUrl": mediaGallery[0].asset->url
   `,
   getItemLabel: getProjectLabel,
   getSearchText: (document) => {

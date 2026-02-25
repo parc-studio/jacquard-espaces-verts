@@ -3,18 +3,18 @@ import { defineField, defineType } from 'sanity'
 
 export const homeSectionTextCtaType = defineType({
   name: 'homeSectionTextCta',
-  title: 'Text Block with CTA',
+  title: 'Bloc texte avec CTA',
   type: 'object',
   icon: ComposeIcon,
   fields: [
     defineField({
       name: 'title',
-      title: 'Title',
+      title: 'Titre',
       type: 'string',
     }),
     defineField({
       name: 'text',
-      title: 'Text',
+      title: 'Texte',
       type: 'text',
       rows: 5,
       validation: (Rule) => Rule.required(),
@@ -32,7 +32,7 @@ export const homeSectionTextCtaType = defineType({
     },
     prepare({ title, text }) {
       return {
-        title: title || 'Text block',
+        title: title || 'Bloc texte',
         subtitle: text || '',
       }
     },

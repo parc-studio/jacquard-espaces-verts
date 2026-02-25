@@ -10,7 +10,7 @@
 // =============================================================================
 
 /** Template identifiers - add new templates here */
-export type TemplateId = 'home' | 'about' | 'projectsIndex' | 'project' | 'page'
+export type TemplateId = 'home' | 'about' | 'projects' | 'project' | 'page'
 
 /** Result of matching a route */
 export interface RouteMatch {
@@ -36,7 +36,7 @@ const PREVIEW_ROUTES: Array<{ pattern: RegExp; templateId: TemplateId; descripti
   { pattern: /^about$/, templateId: 'about', description: '/preview/about → AboutTemplate' },
   {
     pattern: /^projects$/,
-    templateId: 'projectsIndex',
+    templateId: 'projects',
     description: '/preview/projects → ProjectsIndexTemplate',
   },
   {

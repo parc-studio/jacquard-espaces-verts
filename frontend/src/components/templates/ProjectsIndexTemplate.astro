@@ -6,7 +6,7 @@
  * Fetches its own data and all projects based on preview mode.
  */
 import BaseLayout from '../../layouts/BaseLayout.astro'
-import { getProjectsIndex, getAllProjects } from '../../data/sanity'
+import { getAllProjects } from '../../data/sanity'
 import Media from '../media/Media.svelte'
 
 interface Props {
@@ -15,31 +15,17 @@ interface Props {
 
 const { isPreview = false } = Astro.props
 
-const projectsIndex = await getProjectsIndex({ preview: isPreview })
 const projects = await getAllProjects({ preview: isPreview })
 
-// Extract SEO
-const title = projectsIndex?.seo?.title || projectsIndex?.title || 'Projects'
-const description = projectsIndex?.seo?.description || ''
+const title = 'Projects'
+const description = ''
 ---
 
 <BaseLayout title={title} description={description} isPreview={isPreview} pagePath="/projects">
   <main class="projects-index main-grid">
     <section class="projects-header">
-      <h1>{projectsIndex?.title || 'Projects'}</h1>
+      <h1>Projects</h1>
     </section>
-
-    {
-      projectsIndex?.filters && projectsIndex.filters.length > 0 && (
-        <nav class="filters">
-          {projectsIndex.filters.map((tag) => (
-            <span class="filter-tag" data-slug={tag?.slug}>
-              {tag?.name}
-            </span>
-          ))}
-        </nav>
-      )
-    }
 
     {
       projects && projects.length > 0 && (
@@ -47,7 +33,9 @@ const description = projectsIndex?.seo?.description || ''
           {projects.map((project) => (
             <a href={`/projects/${project.slug?.current}`} class="project-card">
               <div class="media-wrapper">
-                <Media media={project.heroMedia} layout="cover" client:visible />
+                {project.mediaGallery?.[0] && (
+                  <Media media={{ image: project.mediaGallery[0] }} layout="cover" client:visible />
+                )}
               </div>
               <h3>{project.titre}</h3>
             </a>
@@ -61,21 +49,6 @@ const description = projectsIndex?.seo?.description || ''
     .projects-header {
       grid-column: 1 / -1;
       margin-block: var(--size-64) var(--size-32);
-    }
-
-    .filters {
-      grid-column: 1 / -1;
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--size-8);
-      margin-block-end: var(--size-32);
-    }
-
-    .filter-tag {
-      padding: var(--size-4) var(--size-12);
-      font-size: var(--text-14);
-      border: 1px solid var(--color-border);
-      border-radius: var(--size-4);
     }
 
     .projects-grid {

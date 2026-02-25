@@ -2,7 +2,7 @@ import { defineArrayMember, defineType } from 'sanity'
 
 export const blockContentType = defineType({
   name: 'blockContent',
-  title: 'Block Content',
+  title: 'Contenu riche',
   type: 'array',
   of: [
     defineArrayMember({
@@ -13,23 +13,23 @@ export const blockContentType = defineType({
         { title: 'H2', value: 'h2' },
         { title: 'H3', value: 'h3' },
         { title: 'H4', value: 'h4' },
-        { title: 'Quote', value: 'blockquote' },
+        { title: 'Citation', value: 'blockquote' },
       ],
       lists: [
-        { title: 'Bullet', value: 'bullet' },
-        { title: 'Numbered', value: 'number' },
+        { title: 'Puces', value: 'bullet' },
+        { title: 'Numérotée', value: 'number' },
       ],
       marks: {
         decorators: [
-          { title: 'Strong', value: 'strong' },
-          { title: 'Emphasis', value: 'em' },
+          { title: 'Gras', value: 'strong' },
+          { title: 'Italique', value: 'em' },
           { title: 'Code', value: 'code' },
         ],
         annotations: [
           {
             name: 'link',
             type: 'link',
-            title: 'Link',
+            title: 'Lien',
           },
         ],
       },

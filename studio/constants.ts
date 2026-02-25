@@ -22,6 +22,5 @@ export const PAGE_REFERENCES = [
   { type: 'homePage' },
   { type: 'page' },
   { type: 'project' },
-  { type: 'projectsIndex' },
   { type: 'settings' },
 ]

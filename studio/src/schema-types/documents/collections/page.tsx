@@ -9,7 +9,7 @@ export const pageType = defineType({
   fields: [
     defineField({
       name: 'title',
-      title: 'Title',
+      title: 'Titre',
       type: 'string',
       validation: (Rule) => Rule.required(),
     }),
@@ -25,7 +25,7 @@ export const pageType = defineType({
     }),
     defineField({
       name: 'content',
-      title: 'Content',
+      title: 'Contenu',
       type: 'blockContent',
     }),
     defineField({
@@ -42,7 +42,7 @@ export const pageType = defineType({
     prepare({ title, slug }) {
       return {
         title,
-        subtitle: slug ? `/${slug}` : 'No slug',
+        subtitle: slug ? `/${slug}` : 'Aucun slug',
         media: <DocumentIcon />,
       }
     },

@@ -93,16 +93,8 @@ const agentationMode = isDevMode ? 'dev' : 'review'
             <p>{settings.shortDescription}</p>
           </section>
 
-          <section class="footer-expertise">
-            <h2>Expert en</h2>
-            <ul>
-              {settings.expertise?.map((item) => (
-                <li>{item?.title}</li>
-              ))}
-            </ul>
-          </section>
-
           <section class="footer-links">
+            {settings.address && <p>{settings.address}</p>}
             {settings.telephone && <a href={`tel:${settings.telephone}`}>Téléphone</a>}
             {settings.email && <a href={`mailto:${settings.email}`}>Mail</a>}
             {settings.instagram && (
@@ -157,7 +149,6 @@ const agentationMode = isDevMode ? 'dev' : 'review'
   }
 
   .footer-about,
-  .footer-expertise,
   .footer-links {
     grid-column: 1 / -1;
     margin-bottom: var(--size-16);
@@ -183,11 +174,7 @@ const agentationMode = isDevMode ? 'dev' : 'review'
 
   @media (min-width: 1024px) {
     .footer-about {
-      grid-column: 1 / 3;
-    }
-
-    .footer-expertise {
-      grid-column: 3 / 5;
+      grid-column: 1 / 5;
     }
 
     .footer-links {
