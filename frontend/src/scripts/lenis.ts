@@ -19,6 +19,9 @@ export function initLenis(): Lenis {
 
   lenis = new Lenis({
     autoRaf: false,
+    lerp: 0.15,
+    wheelMultiplier: 0.9,
+    touchMultiplier: 0.9,
   })
 
   window.lenis = lenis
