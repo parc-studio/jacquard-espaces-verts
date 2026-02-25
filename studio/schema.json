@@ -1279,6 +1279,13 @@
           "type": "string"
         },
         "optional": false
+      },
+      "shortDescription": {
+        "type": "objectAttribute",
+        "value": {
+          "type": "string"
+        },
+        "optional": true
       }
     }
   },

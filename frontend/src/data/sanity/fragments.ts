@@ -117,6 +117,7 @@ export const homeSectionFragment = `
     project->{
       _id,
       titre,
+      localisation,
       slug,
       mediaGallery[] {
         ${galleryItemFragment}
@@ -129,6 +130,7 @@ export const homeSectionFragment = `
     projects[]->{
       _id,
       titre,
+      localisation,
       slug,
       mediaGallery[] {
         ${galleryItemFragment}
