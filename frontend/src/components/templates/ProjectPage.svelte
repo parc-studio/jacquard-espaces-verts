@@ -524,7 +524,11 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: var(--size-20);
+      padding: var(--size-96) var(--size-20) var(--size-40);
+    }
+
+    .carousel-zone {
+      display: none;
     }
 
     .project-info {
