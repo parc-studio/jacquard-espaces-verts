@@ -4,31 +4,27 @@ html {
   font-size: 16px;
   color: var(--color-text);
   background-color: var(--color-background);
+  font-feature-settings: var(--font-feature-settings-default);
+  text-box: trim-both cap alphabetic;
 }
 
 body {
   overflow-x: hidden;
 }
 
+* {
+  text-box: inherit;
+}
+
 /* Global Grid System */
 .main-grid {
   display: grid;
-  grid-template-columns: repeat(8, 1fr);
-  column-gap: var(--size-16);
-  margin-inline: var(--size-16);
+  grid-template-columns: repeat(12, 1fr);
 }
 
-@media (min-width: 768px) {
+@media (max-width: 768px) {
   .main-grid {
-    column-gap: var(--size-24);
-    margin-inline: var(--size-32);
-  }
-}
-
-@media (min-width: 1024px) {
-  .main-grid {
-    column-gap: var(--size-24);
-    margin-inline: var(--size-64);
+    grid-template-columns: repeat(6, 1fr);
   }
 }
 

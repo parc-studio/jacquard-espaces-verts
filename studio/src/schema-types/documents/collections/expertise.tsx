@@ -16,6 +16,7 @@ export const expertiseType = defineType({
     defineField({
       name: 'description',
       title: 'Description',
+      description: 'Utilisée sur la page À propos.',
       type: 'text',
       rows: 6,
       validation: (Rule) => Rule.required(),
@@ -23,9 +24,10 @@ export const expertiseType = defineType({
     defineField({
       name: 'shortDescription',
       title: 'Description courte',
+      description: "Utilisée en priorité sur la page d'accueil (300 caractères max).",
       type: 'text',
       rows: 3,
-      validation: (Rule) => Rule.max(200),
+      validation: (Rule) => Rule.max(300),
     }),
   ],
   preview: {

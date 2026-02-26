@@ -51,6 +51,12 @@ export const ALL_PROJECTS_QUERY =
   ${projectFragment}
 }`)
 
+export const ALL_EXPERTISES_QUERY = defineQuery(`*[_type == "expertise"] | order(title asc) {
+  _id,
+  _type,
+  title
+}`)
+
 export const ABOUT_PAGE_QUERY = defineQuery(`*[_type == "aboutPage"][0] {
   _id,
   _type,

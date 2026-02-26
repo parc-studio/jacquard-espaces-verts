@@ -6,14 +6,14 @@ import '@/styles/utils.css'
 
 import { ClientRouter } from 'astro:transitions'
 import { SEO } from 'astro-seo'
-// TODO: Uncomment when using custom fonts
-// import { Font } from 'astro:assets'
+import { Font } from 'astro:assets'
 
 import AgentationWrapper from '@/components/helpers/AgentationWrapper'
 import MainGrid from '@/components/helpers/MainGrid.svelte'
 import PageTransitions from '@/components/helpers/PageTransitions.astro'
 import ParcCredits from '@/components/helpers/ParcCredits.astro'
-import { getSettings } from '@/data/sanity'
+import JacquardLogo from '@/components/JacquardLogo.astro'
+import { getSettings, getExpertises } from '@/data/sanity'
 import { isDevMode } from '@/utils'
 
 import App from '../components/App.svelte'
@@ -25,6 +25,7 @@ interface Props {
   image?: string
   isPreview?: boolean
   pagePath?: string
+  hideFooter?: boolean
 }
 
 const {
@@ -33,11 +34,16 @@ const {
   image = '/og-image.png',
   isPreview = false,
   pagePath = '',
+  hideFooter = false,
 } = Astro.props
 
 let settings = null
+let expertises: Awaited<ReturnType<typeof getExpertises>> = null
 try {
   settings = await getSettings({ preview: isPreview })
+  if (!hideFooter) {
+    expertises = await getExpertises({ preview: isPreview })
+  }
 } catch (error) {
   console.error('[BaseLayout] Unable to load settings:', error)
 }
@@ -47,7 +53,7 @@ const resolvedDescription = description || settings?.shortDescription || 'Jacqua
 
 const siteUrl = import.meta.env.SITE_URL || 'http://localhost:4321'
 const enableFeedback = import.meta.env.PUBLIC_ENABLE_FEEDBACK === 'true'
-const showAgentation = isDevMode || enableFeedback
+
 const agentationMode = isDevMode ? 'dev' : 'review'
 ---
 
@@ -61,7 +67,7 @@ const agentationMode = isDevMode ? 'dev' : 'review'
     <meta name="generator" content={Astro.generator} />
 
     <!-- TODO: Uncomment for custom fonts with preload -->
-    <!-- <Font cssVariable="--font-sans" preload /> -->
+    <Font cssVariable="--font-sans" preload />
     <!-- <Font cssVariable="--font-classic" preload /> -->
     <SEO
       title={resolvedTitle}
@@ -84,35 +90,58 @@ const agentationMode = isDevMode ? 'dev' : 'review'
   <body>
     <App client:load />
     <MainGrid client:only="svelte" />
+    <header class="site-header">
+      <a href="/" class="header-logo" aria-label="Jacquard Espaces Verts — Accueil">
+        <JacquardLogo />
+      </a>
+      <nav class="header-nav">
+        <a href="/about">À propos</a>
+      </nav>
+    </header>
     <slot />
     {
-      settings && (
-        <footer class="site-footer main-grid">
-          <section class="footer-about">
-            <h2>À propos</h2>
-            <p>{settings.shortDescription}</p>
-          </section>
+      !hideFooter && settings && (
+        <footer class="site-footer">
+          <div class="footer-logo">
+            <JacquardLogo color="white" />
+          </div>
 
-          <section class="footer-links">
-            {settings.address && <p>{settings.address}</p>}
-            {settings.telephone && <a href={`tel:${settings.telephone}`}>Téléphone</a>}
-            {settings.email && <a href={`mailto:${settings.email}`}>Mail</a>}
-            {settings.instagram && (
-              <a href={settings.instagram} target="_blank" rel="noopener noreferrer">
-                Instagram
-              </a>
+          <div class="footer-content main-grid">
+            <section class="footer-about">
+              <h2>À propos</h2>
+              <p>{settings.shortDescription}</p>
+            </section>
+            {expertises && expertises.length > 0 && (
+              <section class="footer-expertise">
+                <h2>Expert en</h2>
+                <ul>
+                  {expertises.map((expertise) => (
+                    <li>{expertise.title}</li>
+                  ))}
+                </ul>
+              </section>
             )}
-            {settings.linkedin && (
-              <a href={settings.linkedin} target="_blank" rel="noopener noreferrer">
-                LinkedIn
-              </a>
-            )}
-          </section>
+
+            <section class="footer-links">
+              {settings.telephone && <a href={`tel:${settings.telephone}`}>Téléphone</a>}
+              {settings.email && <a href={`mailto:${settings.email}`}>Mail</a>}
+              {settings.instagram && (
+                <a href={settings.instagram} target="_blank" rel="noopener noreferrer">
+                  Instagram
+                </a>
+              )}
+              {settings.linkedin && (
+                <a href={settings.linkedin} target="_blank" rel="noopener noreferrer">
+                  LinkedIn
+                </a>
+              )}
+            </section>
+          </div>
         </footer>
       )
     }
     {isPreview && <VisualEditing pagePath={pagePath} client:only="svelte" transition:persist />}
-    {showAgentation && <AgentationWrapper client:only="react" mode={agentationMode} />}
+    {enableFeedback && <AgentationWrapper client:only="react" mode={agentationMode} />}
   </body>
 </html>
 
@@ -123,23 +152,86 @@ const agentationMode = isDevMode ? 'dev' : 'review'
     animation: none;
   }
 
+  /* ---- Header ---- */
+
+  .site-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: var(--z-fixed);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 50px;
+    padding: 13px var(--size-20);
+    background: var(--color-white);
+  }
+
+  .header-logo {
+    display: block;
+    height: 100%;
+  }
+
+  .header-logo svg {
+    height: 100%;
+    width: auto;
+    display: block;
+  }
+
+  .header-nav a {
+    color: var(--color-black);
+    text-decoration: none;
+    font-size: var(--text-18);
+    font-weight: var(--font-weight-500);
+    line-height: var(--line-height-125);
+  }
+
+  .header-nav a:hover,
+  .header-nav a:focus-visible {
+    opacity: 0.6;
+  }
+
+  /* ---- Footer ---- */
+
   .site-footer {
     background: var(--color-primary);
     color: var(--color-secondary);
-    margin-top: var(--size-64);
-    padding-block: var(--size-24);
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-40);
+    padding-block: var(--size-20);
+  }
+
+  .footer-logo {
+    opacity: 0;
+    width: 100%;
+  }
+
+  .footer-logo svg {
+    width: 100%;
+    height: auto;
+    display: block;
+    color: var(--color-secondary);
+  }
+
+  .footer-content {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    align-items: start;
+    gap: 0;
   }
 
   .site-footer h2 {
     font-size: var(--text-12);
     text-transform: uppercase;
-    margin-bottom: var(--size-12);
+    margin-bottom: var(--size-16);
   }
 
   .site-footer p,
   .site-footer li {
-    font-size: var(--text-14);
-    line-height: var(--line-height-normal);
+    font-size: var(--text-16);
+    line-height: var(--line-height-125);
   }
 
   .site-footer ul {
@@ -148,23 +240,35 @@ const agentationMode = isDevMode ? 'dev' : 'review'
     margin: 0;
   }
 
-  .footer-about,
-  .footer-links {
-    grid-column: 1 / -1;
-    margin-bottom: var(--size-16);
+  .footer-about {
+    grid-column: 1 / 4;
+    padding-left: var(--size-20);
+  }
+
+  .footer-expertise {
+    grid-column: 4 / 7;
+  }
+
+  .footer-expertise ul {
+    display: grid;
+    gap: var(--size-4);
   }
 
   .footer-links {
+    grid-column: 7 / -1;
     display: flex;
     flex-wrap: wrap;
     gap: var(--size-24);
-    margin-bottom: 0;
+    justify-content: space-between;
+    align-items: end;
+    margin-top: auto;
+    padding-right: var(--size-20);
   }
 
   .footer-links a {
     color: var(--color-secondary);
     text-decoration: none;
-    font-size: var(--text-20);
+    font-size: var(--text-30);
   }
 
   .footer-links a:focus-visible,
@@ -172,15 +276,20 @@ const agentationMode = isDevMode ? 'dev' : 'review'
     opacity: 0.7;
   }
 
-  @media (min-width: 1024px) {
-    .footer-about {
-      grid-column: 1 / 5;
+  @media (max-width: 768px) {
+    .footer-content {
+      display: flex;
+      flex-direction: column;
+      gap: var(--size-24);
+    }
+
+    .footer-about,
+    .footer-expertise {
+      margin-bottom: var(--size-16);
     }
 
     .footer-links {
-      grid-column: 5 / -1;
-      justify-content: space-between;
-      align-items: end;
+      align-items: center;
     }
   }
 </style>

@@ -33,12 +33,20 @@ const description = homePage?.seo?.description || 'Jacquard Espaces Verts'
     }
 
     {
-      sections.map((section) => {
+      sections.map((section, index) => {
+        const isLastSection = index === sections.length - 1
+
         if (section._type === 'homeSectionProjectReference') {
           const project = section.project
           if (!project) {
             return (
-              <section class="section section-project-fullscreen">
+              <section
+                class:list={[
+                  'section',
+                  'section-project-fullscreen',
+                  { 'section-last': isLastSection },
+                ]}
+              >
                 <div class="project-block-link project-block-link-fallback">
                   <div class="project-media-fallback">
                     <div class="overlay-content overlay-content-static">
@@ -57,7 +65,13 @@ const description = homePage?.seo?.description || 'Jacquard Espaces Verts'
           const projectLocation = project.localisation || 'Localisation à venir'
 
           return (
-            <section class="section section-project-fullscreen">
+            <section
+              class:list={[
+                'section',
+                'section-project-fullscreen',
+                { 'section-last': isLastSection },
+              ]}
+            >
               <a href={href} class="project-block-link">
                 {mainImage ? (
                   <>
@@ -85,7 +99,14 @@ const description = homePage?.seo?.description || 'Jacquard Espaces Verts'
           const slots = [projects[0], projects[1]]
 
           return (
-            <section class="section section-project-pair main-grid">
+            <section
+              class:list={[
+                'section',
+                'section-project-pair',
+                'main-grid',
+                { 'section-last': isLastSection },
+              ]}
+            >
               {slots.map((project, index) => {
                 if (!project) {
                   return (
@@ -133,11 +154,19 @@ const description = homePage?.seo?.description || 'Jacquard Espaces Verts'
         if (section._type === 'homeSectionExpertiseReference') {
           const expertiseTitle = section.expertise?.title || 'Expertise à renseigner'
           const expertiseDescription =
+            section.expertise?.shortDescription ||
             section.expertise?.description ||
             "Ajoutez une expertise pour afficher son descriptif sur la page d'accueil."
 
           return (
-            <section class="section section-expertise main-grid">
+            <section
+              class:list={[
+                'section',
+                'section-expertise',
+                'main-grid',
+                { 'section-last': isLastSection },
+              ]}
+            >
               <div class="section-expertise-content">
                 <h2>{expertiseTitle}</h2>
                 <p>{expertiseDescription}</p>
@@ -150,7 +179,14 @@ const description = homePage?.seo?.description || 'Jacquard Espaces Verts'
         }
 
         return (
-          <section class="section section-empty-state main-grid">
+          <section
+            class:list={[
+              'section',
+              'section-empty-state',
+              'main-grid',
+              { 'section-last': isLastSection },
+            ]}
+          >
             <div class="fallback-surface">
               <h2>Bloc non pris en charge</h2>
               <p>Ce type de section n'est pas encore pris en charge sur la page d'accueil.</p>
@@ -165,12 +201,30 @@ const description = homePage?.seo?.description || 'Jacquard Espaces Verts'
     .home-page {
       display: flex;
       flex-direction: column;
-      gap: var(--size-24);
-      padding-bottom: var(--size-64);
+      background-color: var(--color-primary);
     }
 
     .section {
       position: relative;
+      background: var(--color-white);
+    }
+
+    .section-last {
+      border-radius: 0 0 var(--size-20) var(--size-20);
+      overflow: hidden;
+    }
+
+    .section-project-fullscreen.section-last,
+    .section-project-pair.section-last {
+      border-radius: 0;
+      overflow: visible;
+    }
+
+    .section-project-fullscreen.section-last .project-block-link,
+    .section-project-fullscreen.section-last .project-block-link-fallback,
+    .section-project-pair.section-last .project-pair-item {
+      border-radius: 0 0 var(--size-20) var(--size-20);
+      overflow: hidden;
     }
 
     .section-project-fullscreen {
@@ -191,12 +245,8 @@ const description = homePage?.seo?.description || 'Jacquard Espaces Verts'
       cursor: default;
     }
 
-    .section-project-pair {
-      gap: var(--size-16);
-    }
-
     .project-pair-item {
-      grid-column: 1 / -1;
+      grid-column: span 6;
       position: relative;
       aspect-ratio: 3 / 2;
       min-height: 40vh;
@@ -221,12 +271,20 @@ const description = homePage?.seo?.description || 'Jacquard Espaces Verts'
       position: absolute;
       inset: 50% auto auto 50%;
       transform: translate(-50%, -50%);
-      color: var(--color-secondary);
+      color: var(--color-white);
       text-align: center;
-      z-index: var(--z-base);
+      z-index: var(--z-fixed);
       display: grid;
-      gap: var(--size-8);
+      row-gap: var(--size-10);
       width: min(90%, 560px);
+      text-transform: uppercase;
+      margin: 0;
+    }
+
+    .overlay-content h2,
+    .overlay-content p {
+      font-size: var(--text-20);
+      font-weight: var(--font-weight-500);
     }
 
     .overlay-content.overlay-content-static {
@@ -236,49 +294,37 @@ const description = homePage?.seo?.description || 'Jacquard Espaces Verts'
       width: min(90%, 640px);
     }
 
-    .overlay-content h2 {
-      font-size: var(--text-24);
-      font-weight: var(--font-weight-medium);
-      text-transform: uppercase;
-      margin: 0;
-    }
-
-    .overlay-content p {
-      font-size: var(--text-16);
-      text-transform: uppercase;
-      margin: 0;
-    }
-
     .section-expertise-content {
-      grid-column: 1 / -1;
+      grid-column: 3 / 10;
       text-align: center;
       display: grid;
-      gap: var(--size-16);
-      padding-block: var(--size-24);
+      gap: 40px;
+      padding-block: 100px;
     }
 
     .section-expertise-content h2 {
-      font-size: var(--text-24);
+      font-size: var(--text-16);
       font-weight: var(--font-weight-medium);
       text-transform: uppercase;
       margin: 0;
     }
 
     .section-expertise-content p {
-      font-size: var(--text-18);
-      line-height: var(--line-height-normal);
-      max-width: 56ch;
+      font-size: var(--size-42);
+      line-height: var(--size-46);
       margin-inline: auto;
       margin-block: 0;
     }
 
     .expertise-cta {
       justify-self: center;
-      color: var(--color-primary);
+      color: var(--color-black);
       text-decoration: none;
-      border-bottom: 1px solid var(--color-primary);
+      text-underline-offset: var(--size-2);
+      border-bottom: 1px solid var(--color-black);
+      padding-bottom: var(--size-2);
       text-transform: uppercase;
-      font-size: var(--text-14);
+      font-size: var(--text-12);
     }
 
     .expertise-cta:focus-visible,
@@ -308,12 +354,29 @@ const description = homePage?.seo?.description || 'Jacquard Espaces Verts'
     .fallback-surface p {
       margin: 0;
       font-size: var(--text-16);
-      line-height: var(--line-height-normal);
+      line-height: var(--line-height-125);
     }
 
-    @media (min-width: 768px) {
+    @media (max-width: 768px) {
+      .section-project-fullscreen.section-last,
+      .section-project-pair.section-last {
+        border-radius: 0 0 var(--size-20) var(--size-20);
+        overflow: hidden;
+      }
+
+      .section-project-fullscreen.section-last .project-block-link,
+      .section-project-fullscreen.section-last .project-block-link-fallback,
+      .section-project-pair.section-last .project-pair-item {
+        border-radius: 0;
+        overflow: visible;
+      }
+
       .project-pair-item {
-        grid-column: span 4;
+        grid-column: 1 / -1;
+      }
+
+      .section-expertise-content {
+        grid-column: 1 / -1;
       }
     }
   </style>

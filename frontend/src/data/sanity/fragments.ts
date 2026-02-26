@@ -57,6 +57,7 @@ export const expertiseFragment = `
   _id,
   _type,
   title,
+  shortDescription,
   description
 `
 

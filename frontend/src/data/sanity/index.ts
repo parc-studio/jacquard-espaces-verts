@@ -11,6 +11,7 @@
 import { sanityClient } from '@/utils/sanity/client'
 import type {
   ABOUT_PAGE_QUERY_RESULT,
+  ALL_EXPERTISES_QUERY_RESULT,
   ALL_PAGES_QUERY_RESULT,
   ALL_PROJECTS_QUERY_RESULT,
   HOME_PAGE_QUERY_RESULT,
@@ -21,6 +22,7 @@ import type {
 import { loadQuery } from './load-query'
 import {
   ABOUT_PAGE_QUERY,
+  ALL_EXPERTISES_QUERY,
   ALL_PAGES_QUERY,
   ALL_PROJECTS_QUERY,
   HOME_PAGE_QUERY,
@@ -66,6 +68,14 @@ async function fetchData<T>(
 
 export async function getSettings(options: FetchOptions = {}) {
   return fetchData<SETTINGS_QUERY_RESULT>(SETTINGS_QUERY, {}, options)
+}
+
+// =============================================================================
+// Expertises
+// =============================================================================
+
+export async function getExpertises(options: FetchOptions = {}) {
+  return fetchData<ALL_EXPERTISES_QUERY_RESULT>(ALL_EXPERTISES_QUERY, {}, options)
 }
 
 // =============================================================================

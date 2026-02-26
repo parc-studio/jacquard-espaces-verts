@@ -22,7 +22,13 @@ const title = aboutPage?.seo?.title || 'À propos'
 const description = aboutPage?.seo?.description || ''
 ---
 
-<BaseLayout title={title} description={description} isPreview={isPreview} pagePath="/about">
+<BaseLayout
+  title={title}
+  description={description}
+  isPreview={isPreview}
+  pagePath="/about"
+  hideFooter
+>
   <main class="about main-grid">
     <section class="about-content">
       {

@@ -554,7 +554,7 @@ export type SETTINGS_QUERY_RESULT = {
 
 // Source: ../frontend/src/data/sanity/queries.ts
 // Variable: HOME_PAGE_QUERY
-// Query: *[_type == "homePage"][0] {  _id,  _type,  title,  sections[] {   ...,  _type == "homeSectionProjectReference" => {    _key,    _type,    displayMode,    project->{      _id,      titre,      localisation,      slug,      mediaGallery[] {          _key,    asset->{    _id,    url,    mimeType,    metadata {      lqip,      dimensions { width, height, aspectRatio }    }  },  hotspot,  crop,  caption      }    }  },  _type == "homeSectionProjectPair" => {    _key,    _type,    projects[]->{      _id,      titre,      localisation,      slug,      mediaGallery[] {          _key,    asset->{    _id,    url,    mimeType,    metadata {      lqip,      dimensions { width, height, aspectRatio }    }  },  hotspot,  crop,  caption      }    }  },  _type == "homeSectionExpertiseReference" => {    _key,    _type,    expertise->{   _id,  _type,  title,  description }  } },    seo {    title,    description,    image  }}
+// Query: *[_type == "homePage"][0] {  _id,  _type,  title,  sections[] {   ...,  _type == "homeSectionProjectReference" => {    _key,    _type,    displayMode,    project->{      _id,      titre,      localisation,      slug,      mediaGallery[] {          _key,    asset->{    _id,    url,    mimeType,    metadata {      lqip,      dimensions { width, height, aspectRatio }    }  },  hotspot,  crop,  caption      }    }  },  _type == "homeSectionProjectPair" => {    _key,    _type,    projects[]->{      _id,      titre,      localisation,      slug,      mediaGallery[] {          _key,    asset->{    _id,    url,    mimeType,    metadata {      lqip,      dimensions { width, height, aspectRatio }    }  },  hotspot,  crop,  caption      }    }  },  _type == "homeSectionExpertiseReference" => {    _key,    _type,    expertise->{   _id,  _type,  title,  shortDescription,  description }  } },    seo {    title,    description,    image  }}
 export type HOME_PAGE_QUERY_RESULT = {
   _id: string
   _type: 'homePage'
@@ -567,6 +567,7 @@ export type HOME_PAGE_QUERY_RESULT = {
           _id: string
           _type: 'expertise'
           title: string
+          shortDescription: string | null
           description: string
         }
       }
@@ -738,7 +739,7 @@ export type ALL_PAGES_QUERY_RESULT = Array<{
 
 // Source: ../frontend/src/data/sanity/queries.ts
 // Variable: PROJECT_QUERY
-// Query: *[_type == "project" && slug.current == $slug][0] {      _id,  _type,  titre,  slug,  localisation,  anneeDebut,  anneeFin,  expertises[]->{   _id,  _type,  title,  description },  mediaGallery[] {    _key,      asset->{    _id,    url,    mimeType,    metadata {      lqip,      dimensions { width, height, aspectRatio }    }  },  hotspot,  crop  },  techniques,  budget,  aireM2,  maitreOuvrage,  maitreOeuvre,  architecte,    seo {    title,    description,    image  }}
+// Query: *[_type == "project" && slug.current == $slug][0] {      _id,  _type,  titre,  slug,  localisation,  anneeDebut,  anneeFin,  expertises[]->{   _id,  _type,  title,  shortDescription,  description },  mediaGallery[] {    _key,      asset->{    _id,    url,    mimeType,    metadata {      lqip,      dimensions { width, height, aspectRatio }    }  },  hotspot,  crop  },  techniques,  budget,  aireM2,  maitreOuvrage,  maitreOeuvre,  architecte,    seo {    title,    description,    image  }}
 export type PROJECT_QUERY_RESULT = {
   _id: string
   _type: 'project'
@@ -751,6 +752,7 @@ export type PROJECT_QUERY_RESULT = {
     _id: string
     _type: 'expertise'
     title: string
+    shortDescription: string | null
     description: string
   }> | null
   mediaGallery: Array<{
@@ -792,7 +794,7 @@ export type PROJECT_QUERY_RESULT = {
 
 // Source: ../frontend/src/data/sanity/queries.ts
 // Variable: ALL_PROJECTS_QUERY
-// Query: *[_type == "project" && defined(slug.current)] | order(orderRank asc, name asc) {    _id,  _type,  titre,  slug,  localisation,  anneeDebut,  anneeFin,  expertises[]->{   _id,  _type,  title,  description },  mediaGallery[] {    _key,      asset->{    _id,    url,    mimeType,    metadata {      lqip,      dimensions { width, height, aspectRatio }    }  },  hotspot,  crop  }}
+// Query: *[_type == "project" && defined(slug.current)] | order(orderRank asc, name asc) {    _id,  _type,  titre,  slug,  localisation,  anneeDebut,  anneeFin,  expertises[]->{   _id,  _type,  title,  shortDescription,  description },  mediaGallery[] {    _key,      asset->{    _id,    url,    mimeType,    metadata {      lqip,      dimensions { width, height, aspectRatio }    }  },  hotspot,  crop  }}
 export type ALL_PROJECTS_QUERY_RESULT = Array<{
   _id: string
   _type: 'project'
@@ -805,6 +807,7 @@ export type ALL_PROJECTS_QUERY_RESULT = Array<{
     _id: string
     _type: 'expertise'
     title: string
+    shortDescription: string | null
     description: string
   }> | null
   mediaGallery: Array<{
@@ -825,6 +828,15 @@ export type ALL_PROJECTS_QUERY_RESULT = Array<{
     hotspot: SanityImageHotspot | null
     crop: SanityImageCrop | null
   }>
+}>
+
+// Source: ../frontend/src/data/sanity/queries.ts
+// Variable: ALL_EXPERTISES_QUERY
+// Query: *[_type == "expertise"] | order(title asc) {  _id,  _type,  title}
+export type ALL_EXPERTISES_QUERY_RESULT = Array<{
+  _id: string
+  _type: 'expertise'
+  title: string
 }>
 
 // Source: ../frontend/src/data/sanity/queries.ts
@@ -931,11 +943,12 @@ import '@sanity/client'
 declare module '@sanity/client' {
   interface SanityQueries {
     '*[_type == "settings"][0] {\n  _id,\n  _type,\n  shortDescription,\n  telephone,\n  email,\n  address,\n  instagram,\n  linkedin\n}': SETTINGS_QUERY_RESULT
-    '*[_type == "homePage"][0] {\n  _id,\n  _type,\n  title,\n  sections[] { \n  ...,\n  _type == "homeSectionProjectReference" => {\n    _key,\n    _type,\n    displayMode,\n    project->{\n      _id,\n      titre,\n      localisation,\n      slug,\n      mediaGallery[] {\n        \n  _key,\n  \n  asset->{\n    _id,\n    url,\n    mimeType,\n    metadata {\n      lqip,\n      dimensions { width, height, aspectRatio }\n    }\n  },\n  hotspot,\n  crop\n,\n  caption\n\n      }\n    }\n  },\n  _type == "homeSectionProjectPair" => {\n    _key,\n    _type,\n    projects[]->{\n      _id,\n      titre,\n      localisation,\n      slug,\n      mediaGallery[] {\n        \n  _key,\n  \n  asset->{\n    _id,\n    url,\n    mimeType,\n    metadata {\n      lqip,\n      dimensions { width, height, aspectRatio }\n    }\n  },\n  hotspot,\n  crop\n,\n  caption\n\n      }\n    }\n  },\n  _type == "homeSectionExpertiseReference" => {\n    _key,\n    _type,\n    expertise->{ \n  _id,\n  _type,\n  title,\n  description\n }\n  }\n },\n  \n  seo {\n    title,\n    description,\n    image\n  }\n\n}': HOME_PAGE_QUERY_RESULT
+    '*[_type == "homePage"][0] {\n  _id,\n  _type,\n  title,\n  sections[] { \n  ...,\n  _type == "homeSectionProjectReference" => {\n    _key,\n    _type,\n    displayMode,\n    project->{\n      _id,\n      titre,\n      localisation,\n      slug,\n      mediaGallery[] {\n        \n  _key,\n  \n  asset->{\n    _id,\n    url,\n    mimeType,\n    metadata {\n      lqip,\n      dimensions { width, height, aspectRatio }\n    }\n  },\n  hotspot,\n  crop\n,\n  caption\n\n      }\n    }\n  },\n  _type == "homeSectionProjectPair" => {\n    _key,\n    _type,\n    projects[]->{\n      _id,\n      titre,\n      localisation,\n      slug,\n      mediaGallery[] {\n        \n  _key,\n  \n  asset->{\n    _id,\n    url,\n    mimeType,\n    metadata {\n      lqip,\n      dimensions { width, height, aspectRatio }\n    }\n  },\n  hotspot,\n  crop\n,\n  caption\n\n      }\n    }\n  },\n  _type == "homeSectionExpertiseReference" => {\n    _key,\n    _type,\n    expertise->{ \n  _id,\n  _type,\n  title,\n  shortDescription,\n  description\n }\n  }\n },\n  \n  seo {\n    title,\n    description,\n    image\n  }\n\n}': HOME_PAGE_QUERY_RESULT
     '*[_type == "page" && slug.current == $slug][0] {\n  _id,\n  _type,\n  title,\n  slug,\n  content[] { \n  ...,\n  markDefs[] {\n    ...,\n    _type == "link" => { \n  ...,\n  internalLink->{ _type, _id, "slug": slug.current, title }\n }\n  }\n },\n  \n  seo {\n    title,\n    description,\n    image\n  }\n\n}': PAGE_QUERY_RESULT
     '*[_type == "page" && defined(slug.current)] {\n  _id,\n  title,\n  slug\n}': ALL_PAGES_QUERY_RESULT
-    '*[_type == "project" && slug.current == $slug][0] {\n  \n  \n  _id,\n  _type,\n  titre,\n  slug,\n  localisation,\n  anneeDebut,\n  anneeFin,\n  expertises[]->{ \n  _id,\n  _type,\n  title,\n  description\n },\n  mediaGallery[] {\n    _key,\n    \n  asset->{\n    _id,\n    url,\n    mimeType,\n    metadata {\n      lqip,\n      dimensions { width, height, aspectRatio }\n    }\n  },\n  hotspot,\n  crop\n\n  }\n,\n  techniques,\n  budget,\n  aireM2,\n  maitreOuvrage,\n  maitreOeuvre,\n  architecte,\n  \n  seo {\n    title,\n    description,\n    image\n  }\n\n\n}': PROJECT_QUERY_RESULT
-    '*[_type == "project" && defined(slug.current)] | order(orderRank asc, name asc) {\n  \n  _id,\n  _type,\n  titre,\n  slug,\n  localisation,\n  anneeDebut,\n  anneeFin,\n  expertises[]->{ \n  _id,\n  _type,\n  title,\n  description\n },\n  mediaGallery[] {\n    _key,\n    \n  asset->{\n    _id,\n    url,\n    mimeType,\n    metadata {\n      lqip,\n      dimensions { width, height, aspectRatio }\n    }\n  },\n  hotspot,\n  crop\n\n  }\n\n}': ALL_PROJECTS_QUERY_RESULT
+    '*[_type == "project" && slug.current == $slug][0] {\n  \n  \n  _id,\n  _type,\n  titre,\n  slug,\n  localisation,\n  anneeDebut,\n  anneeFin,\n  expertises[]->{ \n  _id,\n  _type,\n  title,\n  shortDescription,\n  description\n },\n  mediaGallery[] {\n    _key,\n    \n  asset->{\n    _id,\n    url,\n    mimeType,\n    metadata {\n      lqip,\n      dimensions { width, height, aspectRatio }\n    }\n  },\n  hotspot,\n  crop\n\n  }\n,\n  techniques,\n  budget,\n  aireM2,\n  maitreOuvrage,\n  maitreOeuvre,\n  architecte,\n  \n  seo {\n    title,\n    description,\n    image\n  }\n\n\n}': PROJECT_QUERY_RESULT
+    '*[_type == "project" && defined(slug.current)] | order(orderRank asc, name asc) {\n  \n  _id,\n  _type,\n  titre,\n  slug,\n  localisation,\n  anneeDebut,\n  anneeFin,\n  expertises[]->{ \n  _id,\n  _type,\n  title,\n  shortDescription,\n  description\n },\n  mediaGallery[] {\n    _key,\n    \n  asset->{\n    _id,\n    url,\n    mimeType,\n    metadata {\n      lqip,\n      dimensions { width, height, aspectRatio }\n    }\n  },\n  hotspot,\n  crop\n\n  }\n\n}': ALL_PROJECTS_QUERY_RESULT
+    '*[_type == "expertise"] | order(title asc) {\n  _id,\n  _type,\n  title\n}': ALL_EXPERTISES_QUERY_RESULT
     '*[_type == "aboutPage"][0] {\n  _id,\n  _type,\n  coverImage { \n  asset->{\n    _id,\n    url,\n    mimeType,\n    metadata {\n      lqip,\n      dimensions { width, height, aspectRatio }\n    }\n  },\n  hotspot,\n  crop\n },\n  content[] { \n  ...,\n  markDefs[] {\n    ...,\n    _type == "link" => { \n  ...,\n  internalLink->{ _type, _id, "slug": slug.current, title }\n }\n  }\n },\n  \n  seo {\n    title,\n    description,\n    image\n  }\n\n}': ABOUT_PAGE_QUERY_RESULT
   }
 }

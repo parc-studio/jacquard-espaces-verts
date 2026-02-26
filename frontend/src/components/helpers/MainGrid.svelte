@@ -20,8 +20,8 @@
 <div class="grid-overlay" class:grid-overlay--visible={isVisible} aria-hidden="true">
   <div class="grid-overlay__columns">
     <!-- eslint-disable-next-line @typescript-eslint/no-unused-vars -->
-    {#each Array(8) as _, i (i)}
-      <div class="grid-overlay__col"></div>
+    {#each Array(12) as _, i (i)}
+      <div class="grid-overlay__col" class:grid-overlay__col--mobile-only={i >= 6}></div>
     {/each}
   </div>
 </div>
@@ -47,17 +47,32 @@
   .grid-overlay__columns {
     display: grid;
     position: relative;
-    grid-template-columns: repeat(8, 1fr);
-    gap: var(--main-grid-gap, 16px);
-    margin-inline: var(--main-grid-margin, 24px);
-    width: calc(100vw - var(--main-grid-margin, 24px) * 2);
+    grid-template-columns: repeat(12, 1fr);
+    gap: 0;
+    margin: 0;
+    width: 100vw;
     height: 100svh;
+  }
+
+  @media (max-width: 768px) {
+    .grid-overlay__columns {
+      grid-template-columns: repeat(6, 1fr);
+    }
+
+    .grid-overlay__col--mobile-only {
+      display: none;
+    }
   }
 
   .grid-overlay__col {
     position: relative;
-    background-color: rgba(0, 150, 255, 0.1);
+    background-color: transparent;
+    border-right: 1px solid rgba(0, 150, 255, 0.3);
     height: 100vh; /* fallback for browsers without svh support */
     height: 100svh;
+  }
+
+  .grid-overlay__col:first-child {
+    border-left: 1px solid rgba(0, 150, 255, 0.3);
   }
 </style>

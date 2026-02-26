@@ -10,19 +10,17 @@
 import { createClient } from '@sanity/client'
 
 // Sanity project ID (from sanity.io/manage)
-export const projectId = 'xycs2vyu'
+export const projectId = 'dxjqqptu'
 
 // Dataset name (usually 'production')
 export const dataset = 'production'
 
-// TODO: Replace with your production site URL
-export const siteUrl = 'https://astro-svelte-sanity.parc.studio'
+export const siteUrl = 'https://jacquard-espaces-verts.parc.studio'
 
 // API version (use current date format)
 export const apiVersion = '2026-01-01'
 
-// TODO: Replace with your Sanity Studio URL for Visual Editing
-export const studioUrl = 'https://admin.astro-svelte-sanity.parc.studio'
+export const studioUrl = 'https://admin.jacquard-espaces-verts.parc.studio'
 
 /**
  * Sanity client instance

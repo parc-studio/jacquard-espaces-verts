@@ -73,7 +73,7 @@ export default defineConfig({
       {
         // TODO: Replace with your project fonts
         provider: fontProviders.local(),
-        name: 'Open Sans',
+        name: 'Pinokio Sans',
         cssVariable: '--font-sans',
         fallbacks: ['sans-serif'],
         options: {
@@ -81,7 +81,7 @@ export default defineConfig({
             {
               style: 'normal',
               display: 'swap',
-              src: ['./src/assets/fonts/OpenSans.woff2'],
+              src: ['./src/assets/fonts/PinokioSans-Medium.woff2'],
             },
           ],
         },

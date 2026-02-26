@@ -21,8 +21,10 @@
 ## Styling + data + animation constraints
 
 - Use design tokens from `frontend/src/styles/tokens.css`; no hardcoded product UI colors/spacing/type sizes.
-- Avoid duplicate declaration in CSS. Keep the CSS lean and structured.
-- Prefer `.main-grid` + `subgrid`; include `:focus-visible` with hover interactions.
+- Avoid duplicate/useless declarations in CSS. Keep the CSS lean and structured.
+- Desktop-first responsive: write base styles for desktop, then use `@media (max-width: 768px)` for mobile. One breakpoint only (768px) unless explicitly told otherwise.
+- Never use `display: inline-flex`; prefer `flex` or `grid`.
+- Prefer `.main-grid` + `subgrid` layout pattern over flex; include `:focus-visible` with hover interactions.
 - Keep GROQ in `frontend/src/data/sanity/`, use `defineQuery()` + fragments; no inline GROQ in pages/components.
 - Use generated types from `frontend/sanity.types.ts`; do not handwrite duplicate GROQ response interfaces.
 - After schema/query/fragment edits run `pnpm types`; never manually edit generated files (`studio/schema.json`, `frontend/sanity.types.ts`).
