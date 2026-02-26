@@ -49,3 +49,37 @@ html.lenis body {
 .lenis.lenis-smooth iframe {
   pointer-events: none;
 }
+
+/* Page transitions — CSS keyframe animations */
+@keyframes page-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes page-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+main.page-fade-out {
+  animation: page-fade-out 0.3s ease forwards;
+}
+
+main.page-fade-in {
+  animation: page-fade-in 0.3s ease forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  main.page-fade-out,
+  main.page-fade-in {
+    animation-duration: 0.15s;
+  }
+}

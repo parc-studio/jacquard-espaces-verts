@@ -1,58 +1,66 @@
 ---
 /**
  * Project Template
+ *
+ * Two-section layout:
+ * - Section 1: 100vh hero with click-left/right image carousel + project title
+ * - Section 2: Info grid, thumbnails, and next project CTA
  */
 import BaseLayout from '../../layouts/BaseLayout.astro'
-import { getProject } from '../../data/sanity'
+import { getProject, getAllProjects } from '../../data/sanity'
 import { urlFor } from '../../utils/sanity/image'
-import Media from '../media/Media.svelte'
+import ProjectPage from './ProjectPage.svelte'
+import type { Slug } from '../../../sanity.types'
+
+interface NextProjectData {
+  titre: string
+  slug: Slug
+  localisation: string
+  anneeDebut: number
+  anneeFin: number | null
+}
 
 interface Props {
   currentSlug: string
   isPreview?: boolean
+  nextProject?: NextProjectData | null
 }
 
-const { currentSlug, isPreview = false } = Astro.props
+const { currentSlug, isPreview = false, nextProject: nextProjectProp } = Astro.props
 
 const project = await getProject(currentSlug, { preview: isPreview })
 const title = project?.seo?.title || project?.titre
 const description = project?.seo?.description || project?.localisation || ''
 const mainImage = project?.mediaGallery?.[0]
-const galleryImages = project?.mediaGallery?.slice(1) || []
 let image: string | undefined
 const rawImage = project?.seo?.image || mainImage
 if (rawImage) {
   image = urlFor(rawImage).width(1200).height(630).url()
 }
 
-const infoRows = [
-  { label: 'Localisation', value: project?.localisation },
-  {
-    label: 'Année',
-    value: project?.anneeFin
-      ? `${project?.anneeDebut} – ${project?.anneeFin}`
-      : project?.anneeDebut,
-  },
-  {
-    label: 'Expertises',
-    value: project?.expertises
-      ?.map((item) => item?.title)
-      .filter(Boolean)
-      .join(', '),
-  },
-  { label: 'Techniques', value: project?.techniques?.join(', ') },
-  {
-    label: 'Budget',
-    value: project?.budget ? `${project.budget.toLocaleString('fr-FR')} €` : undefined,
-  },
-  {
-    label: 'Aire',
-    value: project?.aireM2 ? `${project.aireM2.toLocaleString('fr-FR')} m²` : undefined,
-  },
-  { label: "Maître d'ouvrage", value: project?.maitreOuvrage },
-  { label: "Maître d'œuvre", value: project?.maitreOeuvre },
-  { label: 'Architecte', value: project?.architecte },
-].filter((row) => !!row.value)
+// In preview mode, compute next project since getStaticPaths doesn't run
+let nextProject = nextProjectProp ?? null
+if (!nextProject && isPreview && project) {
+  try {
+    const allProjects = await getAllProjects({ preview: true })
+    if (allProjects && allProjects.length > 1) {
+      const currentIndex = allProjects.findIndex((p) => p.slug?.current === currentSlug)
+      if (currentIndex !== -1) {
+        const nextIndex = (currentIndex + 1) % allProjects.length
+        const next = allProjects[nextIndex]
+        nextProject = {
+          titre: next.titre,
+          slug: next.slug,
+          localisation: next.localisation,
+          anneeDebut: next.anneeDebut,
+          anneeFin: next.anneeFin,
+        }
+      }
+    }
+  } catch (error) {
+    console.error('[ProjectTemplate] Unable to load next project:', error)
+  }
+}
 ---
 
 <BaseLayout
@@ -61,181 +69,20 @@ const infoRows = [
   image={image}
   isPreview={isPreview}
   pagePath={`/projects/${currentSlug}`}
+  hideHeader={true}
+  contentBackground="var(--color-white)"
 >
-  <main class="project-template main-grid">
-    <section class="project-main">
-      <aside class="project-sidebar">
-        <a href="/projects" class="back-link">← Retour</a>
-        <h1 class="project-title">{project?.titre || 'Projet'}</h1>
-        {project?.localisation && <p class="project-location">{project.localisation}</p>}
-        {
-          project?.anneeDebut && (
-            <p class="project-years">
-              {project.anneeDebut}
-              {project.anneeFin ? `–${project.anneeFin}` : ''}
-            </p>
-          )
-        }
-      </aside>
-
-      <div class="project-hero">
-        {
-          mainImage && (
-            <Media media={{ image: mainImage }} layout="cover" sizes="100vw" client:load />
-          )
-        }
-      </div>
-    </section>
-
-    {
-      infoRows.length > 0 && (
-        <section class="project-info">
-          <h2>Informations</h2>
-          <dl>
-            {infoRows.map((row) => (
-              <>
-                <dt>{row.label}</dt>
-                <dd>{row.value}</dd>
-              </>
-            ))}
-          </dl>
-        </section>
-      )
-    }
-
-    {
-      galleryImages.length > 0 && (
-        <section class="project-carousel">
-          <h2>Galerie média</h2>
-          <div class="project-carousel-track">
-            {galleryImages.map((item) => (
-              <figure class="project-carousel-item">
-                <Media
-                  media={{ image: item }}
-                  layout="cover"
-                  sizes="(max-width: 767px) 60vw, 12vw"
-                  client:load
-                />
-              </figure>
-            ))}
-          </div>
-        </section>
-      )
-    }
-  </main>
+  {
+    project && (
+      <main class="project-template main-grid">
+        <ProjectPage project={project} nextProject={nextProject} client:load />
+      </main>
+    )
+  }
 
   <style>
     .project-template {
-      padding-top: var(--size-24);
-      padding-bottom: var(--size-64);
-    }
-
-    .project-main {
-      grid-column: 1 / -1;
-      display: grid;
-      grid-template-columns: repeat(8, minmax(0, 1fr));
-      gap: var(--size-16);
-    }
-
-    .project-sidebar {
-      grid-column: 1 / -1;
-      display: grid;
-      align-content: start;
-      gap: var(--size-12);
-    }
-
-    .back-link {
-      text-transform: uppercase;
-      text-decoration: none;
-      color: var(--color-primary);
-      font-size: var(--text-12);
-      width: fit-content;
-    }
-
-    .back-link:focus-visible,
-    .back-link:hover {
-      opacity: 0.7;
-    }
-
-    .project-title {
-      font-size: var(--text-30);
-      font-weight: var(--font-weight-medium);
-      text-transform: uppercase;
-    }
-
-    .project-location,
-    .project-years {
-      font-size: var(--text-16);
-      text-transform: uppercase;
-    }
-
-    .project-hero {
-      grid-column: 1 / -1;
-      aspect-ratio: 16 / 10;
-      overflow: hidden;
-    }
-
-    .project-info,
-    .project-carousel {
-      grid-column: 1 / -1;
-      display: grid;
-      gap: var(--size-16);
-    }
-
-    .project-info h2,
-    .project-carousel h2 {
-      font-size: var(--text-12);
-      text-transform: uppercase;
-      text-decoration: underline;
-    }
-
-    .project-info dl {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: var(--size-8) var(--size-32);
-    }
-
-    .project-info dt {
-      font-size: var(--text-14);
-      font-weight: var(--font-weight-medium);
-      text-transform: uppercase;
-    }
-
-    .project-info dd {
-      font-size: var(--text-16);
-      margin: 0;
-    }
-
-    .project-carousel-track {
-      display: flex;
-      gap: var(--size-8);
-      overflow-x: auto;
-    }
-
-    .project-carousel-item {
-      flex: 0 0 120px;
-      aspect-ratio: 5 / 4;
-      overflow: hidden;
-      margin: 0;
-    }
-
-    @media (min-width: 1024px) {
-      .project-sidebar {
-        grid-column: span 2;
-      }
-
-      .project-hero {
-        grid-column: span 6;
-      }
-
-      .project-info dl {
-        grid-template-columns: auto 1fr;
-        align-items: start;
-      }
-
-      .project-carousel-item {
-        flex-basis: 75px;
-      }
+      background: var(--color-white);
     }
   </style>
 </BaseLayout>

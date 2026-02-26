@@ -843,11 +843,12 @@ export type ALL_PROJECTS_QUERY_RESULT = Array<{
 
 // Source: ../frontend/src/data/sanity/queries.ts
 // Variable: ALL_EXPERTISES_QUERY
-// Query: *[_type == "expertise"] | order(title asc) {  _id,  _type,  title}
+// Query: *[_type == "expertise"] | order(title asc) {  _id,  _type,  title,  description}
 export type ALL_EXPERTISES_QUERY_RESULT = Array<{
   _id: string
   _type: 'expertise'
   title: string
+  description: string
 }>
 
 // Source: ../frontend/src/data/sanity/queries.ts
@@ -959,7 +960,7 @@ declare module '@sanity/client' {
     '*[_type == "page" && defined(slug.current)] {\n  _id,\n  title,\n  slug\n}': ALL_PAGES_QUERY_RESULT
     '*[_type == "project" && slug.current == $slug][0] {\n  \n  \n  _id,\n  _type,\n  titre,\n  slug,\n  localisation,\n  anneeDebut,\n  anneeFin,\n  expertises[]->{ \n  _id,\n  _type,\n  title,\n  shortDescription,\n  description\n },\n  mediaGallery[] {\n    _key,\n    \n  asset->{\n    _id,\n    url,\n    mimeType,\n    metadata {\n      lqip,\n      dimensions { width, height, aspectRatio }\n    }\n  },\n  hotspot,\n  crop\n\n  }\n,\n  techniques,\n  budget,\n  aireM2,\n  maitreOuvrage,\n  maitreOeuvre,\n  architecte,\n  \n  seo {\n    title,\n    description,\n    image\n  }\n\n\n}': PROJECT_QUERY_RESULT
     '*[_type == "project" && defined(slug.current)] | order(orderRank asc, name asc) {\n  \n  _id,\n  _type,\n  titre,\n  slug,\n  localisation,\n  anneeDebut,\n  anneeFin,\n  expertises[]->{ \n  _id,\n  _type,\n  title,\n  shortDescription,\n  description\n },\n  mediaGallery[] {\n    _key,\n    \n  asset->{\n    _id,\n    url,\n    mimeType,\n    metadata {\n      lqip,\n      dimensions { width, height, aspectRatio }\n    }\n  },\n  hotspot,\n  crop\n\n  }\n\n}': ALL_PROJECTS_QUERY_RESULT
-    '*[_type == "expertise"] | order(title asc) {\n  _id,\n  _type,\n  title\n}': ALL_EXPERTISES_QUERY_RESULT
+    '*[_type == "expertise"] | order(title asc) {\n  _id,\n  _type,\n  title,\n  description\n}': ALL_EXPERTISES_QUERY_RESULT
     '*[_type == "aboutPage"][0] {\n  _id,\n  _type,\n  coverImage { \n  asset->{\n    _id,\n    url,\n    mimeType,\n    metadata {\n      lqip,\n      dimensions { width, height, aspectRatio }\n    }\n  },\n  hotspot,\n  crop\n },\n  content[] { \n  ...,\n  markDefs[] {\n    ...,\n    _type == "link" => { \n  ...,\n  internalLink->{ _type, _id, "slug": slug.current, title }\n }\n  }\n },\n  \n  seo {\n    title,\n    description,\n    image\n  }\n\n}': ABOUT_PAGE_QUERY_RESULT
   }
 }

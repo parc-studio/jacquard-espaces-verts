@@ -54,7 +54,8 @@ export const ALL_PROJECTS_QUERY =
 export const ALL_EXPERTISES_QUERY = defineQuery(`*[_type == "expertise"] | order(title asc) {
   _id,
   _type,
-  title
+  title,
+  description
 }`)
 
 export const ABOUT_PAGE_QUERY = defineQuery(`*[_type == "aboutPage"][0] {

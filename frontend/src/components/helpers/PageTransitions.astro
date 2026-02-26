@@ -2,137 +2,73 @@
 /**
  * PageTransitions
  *
- * GSAP-powered page transition animations that work alongside
+ * CSS-class-based page fade transition that works alongside
  * Astro's View Transitions API (ClientRouter).
  *
- * Architecture:
- * - This component (orchestrator) handles Astro lifecycle events
- * - scripts/transitions/index.ts (engine) builds GSAP timelines
- * - scripts/gsap.ts manages ScrollTrigger cleanup/refresh
- *
- * To add a new transition type:
- * 1. Add the type name to TransitionType in scripts/transitions/index.ts
- * 2. Add exit and enter timeline factories in the same file
- * 3. Add route matching logic in getTransitionType() below
- * 4. Create a spec file in scripts/transitions/specs/types/
- * 5. Update the route matrix in scripts/transitions/specs/mappings/
+ * - Adds `.fade-out` to `<main>` before DOM swap (CSS handles opacity)
+ * - Removes `.fade-out` after swap to fade the new page in
+ * - Manages Lenis + ScrollTrigger lifecycle around navigations
  */
 ---
 
 <script>
-  import type { TransitionBeforePreparationEvent } from 'astro:transitions/client'
+  import type {
+    TransitionBeforePreparationEvent,
+    TransitionBeforeSwapEvent,
+  } from 'astro:transitions/client'
 
-  import { cleanupScrollTriggers, refreshScrollTriggers } from '@/scripts/gsap'
-  import type { TransitionRuntimeContext, TransitionType } from '@/scripts/transitions'
-  import { playEnterTransition, playExitTransition } from '@/scripts/transitions'
+  import { FADE_DURATION_MS, FADE_IN_CLASS, fadeOut } from '@/scripts/transitions'
 
-  const MOBILE_BREAKPOINT_QUERY = '(max-width: 767px)'
+  let skipTransition = false
 
-  let activeTransitionType: TransitionType = 'fade'
-  let activeTransitionContext: TransitionRuntimeContext = {
-    fromPath: '/',
-    toPath: '/',
-    isMobile: false,
-    prefersReducedMotion: false,
-  }
-
-  // ─── Path helpers ──────────────────────────────────────────
-
-  const normalizePath = (path: string) => path.replace(/\/+$/, '') || '/'
-
-  // TODO: Add project-specific route matchers here, e.g.:
-  // const isProjectPath = (path: string) => path.startsWith('/projects/')
-
-  // ─── Transition type resolution ────────────────────────────
-
-  /**
-   * Determine which transition to play based on navigation context.
-   *
-   * Priority:
-   * 1. Explicit types passed via navigate(url, { info: 'skip' })
-   * 2. Route-pattern matching (add project-specific rules here)
-   * 3. Default fallback: 'fade'
-   */
-  function getTransitionType(event: TransitionBeforePreparationEvent): TransitionType {
-    // Uncomment and use these when adding route-based transition logic:
-    // const fromPath = normalizePath(event.from?.pathname ?? window.location.pathname)
-    // const toPath = normalizePath(event.to?.pathname ?? '')
-
-    // Explicit overrides via navigate(url, { info })
-    if (event.info === 'skip') return 'none'
-
-    // TODO: Add route-based type inference here, e.g.:
-    // if (isProjectPath(fromPath) && isProjectPath(toPath)) return 'projectToProject'
-
-    return 'fade'
-  }
-
-  // ─── Runtime context ───────────────────────────────────────
-
-  function buildTransitionContext(fromPath: string, toPath: string): TransitionRuntimeContext {
-    return {
-      fromPath,
-      toPath,
-      isMobile: window.matchMedia(MOBILE_BREAKPOINT_QUERY).matches,
-      prefersReducedMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
-    }
-  }
-
-  function getTransitionContainer(): HTMLElement {
+  function getMain(): HTMLElement {
     return document.querySelector('main') || document.body
   }
 
-  // ─── Lifecycle handlers ────────────────────────────────────
-
   /**
-   * Before preparation: determine type, run exit animation, then load new page.
-   * The exit animation runs in parallel with the page fetch for perceived speed.
+   * Before preparation: fade out current page, then load the new one.
+   * The fade runs in parallel with the page fetch for perceived speed.
    */
   function onBeforePrep(event: TransitionBeforePreparationEvent) {
-    const fromPath = normalizePath(event.from?.pathname ?? window.location.pathname)
-    const toPath = normalizePath(event.to?.pathname ?? '')
-    activeTransitionType = getTransitionType(event)
-    activeTransitionContext = buildTransitionContext(fromPath, toPath)
-
-    if (activeTransitionType === 'none') return
+    skipTransition = event.info === 'skip'
+    if (skipTransition) return
 
     const originalLoader = event.loader
 
     event.loader = async () => {
+      const main = getMain()
+      await fadeOut(main)
+      await originalLoader()
       window.lenis?.stop()
-      cleanupScrollTriggers()
-
-      const container = getTransitionContainer()
-      const loadPromise = originalLoader()
-      await playExitTransition(activeTransitionType, container, activeTransitionContext)
-      await loadPromise
     }
   }
 
   /**
-   * After swap: scroll to top, play entrance animation, restart Lenis.
+   * Before swap: pre-apply fade-in class on the incoming document's <main>
+   * so the CSS animation plays as soon as it enters the DOM.
    */
-  function onAfterSwap() {
-    window.lenis?.scrollTo(0, { immediate: true })
+  function onBeforeSwap(event: TransitionBeforeSwapEvent) {
+    if (skipTransition) return
 
-    const container = getTransitionContainer()
-    playEnterTransition(activeTransitionType, container, activeTransitionContext)
-      .catch(console.error)
-      .finally(() => {
-        window.lenis?.start()
-      })
+    const newMain = event.newDocument.querySelector('main')
+    if (newMain) newMain.classList.add(FADE_IN_CLASS)
   }
 
   /**
-   * Page load: refresh ScrollTrigger positions after new content renders.
+   * After swap: scroll to top, restart Lenis.
+   * The fade-in animation is already playing via CSS @keyframes.
    */
-  function onPageLoad() {
-    requestAnimationFrame(() => {
-      refreshScrollTriggers()
-    })
+  function onAfterSwap() {
+    window.lenis?.scrollTo(0, { immediate: true })
+    window.lenis?.start()
+
+    if (!skipTransition) {
+      const main = getMain()
+      setTimeout(() => main.classList.remove(FADE_IN_CLASS), FADE_DURATION_MS)
+    }
   }
 
   document.addEventListener('astro:before-preparation', onBeforePrep)
+  document.addEventListener('astro:before-swap', onBeforeSwap)
   document.addEventListener('astro:after-swap', onAfterSwap)
-  document.addEventListener('astro:page-load', onPageLoad)
 </script>

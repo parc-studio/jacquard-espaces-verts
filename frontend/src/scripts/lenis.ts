@@ -7,18 +7,15 @@ declare global {
 }
 
 let lenis: Lenis | null = null
-export const LENIS_DESTROY_EVENT = 'lenis:destroy'
 
 /**
  * Create a new Lenis smooth-scroll instance.
- * RAF is NOT started here — GSAP's ticker drives lenis.raf()
- * via syncLenisWithScrollTrigger() in gsap.ts.
  */
 export function initLenis(): Lenis {
   if (lenis) lenis.destroy()
 
   lenis = new Lenis({
-    autoRaf: false,
+    autoRaf: true,
     lerp: 0.15,
     wheelMultiplier: 0.9,
     touchMultiplier: 0.9,
@@ -39,8 +36,6 @@ export function getLenis(): Lenis | null {
  * For soft navigations within the app, initLenis() re-initialises automatically.
  */
 export function destroyLenis(): void {
-  window.dispatchEvent(new Event(LENIS_DESTROY_EVENT))
-
   if (lenis) {
     lenis.destroy()
     lenis = null

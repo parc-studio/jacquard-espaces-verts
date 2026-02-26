@@ -26,6 +26,8 @@ interface Props {
   isPreview?: boolean
   pagePath?: string
   hideFooter?: boolean
+  hideHeader?: boolean
+  contentBackground?: string
 }
 
 const {
@@ -35,6 +37,8 @@ const {
   isPreview = false,
   pagePath = '',
   hideFooter = false,
+  hideHeader = false,
+  contentBackground,
 } = Astro.props
 
 let settings = null
@@ -90,15 +94,24 @@ const agentationMode = isDevMode ? 'dev' : 'review'
   <body>
     <App client:load />
     <MainGrid client:only="svelte" />
-    <header class="site-header">
-      <a href="/" class="header-logo" aria-label="Jacquard Espaces Verts — Accueil">
-        <JacquardLogo />
-      </a>
-      <nav class="header-nav">
-        <a href="/about">À propos</a>
-      </nav>
-    </header>
-    <div class="site-content">
+    {
+      !hideHeader && (
+        <header class="site-header">
+          <a href="/" class="header-logo" aria-label="Jacquard Espaces Verts — Accueil">
+            <JacquardLogo />
+          </a>
+          <nav class="header-nav">
+            <a href="/about" class={pagePath === '/about' ? 'is-active' : ''}>
+              À propos
+            </a>
+          </nav>
+        </header>
+      )
+    }
+    <div
+      class="site-content"
+      style={contentBackground ? `background: ${contentBackground}` : undefined}
+    >
       <slot />
     </div>
     {
@@ -148,7 +161,7 @@ const agentationMode = isDevMode ? 'dev' : 'review'
 </html>
 
 <style is:global>
-  /* Disable default View Transition root animations — GSAP controls these */
+  /* Disable default View Transition root animations — CSS fade handles transitions */
   ::view-transition-old(root),
   ::view-transition-new(root) {
     animation: none;
@@ -192,6 +205,10 @@ const agentationMode = isDevMode ? 'dev' : 'review'
   .header-nav a:hover,
   .header-nav a:focus-visible {
     opacity: 0.6;
+  }
+
+  .header-nav a.is-active {
+    opacity: 0.2;
   }
 
   .site-content {

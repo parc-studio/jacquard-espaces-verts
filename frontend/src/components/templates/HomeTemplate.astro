@@ -6,6 +6,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro'
 import { getHomePage } from '../../data/sanity'
 import HomeProjectGallery from '../media/HomeProjectGallery.svelte'
 import Media from '../media/Media.svelte'
+import { slugify } from '../../utils'
 
 interface Props {
   isPreview?: boolean
@@ -210,7 +211,7 @@ function formatSubtitle(location: string, anneeDebut?: number, anneeFin?: number
               <div class="section-expertise-content">
                 <h2>{expertiseTitle}</h2>
                 <p>{expertiseDescription}</p>
-                <a href="/about" class="expertise-cta">
+                <a href={`/about#${slugify(expertiseTitle)}`} class="expertise-cta">
                   En Savoir plus
                 </a>
               </div>
@@ -235,17 +236,31 @@ function formatSubtitle(location: string, anneeDebut?: number, anneeFin?: number
         )
       })
     }
+
+    <div class="home-footer-backdrop" aria-hidden="true"></div>
   </main>
 
   <style>
     .home-page {
+      position: relative;
       display: flex;
       flex-direction: column;
-      background-color: var(--color-primary);
+      background-color: var(--color-white);
+    }
+
+    .home-footer-backdrop {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: var(--size-20);
+      background: var(--color-primary);
+      pointer-events: none;
     }
 
     .section {
       position: relative;
+      z-index: 1;
       background: var(--color-white);
     }
 
@@ -339,7 +354,7 @@ function formatSubtitle(location: string, anneeDebut?: number, anneeFin?: number
     }
 
     .section-expertise-content {
-      grid-column: 3 / 10;
+      grid-column: 3 / 11;
       text-align: center;
       display: grid;
       gap: 40px;

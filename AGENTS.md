@@ -28,7 +28,6 @@
 - Keep GROQ in `frontend/src/data/sanity/`, use `defineQuery()` + fragments; no inline GROQ in pages/components.
 - Use generated types from `frontend/sanity.types.ts`; do not handwrite duplicate GROQ response interfaces.
 - After schema/query/fragment edits run `pnpm types`; never manually edit generated files (`studio/schema.json`, `frontend/sanity.types.ts`).
-- Import GSAP only via `@/scripts/gsap`; scope ScrollTrigger with `gsap.context()` and clean up on unmount.
 - Lenis is accessed via `getLenis()` from `@/scripts/lenis` (initialized in `App.svelte`).
 
 ## TS + imports + safety

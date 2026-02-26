@@ -4,12 +4,27 @@ import { getAllProjects } from '@/data/sanity'
 
 export async function getStaticPaths() {
   const projects = await getAllProjects()
-  return (projects ?? []).map((project) => ({
-    params: { slug: project.slug?.current },
-  }))
+  const list = projects ?? []
+  return list.map((project, index) => {
+    const nextIndex = (index + 1) % list.length
+    const next = list[nextIndex]
+    return {
+      params: { slug: project.slug?.current },
+      props: {
+        nextProject: {
+          titre: next?.titre,
+          slug: next?.slug,
+          localisation: next?.localisation,
+          anneeDebut: next?.anneeDebut,
+          anneeFin: next?.anneeFin,
+        },
+      },
+    }
+  })
 }
 
 const { slug } = Astro.params
+const { nextProject } = Astro.props
 ---
 
-<ProjectTemplate currentSlug={slug!} isPreview={false} />
+<ProjectTemplate currentSlug={slug!} isPreview={false} nextProject={nextProject} />

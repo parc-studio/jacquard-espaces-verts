@@ -4,11 +4,17 @@
  *
  * Self-fetching template for the about page.
  * Fetches its own data based on preview mode.
+ *
+ * Layout (desktop 12-col grid):
+ *   Col 1–3: Expertises list (title + description)
+ *   Col 5–7: About description + contact info + credits
+ *   Col 9–12: Cover image (sticky)
  */
 import BaseLayout from '../../layouts/BaseLayout.astro'
-import { getAboutPage } from '../../data/sanity'
+import { getAboutPage, getExpertises, getSettings } from '../../data/sanity'
 import Media from '../media/Media.svelte'
 import PortableText from '../portable-text/PortableText.svelte'
+import { slugify } from '../../utils'
 
 interface Props {
   isPreview?: boolean
@@ -16,7 +22,11 @@ interface Props {
 
 const { isPreview = false } = Astro.props
 
-const aboutPage = await getAboutPage({ preview: isPreview })
+const [aboutPage, expertises, settings] = await Promise.all([
+  getAboutPage({ preview: isPreview }),
+  getExpertises({ preview: isPreview }),
+  getSettings({ preview: isPreview }),
+])
 
 const title = aboutPage?.seo?.title || 'À propos'
 const description = aboutPage?.seo?.description || ''
@@ -30,66 +40,219 @@ const description = aboutPage?.seo?.description || ''
   hideFooter
 >
   <main class="about main-grid">
-    <section class="about-content">
+    {/* Section 1 — Expertises */}
+    <section class="expertises">
+      {
+        expertises?.map((expertise) => (
+          <div class="expertise" id={slugify(expertise.title)} data-expertise>
+            <h2 class="expertise-title">{expertise.title}</h2>
+            {expertise.description && <p class="expertise-description">{expertise.description}</p>}
+          </div>
+        ))
+      }
+    </section>
+
+    {/* Section 2 — About + Contacts */}
+    <section class="info" data-info>
       {
         aboutPage?.content && (
-          <div class="body">
-            <PortableText value={aboutPage.content} client:load />
+          <div class="info-block">
+            <h2 class="info-title">À propos</h2>
+            <div class="info-body">
+              <PortableText value={aboutPage.content} client:load />
+            </div>
           </div>
         )
       }
 
       {
-        aboutPage?.coverImage && (
-          <div class="cover">
-            <Media
-              media={{ image: aboutPage.coverImage }}
-              layout="cover"
-              sizes="(max-width: 1023px) 100vw, 33vw"
-              client:load
-            />
+        settings && (
+          <div class="info-block">
+            <h2 class="info-title">Contacts</h2>
+            <div class="contact-details">
+              {settings.telephone && <p>{settings.telephone}</p>}
+              {settings.email && <p>{settings.email}</p>}
+              {settings.instagram && <p>@{settings.instagram.replace(/^@/, '')}</p>}
+            </div>
+            {settings.address && (
+              <div class="contact-address">
+                <p>{settings.address}</p>
+              </div>
+            )}
           </div>
         )
       }
+
+      <div class="info-block">
+        <h2 class="info-title">Crédits</h2>
+        <p>Parc [Web Design + Development]</p>
+      </div>
     </section>
+
+    {/* Section 3 — Cover image */}
+    {
+      aboutPage?.coverImage && (
+        <div class="cover">
+          <Media
+            media={{ image: aboutPage.coverImage }}
+            layout="cover"
+            sizes="(max-width: 768px) 100vw, 33vw"
+            client:load
+          />
+        </div>
+      )
+    }
   </main>
 
   <style>
     .about {
-      padding-block: var(--size-24) var(--size-64);
+      padding: 50px var(--size-20) var(--size-20);
+      gap: var(--size-40);
+      background: var(--color-white);
+      min-height: 100vh;
     }
 
-    .about-content {
+    /* ------------------------------------------------
+     * Section 1 — Expertises
+     * ------------------------------------------------ */
+    .expertises {
       grid-column: 1 / -1;
-      display: grid;
-      gap: var(--size-24);
+      display: flex;
+      flex-direction: column;
+      gap: var(--size-40);
     }
 
-    .body {
+    .expertise-title {
+      text-transform: uppercase;
+      margin-bottom: var(--size-16);
+    }
+
+    /* ------------------------------------------------
+     * Section 2 — Info (about + contacts + credits)
+     * ------------------------------------------------ */
+    .info {
       grid-column: 1 / -1;
+      display: flex;
+      flex-direction: column;
+      gap: var(--size-40);
     }
 
+    .info-title {
+      text-transform: uppercase;
+      margin-bottom: var(--size-16);
+    }
+
+    .contact-details {
+      display: flex;
+      flex-direction: column;
+      gap: var(--size-10);
+    }
+
+    .contact-address {
+      margin-top: var(--size-40);
+    }
+
+    /* ------------------------------------------------
+     * Hash-highlight state
+     * ------------------------------------------------ */
+    .about.has-highlight .info {
+      opacity: 0.2;
+      transition: opacity var(--transition-smooth);
+    }
+
+    .about.has-highlight .expertise {
+      opacity: 0.2;
+      transition: opacity var(--transition-smooth);
+    }
+
+    .about.has-highlight .expertise.is-highlighted {
+      opacity: 1;
+    }
+
+    /* ------------------------------------------------
+     * Section 3 — Cover image
+     * ------------------------------------------------ */
     .cover {
       grid-column: 1 / -1;
       aspect-ratio: 4 / 3;
       overflow: hidden;
-      max-width: 460px;
     }
 
-    @media (min-width: 1024px) {
-      .about-content {
-        grid-template-columns: repeat(8, minmax(0, 1fr));
+    /* ------------------------------------------------
+     * Desktop layout (12 cols)
+     * ------------------------------------------------ */
+    @media (min-width: 769px) {
+      .about {
+        padding: var(--size-20);
       }
 
-      .body {
-        grid-column: 1 / 6;
+      .expertises {
+        grid-column: 1 / span 3;
+      }
+
+      .info {
+        grid-column: 5 / span 3;
       }
 
       .cover {
-        grid-column: 6 / -1;
-        justify-self: end;
-        width: 100%;
+        grid-column: 9 / -1;
+        position: sticky;
+        top: var(--size-20);
+        align-self: start;
+        aspect-ratio: auto;
+        height: fit-content;
       }
     }
   </style>
+
+  <script>
+    function initHighlight() {
+      const hash = window.location.hash.slice(1)
+      if (!hash) return
+
+      const target = document.getElementById(hash)
+      if (!target || !target.hasAttribute('data-expertise')) return
+
+      const main = document.querySelector<HTMLElement>('.about')
+      if (!main) return
+
+      // Apply faded state
+      main.classList.add('has-highlight')
+      target.classList.add('is-highlighted')
+
+      // Scroll target into view
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+
+      function clearHighlight() {
+        main!.classList.remove('has-highlight')
+        target!.classList.remove('is-highlighted')
+        window.removeEventListener('click', onClickOutside)
+        window.removeEventListener('scroll', onScroll)
+      }
+
+      // Desktop: click anywhere else dismisses
+      function onClickOutside(e: MouseEvent) {
+        if (!target!.contains(e.target as Node)) {
+          clearHighlight()
+        }
+      }
+
+      // Mobile: any scroll dismisses
+      function onScroll() {
+        clearHighlight()
+      }
+
+      // Delay listeners so they don't fire immediately
+      requestAnimationFrame(() => {
+        window.addEventListener('click', onClickOutside)
+        if (window.innerWidth <= 768) {
+          window.addEventListener('scroll', onScroll, { once: true })
+        }
+      })
+    }
+
+    // Run on initial load and on Astro client-side navigations
+    initHighlight()
+    document.addEventListener('astro:after-swap', initHighlight)
+  </script>
 </BaseLayout>
