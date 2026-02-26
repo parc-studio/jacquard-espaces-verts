@@ -63,7 +63,7 @@ export type HomeSectionProjectPair = {
 export type HomeSectionProjectReference = {
   _type: 'homeSectionProjectReference'
   project: ProjectReference
-  displayMode: 'fullScreenImage' | 'carouselImage'
+  displayMode: 'fullScreenImage' | 'galleryImage'
 }
 
 export type HomeSectionMediaCarousel = {
@@ -628,7 +628,7 @@ export type HOME_PAGE_QUERY_RESULT = {
             caption: null
           }>
         }
-        displayMode: 'carouselImage' | 'fullScreenImage'
+        displayMode: 'fullScreenImage' | 'galleryImage'
       }
   >
   seo: {

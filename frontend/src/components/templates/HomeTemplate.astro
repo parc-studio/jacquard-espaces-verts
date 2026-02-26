@@ -4,6 +4,7 @@
  */
 import BaseLayout from '../../layouts/BaseLayout.astro'
 import { getHomePage } from '../../data/sanity'
+import HomeProjectGallery from '../media/HomeProjectGallery.svelte'
 import Media from '../media/Media.svelte'
 
 interface Props {
@@ -38,6 +39,8 @@ const description = homePage?.seo?.description || 'Jacquard Espaces Verts'
 
         if (section._type === 'homeSectionProjectReference') {
           const project = section.project
+          const displayMode = section.displayMode as string | undefined
+          const isGalleryMode = displayMode === 'galleryImage' || displayMode === 'carouselImage'
           if (!project) {
             return (
               <section
@@ -63,6 +66,26 @@ const description = homePage?.seo?.description || 'Jacquard Espaces Verts'
           const href = project.slug?.current ? `/projects/${project.slug.current}` : '#'
           const projectTitle = project.titre || 'Projet sans titre'
           const projectLocation = project.localisation || 'Localisation à venir'
+
+          if (isGalleryMode) {
+            return (
+              <section
+                class:list={[
+                  'section',
+                  'section-project-gallery',
+                  { 'section-last': isLastSection },
+                ]}
+              >
+                <HomeProjectGallery
+                  images={project.mediaGallery || []}
+                  href={href}
+                  title={projectTitle}
+                  isLastSection={isLastSection}
+                  client:load
+                />
+              </section>
+            )
+          }
 
           return (
             <section
@@ -232,6 +255,10 @@ const description = homePage?.seo?.description || 'Jacquard Espaces Verts'
       min-height: 50vh;
     }
 
+    .section-project-gallery {
+      min-height: 50vh;
+    }
+
     .project-block-link {
       display: block;
       position: relative;
@@ -359,7 +386,8 @@ const description = homePage?.seo?.description || 'Jacquard Espaces Verts'
 
     @media (max-width: 768px) {
       .section-project-fullscreen.section-last,
-      .section-project-pair.section-last {
+      .section-project-pair.section-last,
+      .section-project-gallery.section-last {
         border-radius: 0 0 var(--size-20) var(--size-20);
         overflow: hidden;
       }

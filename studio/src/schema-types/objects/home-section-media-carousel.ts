@@ -4,7 +4,7 @@ import { mediaAssetSource } from 'sanity-plugin-media'
 
 export const homeSectionMediaCarouselType = defineType({
   name: 'homeSectionMediaCarousel',
-  title: 'Carrousel média',
+  title: 'Galerie média',
   type: 'object',
   icon: ImagesIcon,
   fields: [
@@ -51,7 +51,7 @@ export const homeSectionMediaCarouselType = defineType({
     },
     prepare({ title, subtitle, media, count }) {
       return {
-        title: title || 'Carrousel média',
+        title: title || 'Galerie média',
         subtitle: subtitle || `${count?.length || 0} images`,
         media,
       }

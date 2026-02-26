@@ -21,7 +21,7 @@ export const homeSectionProjectReferenceType = defineType({
       options: {
         list: [
           { title: 'Image plein écran', value: 'fullScreenImage' },
-          { title: 'Image carrousel', value: 'carouselImage' },
+          { title: 'Image galerie', value: 'galleryImage' },
         ],
         layout: 'radio',
         direction: 'horizontal',
@@ -39,7 +39,7 @@ export const homeSectionProjectReferenceType = defineType({
     prepare({ title, mode, media }) {
       return {
         title: title || 'Référence projet',
-        subtitle: mode === 'carouselImage' ? 'Mode: Image carrousel' : 'Mode: Image plein écran',
+        subtitle: mode === 'galleryImage' ? 'Mode: Image galerie' : 'Mode: Image plein écran',
         media,
       }
     },

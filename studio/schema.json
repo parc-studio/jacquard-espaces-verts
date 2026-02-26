@@ -253,7 +253,7 @@
               },
               {
                 "type": "string",
-                "value": "carouselImage"
+                "value": "galleryImage"
               }
             ]
           },
