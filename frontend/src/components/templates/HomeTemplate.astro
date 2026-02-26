@@ -18,6 +18,15 @@ const sections = homePage?.sections ?? []
 
 const title = homePage?.seo?.title || homePage?.title || 'Accueil'
 const description = homePage?.seo?.description || 'Jacquard Espaces Verts'
+
+function formatSubtitle(location: string, anneeDebut?: number, anneeFin?: number | null): string {
+  const parts: string[] = []
+  if (location) parts.push(location)
+  if (anneeDebut) {
+    parts.push(anneeFin && anneeFin !== anneeDebut ? `${anneeDebut}–${anneeFin}` : `${anneeDebut}`)
+  }
+  return parts.join(', ')
+}
 ---
 
 <BaseLayout title={title} description={description} isPreview={isPreview} pagePath="/">
@@ -80,7 +89,10 @@ const description = homePage?.seo?.description || 'Jacquard Espaces Verts'
                   images={project.mediaGallery || []}
                   href={href}
                   title={projectTitle}
-                  isLastSection={isLastSection}
+                  location={projectLocation}
+                  anneeDebut={project.anneeDebut}
+                  anneeFin={project.anneeFin}
+                  expertises={project.expertises}
                   client:load
                 />
               </section>
@@ -101,14 +113,14 @@ const description = homePage?.seo?.description || 'Jacquard Espaces Verts'
                     <Media media={{ image: mainImage }} layout="cover" client:visible />
                     <div class="overlay-content">
                       <h2>{projectTitle}</h2>
-                      <p>{projectLocation}</p>
+                      <p>{formatSubtitle(projectLocation, project.anneeDebut, project.anneeFin)}</p>
                     </div>
                   </>
                 ) : (
                   <div class="project-media-fallback">
                     <div class="overlay-content overlay-content-static">
                       <h2>{projectTitle}</h2>
-                      <p>{projectLocation}</p>
+                      <p>{formatSubtitle(projectLocation, project.anneeDebut, project.anneeFin)}</p>
                     </div>
                   </div>
                 )}
@@ -147,6 +159,11 @@ const description = homePage?.seo?.description || 'Jacquard Espaces Verts'
                 const href = project.slug?.current ? `/projects/${project.slug.current}` : '#'
                 const projectTitle = project.titre || 'Projet sans titre'
                 const projectLocation = project.localisation || 'Localisation à venir'
+                const pairSubtitle = formatSubtitle(
+                  projectLocation,
+                  project.anneeDebut,
+                  project.anneeFin
+                )
                 const mainImage = project.mediaGallery?.[0]
 
                 return (
@@ -156,14 +173,14 @@ const description = homePage?.seo?.description || 'Jacquard Espaces Verts'
                         <Media media={{ image: mainImage }} layout="cover" client:visible />
                         <div class="overlay-content">
                           <h2>{projectTitle}</h2>
-                          <p>{projectLocation}</p>
+                          <p>{pairSubtitle}</p>
                         </div>
                       </>
                     ) : (
                       <div class="project-media-fallback">
                         <div class="overlay-content overlay-content-static">
                           <h2>{projectTitle}</h2>
-                          <p>{projectLocation}</p>
+                          <p>{pairSubtitle}</p>
                         </div>
                       </div>
                     )}

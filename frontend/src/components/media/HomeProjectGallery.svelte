@@ -1,22 +1,48 @@
 <script lang="ts">
-  import type { HOME_PAGE_QUERY_RESULT } from '../../../sanity.types'
   import { onMount } from 'svelte'
+  import type { HOME_PAGE_QUERY_RESULT } from '../../../sanity.types'
 
   import Media from './Media.svelte'
 
   type HomeSection = NonNullable<HOME_PAGE_QUERY_RESULT>['sections'][number]
   type ProjectReferenceSection = Extract<HomeSection, { _type: 'homeSectionProjectReference' }>
   type GalleryImage = ProjectReferenceSection['project']['mediaGallery'][number]
+  type Expertise = NonNullable<ProjectReferenceSection['project']['expertises']>[number]
 
   interface Props {
     images: GalleryImage[]
     href: string
     title: string
+    location?: string
+    anneeDebut?: number
+    anneeFin?: number | null
+    expertises?: Expertise[] | null
     autoplayIntervalMs?: number
-    isLastSection?: boolean
   }
 
-  let { images, href, title, autoplayIntervalMs = 3000, isLastSection = false }: Props = $props()
+  let {
+    images,
+    href,
+    title,
+    location = '',
+    anneeDebut,
+    anneeFin,
+    expertises,
+    autoplayIntervalMs = 3000,
+  }: Props = $props()
+
+  let yearsLabel = $derived.by(() => {
+    if (!anneeDebut) return ''
+    if (anneeFin && anneeFin !== anneeDebut) return `${anneeDebut}–${anneeFin}`
+    return `${anneeDebut}`
+  })
+
+  let subtitle = $derived.by(() => {
+    const parts: string[] = []
+    if (location) parts.push(location)
+    if (yearsLabel) parts.push(yearsLabel)
+    return parts.join(', ')
+  })
 
   let currentIndex = $state(0)
   let isPaused = $state(false)
@@ -100,14 +126,17 @@
 </script>
 
 <div class="home-project-gallery" style={`--gallery-columns: ${desktopColumns};`}>
+  {#if expertises?.length}
+    <div class="gallery-expertises">
+      {#each expertises as expertise (expertise._id)}
+        <span class="gallery-expertise-label">{expertise.title}</span>
+      {/each}
+    </div>
+  {/if}
+
   <div class="home-project-gallery-desktop" aria-label={`Galerie ${title}`}>
     {#each visibleDesktopImages as image (image._key)}
-      <a
-        {href}
-        class={isLastSection
-          ? 'home-project-gallery-item is-last-section'
-          : 'home-project-gallery-item'}
-      >
+      <a {href} class="home-project-gallery-item">
         <Media media={{ image }} layout="cover" sizes="(max-width: 768px) 100vw, 25vw" />
       </a>
     {/each}
@@ -127,48 +156,64 @@
       style={`transform: translate3d(-${currentIndex * 100}%, 0, 0);`}
     >
       {#each images as image (image._key)}
-        <a
-          {href}
-          class={isLastSection
-            ? 'home-project-gallery-slide is-last-section'
-            : 'home-project-gallery-slide'}
-        >
+        <a {href} class="home-project-gallery-slide">
           <Media media={{ image }} layout="cover" sizes="100vw" />
         </a>
       {/each}
     </div>
   </div>
+
+  <div class="gallery-info">
+    <span class="gallery-info-title">{title}</span>
+    {#if subtitle}
+      <span class="gallery-info-subtitle">{subtitle}</span>
+    {/if}
+  </div>
 </div>
 
 <style>
   .home-project-gallery {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--size-40);
     width: 100%;
-    height: 100%;
+    padding-block: 100px;
+    background: var(--color-white);
+  }
+
+  .gallery-expertises {
+    display: flex;
+    gap: var(--size-10);
+    justify-content: center;
+    text-align: center;
+    text-transform: uppercase;
+    font-size: var(--text-16);
+    font-weight: var(--font-weight-500);
+    line-height: 1.125;
+    font-feature-settings: var(--font-feature-settings-default);
+  }
+
+  .gallery-expertise-label {
+    white-space: nowrap;
   }
 
   .home-project-gallery-desktop {
-    display: grid;
-    grid-template-columns: repeat(var(--gallery-columns), minmax(0, 1fr));
+    display: flex;
     width: 100%;
-    height: 100%;
-    min-height: 50vh;
   }
 
   .home-project-gallery-item {
     display: block;
-    min-height: 50vh;
+    flex: 1 0 0;
+    aspect-ratio: 500 / 400;
     overflow: hidden;
-  }
-
-  .home-project-gallery-item.is-last-section {
-    border-radius: 0 0 var(--size-20) var(--size-20);
   }
 
   .home-project-gallery-mobile {
     display: none;
     overflow: hidden;
     width: 100%;
-    min-height: 50vh;
   }
 
   .home-project-gallery-track {
@@ -180,12 +225,26 @@
 
   .home-project-gallery-slide {
     flex: 0 0 100%;
-    min-height: 50vh;
+    aspect-ratio: 500 / 400;
     overflow: hidden;
   }
 
-  .home-project-gallery-slide.is-last-section {
-    border-radius: 0;
+  .gallery-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--size-10);
+    text-align: center;
+    text-transform: uppercase;
+    font-size: var(--text-16);
+    font-weight: var(--font-weight-500);
+    line-height: 1.125;
+    font-feature-settings: var(--font-feature-settings-default);
+  }
+
+  .gallery-info-title,
+  .gallery-info-subtitle {
+    color: var(--color-black);
   }
 
   @media (max-width: 768px) {

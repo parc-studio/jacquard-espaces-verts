@@ -120,6 +120,9 @@ export const homeSectionFragment = `
       titre,
       localisation,
       slug,
+      anneeDebut,
+      anneeFin,
+      expertises[]->{ ${expertiseFragment} },
       mediaGallery[] {
         ${galleryItemFragment}
       }
@@ -133,6 +136,8 @@ export const homeSectionFragment = `
       titre,
       localisation,
       slug,
+      anneeDebut,
+      anneeFin,
       mediaGallery[] {
         ${galleryItemFragment}
       }
