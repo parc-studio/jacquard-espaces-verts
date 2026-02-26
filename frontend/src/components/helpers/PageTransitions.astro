@@ -9,25 +9,25 @@
 ---
 
 <script>
-  import { FADE_DURATION_MS } from '@/scripts/transitions'
+  // import { FADE_DURATION_MS } from '@/scripts/transitions'
 
-  /**
-   * Before preparation: stop Lenis so scroll position is frozen
-   * while the View Transition snapshot is captured.
-   */
-  function onBeforePrep() {
-    window.lenis?.stop()
-  }
+  // /**
+  //  * Before preparation: stop Lenis so scroll position is frozen
+  //  * while the View Transition snapshot is captured.
+  //  */
+  // function onBeforePrep() {
+  //   window.lenis?.stop()
+  // }
 
-  /**
-   * After swap: scroll to top, restart Lenis once the new DOM is in place.
-   * Wait for the full transition (fade-out + fade-in) before restarting.
-   */
-  function onAfterSwap() {
-    window.lenis?.scrollTo(0, { immediate: true })
-    setTimeout(() => window.lenis?.start(), FADE_DURATION_MS * 2)
-  }
+  // /**
+  //  * After swap: scroll to top, restart Lenis once the new DOM is in place.
+  //  * Wait for the full transition (fade-out + fade-in) before restarting.
+  //  */
+  // function onAfterSwap() {
+  //   window.lenis?.scrollTo(0, { immediate: true })
+  //   setTimeout(() => window.lenis?.start(), FADE_DURATION_MS * 2)
+  // }
 
-  document.addEventListener('astro:before-preparation', onBeforePrep)
-  document.addEventListener('astro:after-swap', onAfterSwap)
+  // document.addEventListener('astro:before-preparation', onBeforePrep)
+  // document.addEventListener('astro:after-swap', onAfterSwap)
 </script>

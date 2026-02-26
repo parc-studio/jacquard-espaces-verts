@@ -163,12 +163,12 @@ const agentationMode = isDevMode ? 'dev' : 'review'
 <style is:global>
   /* Sequential fade-out → fade-in page transition */
   ::view-transition-old(root) {
-    animation: var(--transition-duration) ease both fade-out;
+    animation: var(--transition-duration) ease forwards fade-out;
     z-index: 2;
   }
 
   ::view-transition-new(root) {
-    animation: var(--transition-duration) ease var(--transition-duration) both fade-in;
+    animation: var(--transition-duration) ease var(--transition-delay) forwards fade-in;
     z-index: 1;
   }
 
