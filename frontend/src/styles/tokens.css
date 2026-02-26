@@ -28,6 +28,7 @@
   --size-42: 2.625rem; /* 42px */
   --size-46: 2.875rem; /* 46px */
   --size-48: 3rem; /* 48px */
+  --size-50: 3.125rem; /* 50px */
   --size-64: 4rem; /* 64px */
   --size-96: 6rem; /* 96px */
   --size-128: 8rem; /* 128px */
@@ -85,6 +86,7 @@
   --transition-base: 250ms ease;
   --transition-slow: 350ms ease;
   --transition-smooth: 400ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-duration: 400ms; /* page fade — keep in sync with FADE_DURATION_MS */
 
   /* Border Radius */
   --radius-sm: 0.25rem; /* 4px */

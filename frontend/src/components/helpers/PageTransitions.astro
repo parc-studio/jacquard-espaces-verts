@@ -2,73 +2,32 @@
 /**
  * PageTransitions
  *
- * CSS-class-based page fade transition that works alongside
- * Astro's View Transitions API (ClientRouter).
- *
- * - Adds `.fade-out` to `<main>` before DOM swap (CSS handles opacity)
- * - Removes `.fade-out` after swap to fade the new page in
- * - Manages Lenis + ScrollTrigger lifecycle around navigations
+ * Manages Lenis scroll lifecycle around Astro View Transitions.
+ * The actual fade-out → fade-in animation is handled entirely by
+ * ::view-transition-old/new(root) CSS in BaseLayout.
  */
 ---
 
 <script>
-  import type {
-    TransitionBeforePreparationEvent,
-    TransitionBeforeSwapEvent,
-  } from 'astro:transitions/client'
-
-  import { FADE_DURATION_MS, FADE_IN_CLASS, fadeOut } from '@/scripts/transitions'
-
-  let skipTransition = false
-
-  function getMain(): HTMLElement {
-    return document.querySelector('main') || document.body
-  }
+  import { FADE_DURATION_MS } from '@/scripts/transitions'
 
   /**
-   * Before preparation: fade out current page, then load the new one.
-   * The fade runs in parallel with the page fetch for perceived speed.
+   * Before preparation: stop Lenis so scroll position is frozen
+   * while the View Transition snapshot is captured.
    */
-  function onBeforePrep(event: TransitionBeforePreparationEvent) {
-    skipTransition = event.info === 'skip'
-    if (skipTransition) return
-
-    const originalLoader = event.loader
-
-    event.loader = async () => {
-      const main = getMain()
-      await fadeOut(main)
-      await originalLoader()
-      window.lenis?.stop()
-    }
+  function onBeforePrep() {
+    window.lenis?.stop()
   }
 
   /**
-   * Before swap: pre-apply fade-in class on the incoming document's <main>
-   * so the CSS animation plays as soon as it enters the DOM.
-   */
-  function onBeforeSwap(event: TransitionBeforeSwapEvent) {
-    if (skipTransition) return
-
-    const newMain = event.newDocument.querySelector('main')
-    if (newMain) newMain.classList.add(FADE_IN_CLASS)
-  }
-
-  /**
-   * After swap: scroll to top, restart Lenis.
-   * The fade-in animation is already playing via CSS @keyframes.
+   * After swap: scroll to top, restart Lenis once the new DOM is in place.
+   * Wait for the full transition (fade-out + fade-in) before restarting.
    */
   function onAfterSwap() {
     window.lenis?.scrollTo(0, { immediate: true })
-    window.lenis?.start()
-
-    if (!skipTransition) {
-      const main = getMain()
-      setTimeout(() => main.classList.remove(FADE_IN_CLASS), FADE_DURATION_MS)
-    }
+    setTimeout(() => window.lenis?.start(), FADE_DURATION_MS * 2)
   }
 
   document.addEventListener('astro:before-preparation', onBeforePrep)
-  document.addEventListener('astro:before-swap', onBeforeSwap)
   document.addEventListener('astro:after-swap', onAfterSwap)
 </script>

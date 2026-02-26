@@ -161,10 +161,35 @@ const agentationMode = isDevMode ? 'dev' : 'review'
 </html>
 
 <style is:global>
-  /* Disable default View Transition root animations — CSS fade handles transitions */
-  ::view-transition-old(root),
+  /* Sequential fade-out → fade-in page transition */
+  ::view-transition-old(root) {
+    animation: var(--transition-duration) ease both fade-out;
+    z-index: 2;
+  }
+
   ::view-transition-new(root) {
-    animation: none;
+    animation: var(--transition-duration) ease var(--transition-duration) both fade-in;
+    z-index: 1;
+  }
+
+  @keyframes fade-out {
+    to {
+      opacity: 0;
+    }
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    ::view-transition-old(root),
+    ::view-transition-new(root) {
+      animation-duration: 0s;
+      animation-delay: 0s;
+    }
   }
 
   /* ---- Header ---- */
@@ -178,7 +203,7 @@ const agentationMode = isDevMode ? 'dev' : 'review'
     display: flex;
     align-items: center;
     justify-content: space-between;
-    height: 50px;
+    height: var(--size-50);
     padding: 13px var(--size-20);
     background: var(--color-white);
   }
@@ -214,7 +239,6 @@ const agentationMode = isDevMode ? 'dev' : 'review'
   .site-content {
     position: relative;
     z-index: 2;
-    background: var(--color-primary);
   }
 
   .site-footer {
