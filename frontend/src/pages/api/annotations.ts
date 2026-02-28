@@ -12,7 +12,7 @@
 
 export const prerender = false
 
-import { apiVersion, dataset, projectId } from '@/utils/sanity/client'
+import { clientConfig } from '@/utils/sanity/client'
 import { createClient } from '@sanity/client'
 import type { APIRoute } from 'astro'
 import { FEEDBACK_PASSWORD, SANITY_WRITE_TOKEN } from 'astro:env/server'
@@ -31,9 +31,7 @@ function validateAuth(request: Request): Response | null {
 }
 
 const writeClient = createClient({
-  projectId,
-  dataset,
-  apiVersion,
+  ...clientConfig,
   useCdn: false,
   token: SANITY_WRITE_TOKEN,
 })

@@ -13,6 +13,7 @@ import { LOCAL_URL, PROJECT_ID, SITE_URL } from './constants'
 import { resolve } from './src/presentation/resolve'
 import { schemaTypes } from './src/schema-types'
 import { structure } from './src/structure'
+import { imageProcessingTool } from './src/tools/image-processing'
 
 // Preview URL configuration
 const PREVIEW_URL = isDev ? `${LOCAL_URL}/preview` : `${SITE_URL}/preview`
@@ -46,6 +47,7 @@ export default defineConfig({
     frFRLocale(),
   ],
   schema: { types: schemaTypes },
+  tools: [imageProcessingTool],
 
   // Initial value templates for pre-filled document creation
   // TODO: Add custom templates as needed

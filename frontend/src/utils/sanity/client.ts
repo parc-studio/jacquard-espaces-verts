@@ -22,6 +22,9 @@ export const apiVersion = '2026-01-01'
 
 export const studioUrl = 'https://admin.jacquard-espaces-verts.parc.studio'
 
+/** Shared base config for constructing Sanity clients. */
+export const clientConfig = { projectId, dataset, apiVersion } as const
+
 /**
  * Sanity client instance
  *

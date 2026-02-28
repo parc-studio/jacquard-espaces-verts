@@ -1,0 +1,171 @@
+---
+/**
+ * SiteFooter
+ *
+ * Sticky bottom footer with about, expertise, and contact sections.
+ * Fetches its own data (settings + expertises) so the layout doesn't need to.
+ */
+import JacquardLogo from '@/components/JacquardLogo.astro'
+import { getSettings, getExpertises } from '@/data/sanity'
+
+interface Props {
+  isPreview?: boolean
+}
+
+const { isPreview = false } = Astro.props
+
+let settings = null
+let expertises: Awaited<ReturnType<typeof getExpertises>> = null
+try {
+  settings = await getSettings({ preview: isPreview })
+  expertises = await getExpertises({ preview: isPreview })
+} catch (error) {
+  console.error('[SiteFooter] Unable to load footer data:', error)
+}
+---
+
+{
+  settings && (
+    <footer class="site-footer">
+      <div class="footer-logo">
+        <JacquardLogo color="white" />
+      </div>
+
+      <div class="footer-content main-grid">
+        <section class="footer-about">
+          <h2>À propos</h2>
+          <p>{settings.shortDescription}</p>
+        </section>
+        {expertises && expertises.length > 0 && (
+          <section class="footer-expertise">
+            <h2>Expert en</h2>
+            <ul>
+              {expertises.map((expertise) => (
+                <li>{expertise.title}</li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        <section class="footer-links">
+          {settings.telephone && <a href={`tel:${settings.telephone}`}>Téléphone</a>}
+          {settings.email && <a href={`mailto:${settings.email}`}>Mail</a>}
+          {settings.instagram && (
+            <a href={settings.instagram} target="_blank" rel="noopener noreferrer">
+              Instagram
+            </a>
+          )}
+          {settings.linkedin && (
+            <a href={settings.linkedin} target="_blank" rel="noopener noreferrer">
+              LinkedIn
+            </a>
+          )}
+        </section>
+      </div>
+    </footer>
+  )
+}
+
+<style is:global>
+  .site-footer {
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
+    background: var(--color-primary);
+    color: var(--color-secondary);
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-40);
+    padding-block: var(--size-20);
+  }
+
+  .footer-logo {
+    opacity: 0;
+    width: 100%;
+  }
+
+  .footer-logo svg {
+    width: 100%;
+    height: auto;
+    display: block;
+    color: var(--color-secondary);
+  }
+
+  .footer-content {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    align-items: start;
+    gap: 0;
+  }
+
+  .site-footer h2 {
+    font-size: var(--text-12);
+    text-transform: uppercase;
+    margin-bottom: var(--size-16);
+  }
+
+  .site-footer p,
+  .site-footer li {
+    font-size: var(--text-16);
+    line-height: var(--line-height-125);
+  }
+
+  .site-footer ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .footer-about {
+    grid-column: 1 / 4;
+    padding-left: var(--size-20);
+  }
+
+  .footer-expertise {
+    grid-column: 4 / 7;
+  }
+
+  .footer-expertise ul {
+    display: grid;
+    gap: var(--size-4);
+  }
+
+  .footer-links {
+    grid-column: 7 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--size-24);
+    justify-content: space-between;
+    align-items: end;
+    margin-top: auto;
+    padding-right: var(--size-20);
+  }
+
+  .footer-links a {
+    color: var(--color-secondary);
+    text-decoration: none;
+    font-size: var(--text-30);
+  }
+
+  .footer-links a:focus-visible,
+  .footer-links a:hover {
+    opacity: 0.7;
+  }
+
+  @media (max-width: 768px) {
+    .footer-content {
+      display: flex;
+      flex-direction: column;
+      gap: var(--size-24);
+    }
+
+    .footer-about,
+    .footer-expertise {
+      margin-bottom: var(--size-16);
+    }
+
+    .footer-links {
+      align-items: center;
+    }
+  }
+</style>

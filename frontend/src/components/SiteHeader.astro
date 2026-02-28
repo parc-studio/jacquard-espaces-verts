@@ -1,0 +1,68 @@
+---
+/**
+ * SiteHeader
+ *
+ * Fixed top header with logo and navigation.
+ * Handles its own active-state logic based on the current page path.
+ */
+import JacquardLogo from '@/components/JacquardLogo.astro'
+
+interface Props {
+  pagePath?: string
+}
+
+const { pagePath = '' } = Astro.props
+---
+
+<header class="site-header">
+  <a href="/" class="header-logo" aria-label="Jacquard Espaces Verts — Accueil">
+    <JacquardLogo />
+  </a>
+  <nav class="header-nav">
+    <a href="/about" class={pagePath === '/about' ? 'is-active' : ''}> À propos </a>
+  </nav>
+</header>
+
+<style is:global>
+  .site-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: var(--z-fixed);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: var(--size-50);
+    padding: 13px var(--size-20);
+    background: var(--color-white);
+  }
+
+  .header-logo {
+    display: block;
+    height: 100%;
+  }
+
+  .header-logo svg {
+    height: 100%;
+    width: auto;
+    display: block;
+  }
+
+  .header-nav a {
+    color: var(--color-black);
+    text-decoration: none;
+    font-size: var(--text-18);
+    font-weight: var(--font-weight-500);
+    line-height: var(--line-height-125);
+  }
+
+  .header-nav a:hover,
+  .header-nav a:focus-visible {
+    opacity: 0.6;
+  }
+
+  .header-nav a.is-active {
+    opacity: 0.2;
+  }
+</style>
