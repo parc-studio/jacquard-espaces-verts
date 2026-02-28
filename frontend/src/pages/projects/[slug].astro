@@ -1,24 +1,23 @@
 ---
 import ProjectTemplate from '@/components/templates/ProjectTemplate.astro'
 import { getAllProjects } from '@/data/sanity'
+import type { NextProjectData } from '@/data/sanity'
 
 export async function getStaticPaths() {
   const projects = await getAllProjects()
   const list = projects ?? []
   return list.map((project, index) => {
-    const nextIndex = (index + 1) % list.length
-    const next = list[nextIndex]
+    const next = list[(index + 1) % list.length]
+    const nextProject: NextProjectData = {
+      titre: next?.titre,
+      slug: next?.slug,
+      localisation: next?.localisation,
+      anneeDebut: next?.anneeDebut,
+      anneeFin: next?.anneeFin,
+    }
     return {
       params: { slug: project.slug?.current },
-      props: {
-        nextProject: {
-          titre: next?.titre,
-          slug: next?.slug,
-          localisation: next?.localisation,
-          anneeDebut: next?.anneeDebut,
-          anneeFin: next?.anneeFin,
-        },
-      },
+      props: { nextProject },
     }
   })
 }

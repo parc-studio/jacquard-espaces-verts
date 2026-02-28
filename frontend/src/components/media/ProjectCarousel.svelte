@@ -78,7 +78,7 @@
   aria-label="Galerie d'images du projet"
   aria-roledescription="carousel"
 >
-  <div class="carousel-viewport" bind:this={viewportEl} onscroll={handleScroll} data-lenis-prevent>
+  <div class="carousel-viewport" bind:this={viewportEl} onscroll={handleScroll}>
     {#each images as image, i (image._key)}
       <div
         class="carousel-slide"

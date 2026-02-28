@@ -1,9 +1,7 @@
 <script lang="ts">
-  import type { PROJECT_QUERY_RESULT } from '../../../sanity.types'
   import SanityImage from './SanityImage.svelte'
+  import type { ExpandedImage } from './types'
   import Video from './Video.svelte'
-
-  type ExpandedImage = NonNullable<PROJECT_QUERY_RESULT>['coverImage']
 
   interface MediaObject {
     image?: ExpandedImage | null
