@@ -8,7 +8,6 @@ import { annotationType } from './documents/collections/annotation'
 import { expertiseType } from './documents/collections/expertise'
 import { pageType } from './documents/collections/page'
 import { projectType } from './documents/collections/project'
-import { tagType } from './documents/collections/tag'
 
 // Objects
 import { blockContentType } from './objects/block-content'
@@ -33,7 +32,6 @@ export const schemaTypes = [
   expertiseType,
   pageType,
   projectType,
-  tagType,
 
   // Objects
   seoType,

@@ -46,13 +46,6 @@ export const ctaFragment = `
   link { ${linkFragment} }
 `
 
-export const tagFragment = `
-  _id,
-  _type,
-  name,
-  "slug": slug.current
-`
-
 export const expertiseFragment = `
   _id,
   _type,

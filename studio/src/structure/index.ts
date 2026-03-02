@@ -78,11 +78,6 @@ export const structure: StructureResolver = (S) =>
       S.divider({ title: 'Références', id: 'references-divider', type: 'divider' }),
 
       S.listItem()
-        .title('Étiquettes')
-        .icon(TagIcon)
-        .child(S.documentTypeList('tag').title('Étiquettes')),
-
-      S.listItem()
         .title('Expertises')
         .icon(TagIcon)
         .child(S.documentTypeList('expertise').title('Expertises')),
