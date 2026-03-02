@@ -136,8 +136,9 @@ export interface NextProjectData {
 }
 
 /**
- * Fetch a project and its circular-list "next project" in one call.
+ * Fetch a project and derive the circular-list "next project" from all projects.
  *
+ * Issues two parallel Sanity queries (getProject + getAllProjects).
  * Used by both static builds (getStaticPaths) and preview mode.
  */
 export async function getProjectWithNext(

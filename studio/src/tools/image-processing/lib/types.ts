@@ -39,7 +39,33 @@ export interface ProcessingResult {
 }
 
 /** Workflow step */
-export type WorkflowStep = 'select' | 'process' | 'review'
+export type WorkflowStep = 'select' | 'process' | 'review' | 'bulk'
+
+// ---------------------------------------------------------------------------
+// Bulk processing
+// ---------------------------------------------------------------------------
+
+/** Status of a single image in a bulk job */
+export type BulkItemStatus =
+  | 'pending'
+  | 'equalize-processing'
+  | 'equalize-done'
+  | 'cadrage-processing'
+  | 'cadrage-done'
+  | 'uploading'
+  | 'replacing'
+  | 'done'
+  | 'error'
+
+/** A single image tracked in a bulk job */
+export interface BulkJobItem {
+  asset: SanityImageAsset
+  status: BulkItemStatus
+  equalizeResult?: ProcessingResult
+  cadrageResult?: ProcessingResult
+  newAssetId?: string
+  error?: string
+}
 
 /** State for the overall tool */
 export interface ToolState {

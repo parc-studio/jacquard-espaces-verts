@@ -5,21 +5,39 @@
  * User clicks an image thumbnail to select it for processing.
  */
 
-import { SearchIcon } from '@sanity/icons'
-import { Box, Button, Card, Flex, Grid, Heading, Spinner, Stack, Text, TextInput } from '@sanity/ui'
+import { PlayIcon, SearchIcon } from '@sanity/icons'
+import {
+  Badge,
+  Box,
+  Button,
+  Card,
+  Flex,
+  Grid,
+  Heading,
+  Spinner,
+  Stack,
+  Text,
+  TextInput,
+  Tooltip,
+} from '@sanity/ui'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useClient } from 'sanity'
 
-import { fetchAllImageAssets, fetchProjectsWithImages } from '../lib/sanity-assets'
+import {
+  fetchAllImageAssets,
+  fetchProjectsWithImages,
+  humanizeFilename,
+} from '../lib/sanity-assets'
 import type { ProjectWithImages, SanityImageAsset } from '../lib/types'
 
 type BrowseMode = 'projects' | 'all'
 
 interface ImageSelectorProps {
   onSelect: (asset: SanityImageAsset, projectId: string | null) => void
+  onBulkSelect?: (project: ProjectWithImages) => void
 }
 
-export function ImageSelector({ onSelect }: ImageSelectorProps) {
+export function ImageSelector({ onSelect, onBulkSelect }: ImageSelectorProps) {
   const client = useClient({ apiVersion: '2025-01-12' })
   const [browseMode, setBrowseMode] = useState<BrowseMode>('projects')
   const [projects, setProjects] = useState<ProjectWithImages[]>([])
@@ -145,7 +163,7 @@ export function ImageSelector({ onSelect }: ImageSelectorProps) {
           )}
           {filteredProjects.map((project) => (
             <Stack key={project._id} space={3}>
-              <Flex gap={2} align="baseline">
+              <Flex gap={2} align="center" wrap="wrap">
                 <Text size={1} weight="semibold">
                   {project.titre}
                 </Text>
@@ -153,6 +171,30 @@ export function ImageSelector({ onSelect }: ImageSelectorProps) {
                   <Text size={0} muted>
                     — {project.localisation}
                   </Text>
+                )}
+                <Badge tone="default" fontSize={0}>
+                  {project.images.length} image{project.images.length > 1 ? 's' : ''}
+                </Badge>
+                {onBulkSelect && (
+                  <Tooltip
+                    content={
+                      <Box padding={2}>
+                        <Text size={1}>Traiter toutes les images (Lumière + Cadrage)</Text>
+                      </Box>
+                    }
+                    placement="top"
+                  >
+                    <Button
+                      icon={PlayIcon}
+                      text="Traiter tout"
+                      mode="ghost"
+                      tone="primary"
+                      fontSize={0}
+                      padding={2}
+                      onClick={() => onBulkSelect(project)}
+                      style={{ marginLeft: 'auto' }}
+                    />
+                  </Tooltip>
                 )}
               </Flex>
               <Grid columns={[2, 3, 4, 5]} gap={2}>
@@ -196,9 +238,9 @@ export function ImageSelector({ onSelect }: ImageSelectorProps) {
 
 /** Thumbnail card for a single image asset */
 function ImageThumbnail({ asset, onClick }: { asset: SanityImageAsset; onClick: () => void }) {
-  // Use CDN params for a small thumbnail
   const thumbUrl = `${asset.url}?w=300&h=200&fit=crop&auto=format&q=75`
   const dims = asset.metadata?.dimensions
+  const displayName = humanizeFilename(asset.originalFilename)
 
   return (
     <Card
@@ -215,12 +257,20 @@ function ImageThumbnail({ asset, onClick }: { asset: SanityImageAsset; onClick: 
         background: 'none',
         display: 'block',
         width: '100%',
+        transition: 'box-shadow 150ms ease',
+      }}
+      onMouseEnter={(e: React.MouseEvent<HTMLDivElement>) => {
+        ;(e.currentTarget as HTMLElement).style.boxShadow =
+          '0 0 0 2px var(--card-focus-ring-color, #2276fc)'
+      }}
+      onMouseLeave={(e: React.MouseEvent<HTMLDivElement>) => {
+        ;(e.currentTarget as HTMLElement).style.boxShadow = ''
       }}
     >
       <Box style={{ position: 'relative', paddingBottom: '66.67%', background: '#f0f0f0' }}>
         <img
           src={thumbUrl}
-          alt={asset.originalFilename ?? 'Image'}
+          alt={displayName}
           loading="lazy"
           style={{
             position: 'absolute',
@@ -232,12 +282,19 @@ function ImageThumbnail({ asset, onClick }: { asset: SanityImageAsset; onClick: 
           }}
         />
       </Box>
-      <Box padding={2}>
-        <Text size={0} muted textOverflow="ellipsis">
-          {asset.originalFilename ?? 'Sans nom'}
+      <Box
+        padding={3}
+        style={{
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+        }}
+      >
+        <Text size={1} textOverflow="ellipsis" title={asset.originalFilename ?? 'Sans nom'}>
+          {displayName}
         </Text>
         {dims && (
-          <Text size={0} muted>
+          <Text size={0} muted style={{ marginTop: 2 }}>
             {dims.width}×{dims.height}
           </Text>
         )}

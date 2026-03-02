@@ -7,8 +7,9 @@
  * - Section 2: Info grid, thumbnails, and next project CTA
  */
 import BaseLayout from '../../layouts/BaseLayout.astro'
-import { getProjectWithNext } from '../../data/sanity'
+import { getProject, getProjectWithNext } from '../../data/sanity'
 import type { NextProjectData } from '../../data/sanity'
+import type { PROJECT_QUERY_RESULT } from '../../../sanity.types'
 import { urlFor } from '../../utils/sanity/image'
 import ProjectPage from './ProjectPage.svelte'
 
@@ -20,10 +21,19 @@ interface Props {
 
 const { currentSlug, isPreview = false, nextProject: nextProjectProp } = Astro.props
 
-const { project, nextProject: computedNext } = await getProjectWithNext(currentSlug, {
-  preview: isPreview,
-})
-const nextProject = nextProjectProp ?? computedNext
+let project: PROJECT_QUERY_RESULT | null
+let nextProject: NextProjectData | null
+
+if (nextProjectProp != null) {
+  // Static build — nextProject already computed in getStaticPaths, skip redundant getAllProjects()
+  project = await getProject(currentSlug, { preview: isPreview })
+  nextProject = nextProjectProp
+} else {
+  // Preview mode — compute nextProject on the fly
+  const result = await getProjectWithNext(currentSlug, { preview: isPreview })
+  project = result.project
+  nextProject = result.nextProject
+}
 
 const title = project?.seo?.title || project?.titre
 const description = project?.seo?.description || project?.localisation || ''

@@ -94,7 +94,7 @@ const agentationMode = isDevMode ? 'dev' : 'review'
     >
       <slot />
     </div>
-    {!hideFooter && <SiteFooter isPreview={isPreview} />}
+    {!hideFooter && <SiteFooter isPreview={isPreview} settings={settings} />}
     {isPreview && <VisualEditing pagePath={pagePath} client:only="svelte" transition:persist />}
     {enableFeedback && <AgentationWrapper client:only="react" mode={agentationMode} />}
   </body>

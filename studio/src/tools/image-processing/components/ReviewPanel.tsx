@@ -2,7 +2,7 @@
  * ReviewPanel — Step 3: Compare before/after, accept, regenerate, or discard.
  *
  * Shows the original and processed images side by side.
- * The user can accept (upload to Sanity), regenerate, or discard.
+ * The user can accept (upload to Sanity and replace in project), regenerate, or discard.
  */
 
 import { ArrowLeftIcon, CheckmarkIcon, CloseIcon, ResetIcon } from '@sanity/icons'
@@ -11,13 +11,19 @@ import { useCallback, useMemo, useState } from 'react'
 import { useClient } from 'sanity'
 
 import { MODE_LABELS } from '../lib/prompts'
-import { makeProcessedFilename, uploadProcessedImage } from '../lib/sanity-assets'
+import {
+  makeProcessedFilename,
+  replaceImageInProject,
+  uploadProcessedImage,
+} from '../lib/sanity-assets'
 import type { ProcessingMode, ProcessingResult, SanityImageAsset } from '../lib/types'
 
 interface ReviewPanelProps {
   asset: SanityImageAsset
   result: ProcessingResult
   mode: ProcessingMode
+  /** If set, the accepted image will replace the original in this project's gallery. */
+  projectId: string | null
   onRegenerate: () => void
   onDiscard: () => void
   onAccepted: (newAssetId: string) => void
@@ -27,6 +33,7 @@ export function ReviewPanel({
   asset,
   result,
   mode,
+  projectId,
   onRegenerate,
   onDiscard,
   onAccepted,
@@ -49,13 +56,21 @@ export function ReviewPanel({
     setUploadError(null)
 
     try {
-      const filename = makeProcessedFilename(asset.originalFilename, mode)
+      const filename = makeProcessedFilename(asset.originalFilename, mode, result.mimeType)
       const newAssetId = await uploadProcessedImage(
         client,
         result.base64Data,
         result.mimeType,
-        filename
+        filename,
+        asset._id,
+        mode
       )
+
+      // Replace the image reference in the project gallery (if we know the project)
+      if (projectId) {
+        await replaceImageInProject(client, projectId, asset._id, newAssetId)
+      }
+
       onAccepted(newAssetId)
     } catch (err) {
       setUploadError(
@@ -64,7 +79,7 @@ export function ReviewPanel({
     } finally {
       setIsUploading(false)
     }
-  }, [client, asset, result, mode, onAccepted])
+  }, [client, asset, result, mode, projectId, onAccepted])
 
   return (
     <Stack space={4}>

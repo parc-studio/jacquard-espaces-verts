@@ -8,8 +8,8 @@
 
 import { GoogleGenAI } from '@google/genai'
 
-import type { ProcessingMode, ProcessingResult } from './types'
 import { PROMPTS } from './prompts'
+import type { ProcessingMode, ProcessingResult } from './types'
 
 /** Model to use for image editing (supports image output) */
 const MODEL = 'gemini-2.5-flash'
@@ -100,5 +100,44 @@ export async function processImage(
     base64Data: resultBase64,
     mimeType: resultMimeType ?? 'image/png',
     feedback,
+  }
+}
+
+/**
+ * Process an image through the full equalize → cadrage chain.
+ *
+ * 1. Runs equalize on the source image.
+ * 2. Feeds the equalize result into cadrage.
+ * 3. Returns the final cadrage result with combined feedback.
+ *
+ * A progress callback is invoked between steps so the UI can update.
+ */
+export async function processImageChain(
+  imageBase64: string,
+  mimeType: string,
+  onProgress?: (step: 'equalize-done' | 'cadrage-done', intermediate?: ProcessingResult) => void
+): Promise<ProcessingResult> {
+  // Step 1: equalize
+  const equalizeResult = await processImage(imageBase64, mimeType, 'equalize')
+  onProgress?.('equalize-done', equalizeResult)
+
+  // Step 2: cadrage on the equalized image
+  const cadrageResult = await processImage(
+    equalizeResult.base64Data,
+    equalizeResult.mimeType,
+    'cadrage'
+  )
+  onProgress?.('cadrage-done', cadrageResult)
+
+  // Combine feedback from both steps
+  const feedbackParts = [
+    equalizeResult.feedback ? `[Lumière] ${equalizeResult.feedback}` : null,
+    cadrageResult.feedback ? `[Cadrage] ${cadrageResult.feedback}` : null,
+  ].filter(Boolean)
+
+  return {
+    base64Data: cadrageResult.base64Data,
+    mimeType: cadrageResult.mimeType,
+    feedback: feedbackParts.length > 0 ? feedbackParts.join('\n\n') : undefined,
   }
 }

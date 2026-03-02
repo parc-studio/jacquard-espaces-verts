@@ -3,21 +3,28 @@
  * SiteFooter
  *
  * Sticky bottom footer with about, expertise, and contact sections.
- * Fetches its own data (settings + expertises) so the layout doesn't need to.
+ * Accepts an optional `settings` prop to avoid re-fetching data already
+ * loaded by BaseLayout. Falls back to its own fetch when the prop is omitted
+ * (e.g. when rendered outside the main layout).
  */
 import JacquardLogo from '@/components/JacquardLogo.astro'
 import { getSettings, getExpertises } from '@/data/sanity'
 
+type SettingsData = Awaited<ReturnType<typeof getSettings>>
+
 interface Props {
   isPreview?: boolean
+  settings?: SettingsData
 }
 
-const { isPreview = false } = Astro.props
+const { isPreview = false, settings: settingsProp } = Astro.props
 
-let settings = null
+let settings: SettingsData = settingsProp ?? null
 let expertises: Awaited<ReturnType<typeof getExpertises>> = null
 try {
-  settings = await getSettings({ preview: isPreview })
+  if (!settings) {
+    settings = await getSettings({ preview: isPreview })
+  }
   expertises = await getExpertises({ preview: isPreview })
 } catch (error) {
   console.error('[SiteFooter] Unable to load footer data:', error)

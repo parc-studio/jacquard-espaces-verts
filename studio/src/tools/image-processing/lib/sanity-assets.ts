@@ -3,11 +3,13 @@
  *
  * - Fetches image data from Sanity CDN as base64
  * - Uploads processed images back to Sanity as new assets
+ * - Replaces image references in project documents
+ * - Tags AI-processed assets with metadata
  */
 
 import type { SanityClient } from 'sanity'
 
-import type { ProjectWithImages, SanityImageAsset } from './types'
+import type { ProcessingMode, ProjectWithImages, SanityImageAsset } from './types'
 
 /**
  * Fetch all projects that have images in their media gallery.
@@ -92,19 +94,23 @@ export async function fetchImageAsBase64(
 }
 
 /**
- * Upload a base64-encoded image to Sanity as a new asset.
+ * Upload a base64-encoded image to Sanity as a new asset and tag it as AI-processed.
  *
  * @param client - Authenticated Sanity client
  * @param base64Data - Raw base64 image data (no data URI prefix)
  * @param mimeType - MIME type of the image
  * @param filename - Desired filename for the asset
+ * @param originalAssetId - ID of the source asset (for traceability)
+ * @param mode - Processing mode used
  * @returns The created asset document ID
  */
 export async function uploadProcessedImage(
   client: SanityClient,
   base64Data: string,
   mimeType: string,
-  filename: string
+  filename: string,
+  originalAssetId?: string,
+  mode?: ProcessingMode | 'equalize+cadrage'
 ): Promise<string> {
   // Convert base64 to Blob
   const byteChars = atob(base64Data)
@@ -120,14 +126,124 @@ export async function uploadProcessedImage(
     contentType: mimeType,
   })
 
+  // Tag the asset as AI-processed for easy filtering in the media library
+  const description = [
+    originalAssetId ? `Source: ${originalAssetId}` : null,
+    mode ? `Mode: ${mode}` : null,
+  ]
+    .filter(Boolean)
+    .join(' — ')
+
+  await client
+    .patch(asset._id)
+    .set({
+      label: 'ai-processed',
+      ...(description ? { description } : {}),
+    })
+    .commit()
+
   return asset._id
 }
 
+// ---------------------------------------------------------------------------
+// Project gallery replacement
+// ---------------------------------------------------------------------------
+
+interface GalleryItem {
+  _key: string
+  _type: string
+  asset: { _ref: string; _type: string }
+  hotspot?: unknown
+  crop?: unknown
+}
+
+/**
+ * Replace an image asset reference inside a project's `mediaGallery`.
+ *
+ * Finds the gallery item pointing to `oldAssetId` and swaps its `asset._ref`
+ * to `newAssetId`, preserving `_key`, hotspot and crop.
+ */
+export async function replaceImageInProject(
+  client: SanityClient,
+  projectId: string,
+  oldAssetId: string,
+  newAssetId: string
+): Promise<void> {
+  // Normalise IDs (strip "image-" prefix if present — Sanity refs use the raw ID)
+  const oldRef = oldAssetId.replace(/^image-/, '')
+  const newRef = newAssetId.replace(/^image-/, '')
+
+  const project = await client.fetch<{ _rev: string; mediaGallery?: GalleryItem[] }>(
+    `*[_id == $id][0]{ _rev, mediaGallery[]{ _key, _type, asset, hotspot, crop } }`,
+    { id: projectId }
+  )
+
+  if (!project?.mediaGallery) {
+    throw new Error(`Projet introuvable ou sans galerie média (${projectId}).`)
+  }
+
+  const idx = project.mediaGallery.findIndex((item) => {
+    const ref = item.asset?._ref ?? ''
+    return ref === oldRef || ref === oldAssetId
+  })
+
+  if (idx === -1) {
+    throw new Error(`Image source introuvable dans la galerie du projet.`)
+  }
+
+  // Build the patch path — e.g. mediaGallery[_key=="abc"].asset._ref
+  const key = project.mediaGallery[idx]._key
+
+  await client
+    .patch(projectId)
+    .ifRevisionId(project._rev)
+    .set({ [`mediaGallery[_key=="${key}"].asset._ref`]: newRef })
+    .commit()
+}
+
+// ---------------------------------------------------------------------------
+// Filename helpers
+// ---------------------------------------------------------------------------
+
 /**
  * Generate a filename for a processed image.
+ * Uses the actual output mimeType to determine extension.
  */
-export function makeProcessedFilename(originalFilename: string | undefined, mode: string): string {
+export function makeProcessedFilename(
+  originalFilename: string | undefined,
+  mode: string,
+  mimeType?: string
+): string {
   const base = originalFilename?.replace(/\.[^.]+$/, '') ?? 'image'
-  const ext = mode === 'equalize' ? 'jpg' : 'jpg'
+  const ext = mimeType?.includes('png') ? 'png' : 'jpg'
   return `${base}-${mode}-${Date.now()}.${ext}`
+}
+
+/**
+ * Turn a raw asset filename into a human-readable label.
+ *
+ * Strips extension, replaces hyphens/underscores with spaces,
+ * removes trailing timestamps (13-digit numbers) and processing
+ * mode suffixes, then title-cases the result.
+ *
+ * Example: "jardin-paysage-equalize-1709380000000.jpg" → "Jardin Paysage"
+ */
+export function humanizeFilename(filename: string | undefined): string {
+  if (!filename) return 'Sans nom'
+
+  let name = filename
+    // Strip extension
+    .replace(/\.[^.]+$/, '')
+    // Strip trailing timestamp (13-digit epoch)
+    .replace(/-\d{13}$/, '')
+    // Strip known processing-mode suffixes
+    .replace(/-(equalize|cadrage|equalize\+cadrage)$/i, '')
+
+  // Replace separators with spaces
+  name = name.replace(/[-_]+/g, ' ').trim()
+
+  if (!name) return 'Sans nom'
+
+  // Title-case
+  return name.replace(/\b\w/g, (c) => c.toUpperCase())
 }

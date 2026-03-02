@@ -1,32 +1,47 @@
 /**
  * ImageProcessingTool — Main component for the "Traitement IA" Studio tool.
  *
- * Manages the three-step workflow:
- *   1. Select an image (ImageSelector)
- *   2. Choose mode and process (ProcessingPanel)
- *   3. Review result and accept/regenerate/discard (ReviewPanel)
+ * Manages the workflow:
+ *   1. Select an image  (ImageSelector)
+ *   2. Choose mode and process  (ProcessingPanel)
+ *   3. Review result and accept/regenerate/discard  (ReviewPanel)
+ *   — or —
+ *   Bulk-process all images of a project  (BulkProcessingPanel)
  */
 
 import { CheckmarkCircleIcon } from '@sanity/icons'
 import { Box, Card, Container, Flex, Stack, Text } from '@sanity/ui'
 import { useCallback, useState } from 'react'
 
+import { BulkProcessingPanel } from './components/BulkProcessingPanel'
 import { ImageSelector } from './components/ImageSelector'
 import { ProcessingPanel } from './components/ProcessingPanel'
 import { ReviewPanel } from './components/ReviewPanel'
-import type { ProcessingMode, ProcessingResult, SanityImageAsset, WorkflowStep } from './lib/types'
+import type {
+  ProcessingMode,
+  ProcessingResult,
+  ProjectWithImages,
+  SanityImageAsset,
+  WorkflowStep,
+} from './lib/types'
 
 export function ImageProcessingTool() {
   const [step, setStep] = useState<WorkflowStep>('select')
   const [selectedAsset, setSelectedAsset] = useState<SanityImageAsset | null>(null)
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null)
+  const [selectedProject, setSelectedProject] = useState<ProjectWithImages | null>(null)
   const [result, setResult] = useState<ProcessingResult | null>(null)
   const [mode, setMode] = useState<ProcessingMode | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
+  // ------------------------------------------------------------------
+  // Single-image workflow
+  // ------------------------------------------------------------------
+
   // Step 1 → Step 2: image selected
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const handleImageSelect = useCallback((asset: SanityImageAsset, _projectId: string | null) => {
+  const handleImageSelect = useCallback((asset: SanityImageAsset, projectId: string | null) => {
     setSelectedAsset(asset)
+    setSelectedProjectId(projectId)
     setResult(null)
     setMode(null)
     setSuccessMessage(null)
@@ -46,6 +61,7 @@ export function ImageProcessingTool() {
   // Step 2 ← back to Step 1
   const handleBackToSelect = useCallback(() => {
     setSelectedAsset(null)
+    setSelectedProjectId(null)
     setResult(null)
     setMode(null)
     setSuccessMessage(null)
@@ -61,21 +77,56 @@ export function ImageProcessingTool() {
   // Step 3: discard → back to Step 1
   const handleDiscard = useCallback(() => {
     setSelectedAsset(null)
+    setSelectedProjectId(null)
     setResult(null)
     setMode(null)
     setStep('select')
   }, [])
 
   // Step 3: accepted → show success, back to Step 1
-  const handleAccepted = useCallback((newAssetId: string) => {
-    setSuccessMessage(
-      `Image enregistrée avec succès dans Sanity (${newAssetId}). Vous pouvez maintenant l'utiliser dans vos documents.`
-    )
-    setSelectedAsset(null)
-    setResult(null)
-    setMode(null)
+  const handleAccepted = useCallback(
+    (newAssetId: string) => {
+      const replacedMsg = selectedProjectId
+        ? ' L\u2019image a été remplacée dans la galerie du projet.'
+        : ' Vous pouvez maintenant l\u2019utiliser dans vos documents.'
+      setSuccessMessage(`Image enregistrée avec succès (${newAssetId}).${replacedMsg}`)
+      setSelectedAsset(null)
+      setSelectedProjectId(null)
+      setResult(null)
+      setMode(null)
+      setStep('select')
+    },
+    [selectedProjectId]
+  )
+
+  // ------------------------------------------------------------------
+  // Bulk workflow
+  // ------------------------------------------------------------------
+
+  const handleBulkSelect = useCallback((project: ProjectWithImages) => {
+    setSuccessMessage(null)
+    setSelectedProject(project)
+    setStep('bulk')
+  }, [])
+
+  const handleBulkDone = useCallback((processed: number, failed: number) => {
+    const parts: string[] = []
+    if (processed > 0)
+      parts.push(`${processed} image${processed > 1 ? 's' : ''} traitée${processed > 1 ? 's' : ''}`)
+    if (failed > 0) parts.push(`${failed} erreur${failed > 1 ? 's' : ''}`)
+    setSuccessMessage(parts.join(', ') + '.')
+    setSelectedProject(null)
     setStep('select')
   }, [])
+
+  const handleBulkCancel = useCallback(() => {
+    setSelectedProject(null)
+    setStep('select')
+  }, [])
+
+  // ------------------------------------------------------------------
+  // Render
+  // ------------------------------------------------------------------
 
   return (
     <Box padding={4} style={{ height: '100%', overflow: 'auto' }}>
@@ -94,7 +145,9 @@ export function ImageProcessingTool() {
           )}
 
           {/* Step routing */}
-          {step === 'select' && <ImageSelector onSelect={handleImageSelect} />}
+          {step === 'select' && (
+            <ImageSelector onSelect={handleImageSelect} onBulkSelect={handleBulkSelect} />
+          )}
 
           {step === 'process' && selectedAsset && (
             <ProcessingPanel
@@ -109,9 +162,18 @@ export function ImageProcessingTool() {
               asset={selectedAsset}
               result={result}
               mode={mode}
+              projectId={selectedProjectId}
               onRegenerate={handleRegenerate}
               onDiscard={handleDiscard}
               onAccepted={handleAccepted}
+            />
+          )}
+
+          {step === 'bulk' && selectedProject && (
+            <BulkProcessingPanel
+              project={selectedProject}
+              onDone={handleBulkDone}
+              onCancel={handleBulkCancel}
             />
           )}
         </Stack>

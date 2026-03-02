@@ -29,7 +29,7 @@ export const clientConfig = { projectId, dataset, apiVersion } as const
  * Sanity client instance
  *
  * Used for fetching published content.
- * For preview/draft content, use loadQuery() with { preview: true }
+ * For preview/draft content, pass { preview: true } to data-fetching helpers in @/data/sanity.
  */
 export const sanityClient = createClient({
   projectId,
