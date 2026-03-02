@@ -294,7 +294,7 @@ function ImageThumbnail({ asset, onClick }: { asset: SanityImageAsset; onClick: 
           {displayName}
         </Text>
         {dims && (
-          <Text size={0} muted style={{ marginTop: 2 }}>
+          <Text size={0} muted style={{ marginTop: 4 }}>
             {dims.width}×{dims.height}
           </Text>
         )}

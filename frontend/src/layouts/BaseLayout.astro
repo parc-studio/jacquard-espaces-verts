@@ -86,7 +86,7 @@ const agentationMode = isDevMode ? 'dev' : 'review'
     <ClientRouter />
   </head>
   <body>
-    <GridDebugOverlay client:only="svelte" />
+    {isDevMode && <GridDebugOverlay client:only="svelte" />}
     {!hideHeader && <SiteHeader pagePath={pagePath} />}
     <div
       class="site-content"
@@ -101,35 +101,10 @@ const agentationMode = isDevMode ? 'dev' : 'review'
 </html>
 
 <style is:global>
-  /* Sequential fade-out → fade-in page transition */
-  ::view-transition-old(root) {
-    animation: var(--transition-duration) ease forwards fade-out;
-    z-index: 2;
-  }
-
+  /* Suppress native View Transition animation — fades driven by JS events */
+  ::view-transition-old(root),
   ::view-transition-new(root) {
-    animation: var(--transition-duration) ease var(--transition-delay) forwards fade-in;
-    z-index: 1;
-  }
-
-  @keyframes fade-out {
-    to {
-      opacity: 0;
-    }
-  }
-
-  @keyframes fade-in {
-    from {
-      opacity: 0;
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    ::view-transition-old(root),
-    ::view-transition-new(root) {
-      animation-duration: 0s;
-      animation-delay: 0s;
-    }
+    animation: none;
   }
 
   .site-content {
@@ -137,5 +112,61 @@ const agentationMode = isDevMode ? 'dev' : 'review'
     z-index: 2;
   }
 </style>
+
+<script>
+  import type { TransitionBeforePreparationEvent } from 'astro:transitions/client'
+
+  const FADE_MS = 180
+
+  const prefersReducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+  function fadeOut(el: HTMLElement): Promise<void> {
+    if (prefersReducedMotion()) {
+      el.style.opacity = '0'
+      return Promise.resolve()
+    }
+    return new Promise((resolve) => {
+      el.style.transition = `opacity ${FADE_MS}ms ease`
+      el.style.opacity = '0'
+      setTimeout(resolve, FADE_MS)
+    })
+  }
+
+  function fadeIn(el: HTMLElement): void {
+    if (prefersReducedMotion()) {
+      el.style.opacity = '1'
+      el.style.removeProperty('transition')
+      return
+    }
+    /* Force the browser to paint opacity:0 before transitioning to 1 */
+    el.style.transition = 'none'
+    el.style.opacity = '0'
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        el.style.transition = `opacity ${FADE_MS}ms ease`
+        el.style.opacity = '1'
+        setTimeout(() => {
+          el.style.removeProperty('transition')
+          el.style.removeProperty('opacity')
+        }, FADE_MS + 50)
+      })
+    })
+  }
+
+  /* Fade out the old page before the new one is fetched */
+  document.addEventListener('astro:before-preparation', (ev) => {
+    const e = ev as TransitionBeforePreparationEvent
+    const originalLoader = e.loader
+    e.loader = async () => {
+      await fadeOut(document.body)
+      await originalLoader()
+    }
+  })
+
+  /* Fade in the new page after DOM swap */
+  document.addEventListener('astro:after-swap', () => {
+    fadeIn(document.body)
+  })
+</script>
 
 {isDevMode && <ParcCredits />}

@@ -91,8 +91,8 @@ export function ProcessingPanel({ asset, onResult, onBack }: ProcessingPanelProp
             {!configured && (
               <Card padding={3} tone="caution" radius={2}>
                 <Text size={1}>
-                  Clé API Gemini non configurée. Ajoutez <code>SANITY_STUDIO_GEMINI_API_KEY</code>{' '}
-                  dans votre fichier <code>.env</code>.
+                  Gemini est activé uniquement en Studio local (<code>localhost</code>) avec
+                  <code> SANITY_STUDIO_GEMINI_API_KEY</code> dans <code>.env</code>.
                 </Text>
               </Card>
             )}

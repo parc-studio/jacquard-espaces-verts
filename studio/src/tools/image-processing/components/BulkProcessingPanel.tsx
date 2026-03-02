@@ -14,7 +14,7 @@ import {
   PlayIcon,
 } from '@sanity/icons'
 import { Badge, Box, Button, Card, Flex, Grid, Heading, Spinner, Stack, Text } from '@sanity/ui'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useClient } from 'sanity'
 
 import { isGeminiConfigured, processImageChain } from '../lib/gemini'
@@ -93,8 +93,7 @@ export function BulkProcessingPanel({ project, onDone, onCancel }: BulkProcessin
   // Core: process one image through the full pipeline
   // ------------------------------------------------------------------
   const processOneImage = useCallback(
-    async (index: number) => {
-      const item = items[index]
+    async (index: number, item: BulkJobItem) => {
       if (!item || item.status === 'done') return
 
       try {
@@ -134,9 +133,6 @@ export function BulkProcessingPanel({ project, onDone, onCancel }: BulkProcessin
         updateItem(index, { status: 'error', error: message })
       }
     },
-    // Items read inside processOneImage is captured at call time (via closure over the
-    // latest `items` state). We intentionally omit `items` from deps to avoid re-creating
-    // the callback on every state update — the loop drives index, not items reference.
     [client, project._id, updateItem]
   )
 
@@ -155,20 +151,11 @@ export function BulkProcessingPanel({ project, onDone, onCancel }: BulkProcessin
       const current = items[i]
       if (current.status === 'done') continue
 
-      await processOneImage(i)
+      await processOneImage(i, current)
     }
 
     setIsRunning(false)
   }, [items, totalCount, processOneImage])
-
-  // ------------------------------------------------------------------
-  // Auto-complete detection
-  // ------------------------------------------------------------------
-  useEffect(() => {
-    if (isFinished && (doneCount > 0 || errorCount > 0)) {
-      // Give the user a moment to see the final state
-    }
-  }, [isFinished, doneCount, errorCount])
 
   const handleStop = useCallback(() => {
     stopRequestedRef.current = true
@@ -203,8 +190,8 @@ export function BulkProcessingPanel({ project, onDone, onCancel }: BulkProcessin
       {!configured && (
         <Card padding={3} tone="caution" radius={2}>
           <Text size={1}>
-            Clé API Gemini non configurée. Ajoutez <code>SANITY_STUDIO_GEMINI_API_KEY</code> dans
-            votre fichier <code>.env</code>.
+            Gemini est activé uniquement en Studio local (<code>localhost</code>) avec
+            <code> SANITY_STUDIO_GEMINI_API_KEY</code> dans <code>.env</code>.
           </Text>
         </Card>
       )}

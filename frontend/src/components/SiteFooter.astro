@@ -19,6 +19,30 @@ interface Props {
 
 const { isPreview = false, settings: settingsProp } = Astro.props
 
+const ALLOWED_SOCIAL_HOSTS = {
+  instagram: new Set(['instagram.com', 'www.instagram.com']),
+  linkedin: new Set(['linkedin.com', 'www.linkedin.com']),
+}
+
+function sanitizeExternalUrl(rawUrl: string, allowedHosts: Set<string>): string | null {
+  try {
+    const parsed = new URL(rawUrl)
+    const protocol = parsed.protocol.toLowerCase()
+    if (protocol !== 'https:' && protocol !== 'http:') {
+      return null
+    }
+
+    const hostname = parsed.hostname.toLowerCase()
+    if (!allowedHosts.has(hostname)) {
+      return null
+    }
+
+    return parsed.toString()
+  } catch {
+    return null
+  }
+}
+
 let settings: SettingsData = settingsProp ?? null
 let expertises: Awaited<ReturnType<typeof getExpertises>> = null
 try {
@@ -29,6 +53,13 @@ try {
 } catch (error) {
   console.error('[SiteFooter] Unable to load footer data:', error)
 }
+
+const instagramUrl = settings?.instagram
+  ? sanitizeExternalUrl(settings.instagram, ALLOWED_SOCIAL_HOSTS.instagram)
+  : null
+const linkedinUrl = settings?.linkedin
+  ? sanitizeExternalUrl(settings.linkedin, ALLOWED_SOCIAL_HOSTS.linkedin)
+  : null
 ---
 
 {
@@ -57,13 +88,13 @@ try {
         <section class="footer-links">
           {settings.telephone && <a href={`tel:${settings.telephone}`}>Téléphone</a>}
           {settings.email && <a href={`mailto:${settings.email}`}>Mail</a>}
-          {settings.instagram && (
-            <a href={settings.instagram} target="_blank" rel="noopener noreferrer">
+          {instagramUrl && (
+            <a href={instagramUrl} target="_blank" rel="noopener noreferrer">
               Instagram
             </a>
           )}
-          {settings.linkedin && (
-            <a href={settings.linkedin} target="_blank" rel="noopener noreferrer">
+          {linkedinUrl && (
+            <a href={linkedinUrl} target="_blank" rel="noopener noreferrer">
               LinkedIn
             </a>
           )}

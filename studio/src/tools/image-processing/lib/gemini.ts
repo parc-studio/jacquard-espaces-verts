@@ -16,14 +16,31 @@ const MODEL = 'gemini-2.5-flash'
 
 let _client: GoogleGenAI | null = null
 
+function isLocalDevelopmentStudio(): boolean {
+  if (typeof window === 'undefined') {
+    return false
+  }
+
+  return window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+}
+
+function getGeminiApiKey(): string | null {
+  if (!isLocalDevelopmentStudio()) {
+    return null
+  }
+
+  const apiKey = import.meta.env.SANITY_STUDIO_GEMINI_API_KEY as string | undefined
+  return typeof apiKey === 'string' && apiKey.length > 0 ? apiKey : null
+}
+
 /** Get or create the Gemini client. Throws if API key is missing. */
 function getClient(): GoogleGenAI {
   if (_client) return _client
 
-  const apiKey = import.meta.env.SANITY_STUDIO_GEMINI_API_KEY as string | undefined
+  const apiKey = getGeminiApiKey()
   if (!apiKey) {
     throw new Error(
-      'Clé API Gemini manquante. Ajoutez SANITY_STUDIO_GEMINI_API_KEY dans votre fichier .env.'
+      'Le traitement Gemini est disponible uniquement en Studio local (localhost) avec SANITY_STUDIO_GEMINI_API_KEY défini.'
     )
   }
 
@@ -33,7 +50,7 @@ function getClient(): GoogleGenAI {
 
 /** Check whether the Gemini API key is configured */
 export function isGeminiConfigured(): boolean {
-  return !!import.meta.env.SANITY_STUDIO_GEMINI_API_KEY
+  return getGeminiApiKey() !== null
 }
 
 /**

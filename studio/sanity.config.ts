@@ -47,7 +47,7 @@ export default defineConfig({
     frFRLocale(),
   ],
   schema: { types: schemaTypes },
-  tools: [imageProcessingTool],
+  tools: (prev) => [...prev, imageProcessingTool],
 
   // Initial value templates for pre-filled document creation
   // TODO: Add custom templates as needed

@@ -11,6 +11,15 @@ import type { SanityClient } from 'sanity'
 
 import type { ProcessingMode, ProjectWithImages, SanityImageAsset } from './types'
 
+function isSanityImageAsset(value: unknown): value is SanityImageAsset {
+  if (!value || typeof value !== 'object') {
+    return false
+  }
+
+  const candidate = value as Partial<SanityImageAsset>
+  return typeof candidate._id === 'string' && typeof candidate.url === 'string'
+}
+
 /**
  * Fetch all projects that have images in their media gallery.
  */
@@ -35,8 +44,13 @@ export async function fetchProjectsWithImages(client: SanityClient): Promise<Pro
   }`
 
   const results = await client.fetch<ProjectWithImages[]>(query)
-  // Filter out projects with no resolved images
-  return results.filter((p) => p.images?.length > 0)
+
+  return results
+    .map((project) => ({
+      ...project,
+      images: Array.isArray(project.images) ? project.images.filter(isSanityImageAsset) : [],
+    }))
+    .filter((project) => project.images.length > 0)
 }
 
 /**
@@ -169,9 +183,8 @@ export async function replaceImageInProject(
   oldAssetId: string,
   newAssetId: string
 ): Promise<void> {
-  // Normalise IDs (strip "image-" prefix if present — Sanity refs use the raw ID)
-  const oldRef = oldAssetId.replace(/^image-/, '')
-  const newRef = newAssetId.replace(/^image-/, '')
+  const oldRef = oldAssetId
+  const newRef = newAssetId
 
   const project = await client.fetch<{ _rev: string; mediaGallery?: GalleryItem[] }>(
     `*[_id == $id][0]{ _rev, mediaGallery[]{ _key, _type, asset, hotspot, crop } }`,
@@ -184,7 +197,7 @@ export async function replaceImageInProject(
 
   const idx = project.mediaGallery.findIndex((item) => {
     const ref = item.asset?._ref ?? ''
-    return ref === oldRef || ref === oldAssetId
+    return ref === oldRef
   })
 
   if (idx === -1) {
