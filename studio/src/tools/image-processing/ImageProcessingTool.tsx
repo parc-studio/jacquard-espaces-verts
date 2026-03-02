@@ -1,5 +1,5 @@
 /**
- * ImageProcessingTool — Main component for the "Traitement IA" Studio tool.
+ * ImageProcessingTool — Main component for the "Traitement d'image" Studio tool.
  *
  * Manages the workflow:
  *   1. Select an image  (ImageSelector)
