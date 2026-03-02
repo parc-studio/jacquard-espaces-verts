@@ -1,0 +1,35 @@
+---
+/**
+ * Home Section – expertise reference.
+ */
+import type { HOME_PAGE_QUERY_RESULT } from '../../../sanity.types'
+import { slugify } from '../../utils'
+
+type ExpertiseSection = Extract<
+  NonNullable<NonNullable<HOME_PAGE_QUERY_RESULT>['sections']>[number],
+  { _type: 'homeSectionExpertiseReference' }
+>
+
+interface Props {
+  section: ExpertiseSection
+  isLastSection: boolean
+}
+
+const { section, isLastSection } = Astro.props
+
+const expertiseTitle = section.expertise?.title || 'Expertise à renseigner'
+const expertiseDescription =
+  section.expertise?.shortDescription ||
+  section.expertise?.description ||
+  "Ajoutez une expertise pour afficher son descriptif sur la page d'accueil."
+---
+
+<section
+  class:list={['section', 'section-expertise', 'main-grid', { 'section-last': isLastSection }]}
+>
+  <div class="section-expertise-content">
+    <h2>{expertiseTitle}</h2>
+    <p>{expertiseDescription}</p>
+    <a href={`/about#${slugify(expertiseTitle)}`} class="expertise-cta"> En Savoir plus </a>
+  </div>
+</section>

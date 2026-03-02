@@ -1,20 +1,18 @@
 /**
- * Sanity Image Builder
+ * Sanity Image URL Builder
  *
- * Helper for generating optimized image URLs from Sanity assets.
+ * Returns an ImageUrlBuilder instance for chaining .width(), .height(), etc.
+ *
+ * @example
+ * urlFor(image).width(800).url()
+ * urlFor({ _ref: id }).width(1920).quality(80).auto('format').url()
  */
 
 import { createImageUrlBuilder } from '@sanity/image-url'
 import { sanityClient } from './client'
 
-export const imageBuilder = createImageUrlBuilder(sanityClient)
+const builder = createImageUrlBuilder(sanityClient)
 
-/**
- * Build an image URL from a Sanity image reference
- *
- * @example
- * const url = urlFor(image).width(800).url()
- */
-export const urlFor = (source: Parameters<typeof imageBuilder.image>[0]) => {
-  return imageBuilder.image(source)
+export const urlFor = (source: Parameters<typeof builder.image>[0]) => {
+  return builder.image(source)
 }

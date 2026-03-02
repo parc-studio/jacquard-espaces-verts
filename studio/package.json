@@ -12,6 +12,7 @@
     "lint": "eslint ."
   },
   "dependencies": {
+    "@google/genai": "^1.43.0",
     "@sanity/color-input": "^6.0.4",
     "@sanity/icons": "^3.7.4",
     "@sanity/locale-fr-fr": "^1.2.28",

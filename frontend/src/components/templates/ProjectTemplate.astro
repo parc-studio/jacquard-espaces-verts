@@ -7,18 +7,11 @@
  * - Section 2: Info grid, thumbnails, and next project CTA
  */
 import BaseLayout from '../../layouts/BaseLayout.astro'
-import { getProject, getAllProjects } from '../../data/sanity'
+import { getProject, getProjectWithNext } from '../../data/sanity'
+import type { NextProjectData } from '../../data/sanity'
+import type { PROJECT_QUERY_RESULT } from '../../../sanity.types'
 import { urlFor } from '../../utils/sanity/image'
 import ProjectPage from './ProjectPage.svelte'
-import type { Slug } from '../../../sanity.types'
-
-interface NextProjectData {
-  titre: string
-  slug: Slug
-  localisation: string
-  anneeDebut: number
-  anneeFin: number | null
-}
 
 interface Props {
   currentSlug: string
@@ -28,7 +21,20 @@ interface Props {
 
 const { currentSlug, isPreview = false, nextProject: nextProjectProp } = Astro.props
 
-const project = await getProject(currentSlug, { preview: isPreview })
+let project: PROJECT_QUERY_RESULT | null
+let nextProject: NextProjectData | null
+
+if (nextProjectProp != null) {
+  // Static build — nextProject already computed in getStaticPaths, skip redundant getAllProjects()
+  project = await getProject(currentSlug, { preview: isPreview })
+  nextProject = nextProjectProp
+} else {
+  // Preview mode — compute nextProject on the fly
+  const result = await getProjectWithNext(currentSlug, { preview: isPreview })
+  project = result.project
+  nextProject = result.nextProject
+}
+
 const title = project?.seo?.title || project?.titre
 const description = project?.seo?.description || project?.localisation || ''
 const mainImage = project?.mediaGallery?.[0]
@@ -36,30 +42,6 @@ let image: string | undefined
 const rawImage = project?.seo?.image || mainImage
 if (rawImage) {
   image = urlFor(rawImage).width(1200).height(630).url()
-}
-
-// In preview mode, compute next project since getStaticPaths doesn't run
-let nextProject = nextProjectProp ?? null
-if (!nextProject && isPreview && project) {
-  try {
-    const allProjects = await getAllProjects({ preview: true })
-    if (allProjects && allProjects.length > 1) {
-      const currentIndex = allProjects.findIndex((p) => p.slug?.current === currentSlug)
-      if (currentIndex !== -1) {
-        const nextIndex = (currentIndex + 1) % allProjects.length
-        const next = allProjects[nextIndex]
-        nextProject = {
-          titre: next.titre,
-          slug: next.slug,
-          localisation: next.localisation,
-          anneeDebut: next.anneeDebut,
-          anneeFin: next.anneeFin,
-        }
-      }
-    }
-  } catch (error) {
-    console.error('[ProjectTemplate] Unable to load next project:', error)
-  }
 }
 ---
 

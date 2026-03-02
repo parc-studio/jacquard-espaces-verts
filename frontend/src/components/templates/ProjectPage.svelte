@@ -1,22 +1,15 @@
 <script lang="ts">
-  import { getLenis } from '@/scripts/lenis'
-  import type { PROJECT_QUERY_RESULT, Slug } from '../../../sanity.types'
+  import { formatYearRange } from '@/utils'
+  import type { PROJECT_QUERY_RESULT } from '../../../sanity.types'
+  import type { NextProjectData } from '../../data/sanity'
   import Media from '../media/Media.svelte'
   import ProjectCarousel from '../media/ProjectCarousel.svelte'
 
   type Project = NonNullable<PROJECT_QUERY_RESULT>
 
-  interface NextProject {
-    titre: string
-    slug: Slug
-    localisation: string
-    anneeDebut: number
-    anneeFin: number | null
-  }
-
   interface Props {
     project: Project
-    nextProject?: NextProject | null
+    nextProject?: NextProjectData | null
   }
 
   let { project, nextProject }: Props = $props()
@@ -68,35 +61,19 @@
     ].filter((row) => !!row.value)
   )
 
-  const yearDisplay = $derived(
-    project.anneeFin ? `${project.anneeDebut}–${project.anneeFin}` : `${project.anneeDebut}`
-  )
+  const yearDisplay = $derived(formatYearRange(project.anneeDebut, project.anneeFin))
 
   const nextYearDisplay = $derived(
-    nextProject
-      ? nextProject.anneeFin
-        ? `${nextProject.anneeDebut}–${nextProject.anneeFin}`
-        : `${nextProject.anneeDebut}`
-      : ''
+    nextProject ? formatYearRange(nextProject.anneeDebut, nextProject.anneeFin) : ''
   )
 
   function scrollToInfo() {
-    const lenis = getLenis()
-    if (lenis) {
-      lenis.scrollTo('#project-info', { offset: 0 })
-    } else {
-      document.getElementById('project-info')?.scrollIntoView({ behavior: 'smooth' })
-    }
+    document.getElementById('project-info')?.scrollIntoView({ behavior: 'smooth' })
   }
 
   function scrollToHeroWithSlide(index: number) {
     activeIndex = index
-    const lenis = getLenis()
-    if (lenis) {
-      lenis.scrollTo(heroEl ?? '#project-hero', { offset: 0 })
-    } else {
-      heroEl?.scrollIntoView({ behavior: 'smooth' })
-    }
+    heroEl?.scrollIntoView({ behavior: 'smooth' })
   }
 </script>
 

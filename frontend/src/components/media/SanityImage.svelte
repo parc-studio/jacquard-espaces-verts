@@ -1,9 +1,7 @@
 <script lang="ts">
   import { sanityClient } from '@/utils/sanity/client'
   import Image from '@tylermcrobert/svelte-sanity-image'
-  import type { PROJECT_QUERY_RESULT } from '../../../sanity.types'
-
-  type ExpandedImage = NonNullable<PROJECT_QUERY_RESULT>['coverImage']
+  import type { ExpandedImage } from './types'
 
   /**
    * LQIP (Low Quality Image Placeholder) display options

@@ -1,0 +1,74 @@
+---
+/**
+ * Home Section – side-by-side project pair.
+ */
+import type { HOME_PAGE_QUERY_RESULT } from '../../../sanity.types'
+import Media from '../media/Media.svelte'
+import { formatProjectSubtitle } from '../../utils'
+
+type PairSection = Extract<
+  NonNullable<NonNullable<HOME_PAGE_QUERY_RESULT>['sections']>[number],
+  { _type: 'homeSectionProjectPair' }
+>
+
+interface Props {
+  section: PairSection
+  isLastSection: boolean
+}
+
+const { section, isLastSection } = Astro.props
+
+const projects = section.projects?.filter((p) => !!p) || []
+const slots = [projects[0], projects[1]]
+---
+
+<section
+  class:list={['section', 'section-project-pair', 'main-grid', { 'section-last': isLastSection }]}
+>
+  {
+    slots.map((project, index) => {
+      if (!project) {
+        return (
+          <div class="project-pair-item project-pair-item-fallback">
+            <div class="project-media-fallback">
+              <div class="overlay-content overlay-content-static">
+                <h2>Projet {index + 1} à renseigner</h2>
+                <p>Sélectionnez un projet</p>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      const href = project.slug?.current ? `/projects/${project.slug.current}` : '#'
+      const projectTitle = project.titre || 'Projet sans titre'
+      const pairSubtitle = formatProjectSubtitle(
+        project.localisation || 'Localisation à venir',
+        project.anneeDebut,
+        project.anneeFin
+      )
+      const mainImage = project.mediaGallery?.[0]
+
+      return (
+        <a href={href} class="project-pair-item">
+          {mainImage ? (
+            <>
+              <Media media={{ image: mainImage }} layout="cover" client:visible />
+              <div class="overlay-content">
+                <h2>{projectTitle}</h2>
+                <p>{pairSubtitle}</p>
+              </div>
+            </>
+          ) : (
+            <div class="project-media-fallback">
+              <div class="overlay-content overlay-content-static">
+                <h2>{projectTitle}</h2>
+                <p>{pairSubtitle}</p>
+              </div>
+            </div>
+          )}
+        </a>
+      )
+    })
+  }
+</section>

@@ -22,11 +22,14 @@ export const apiVersion = '2026-01-01'
 
 export const studioUrl = 'https://admin.jacquard-espaces-verts.parc.studio'
 
+/** Shared base config for constructing Sanity clients. */
+export const clientConfig = { projectId, dataset, apiVersion } as const
+
 /**
  * Sanity client instance
  *
  * Used for fetching published content.
- * For preview/draft content, use loadQuery() with { preview: true }
+ * For preview/draft content, pass { preview: true } to data-fetching helpers in @/data/sanity.
  */
 export const sanityClient = createClient({
   projectId,

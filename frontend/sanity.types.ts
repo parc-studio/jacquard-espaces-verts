@@ -66,17 +66,12 @@ export type HomeSectionProjectReference = {
   displayMode: 'fullScreenImage' | 'galleryImage'
 }
 
-export type HomeSectionMediaCarousel = {
-  _type: 'homeSectionMediaCarousel'
+export type CarouselSection = {
+  _type: 'carouselSection'
   title?: string
-  subtitle?: string
-  images: Array<{
-    asset?: SanityImageAssetReference
-    media?: unknown
-    hotspot?: SanityImageHotspot
-    crop?: SanityImageCrop
+  items?: Array<{
+    media: Media
     caption?: string
-    _type: 'image'
     _key: string
   }>
 }
@@ -97,42 +92,10 @@ export type SanityImageHotspot = {
   width: number
 }
 
-export type HomeSectionTextCta = {
-  _type: 'homeSectionTextCta'
-  title?: string
-  text: string
-  cta?: Cta
-}
-
 export type Cta = {
   _type: 'cta'
   title: string
   link?: Link
-}
-
-export type HomeSectionDoubleMedia = {
-  _type: 'homeSectionDoubleMedia'
-  items: Array<{
-    media: Media
-    text?: string
-    _key: string
-  }>
-}
-
-export type HomeSectionMedia = {
-  _type: 'homeSectionMedia'
-  media: Media
-  text?: string
-}
-
-export type CarouselSection = {
-  _type: 'carouselSection'
-  title?: string
-  items?: Array<{
-    media: Media
-    caption?: string
-    _key: string
-  }>
 }
 
 export type AboutPageReference = {
@@ -499,14 +462,10 @@ export type AllSanitySchemaTypes =
   | ProjectReference
   | HomeSectionProjectPair
   | HomeSectionProjectReference
-  | HomeSectionMediaCarousel
+  | CarouselSection
   | SanityImageCrop
   | SanityImageHotspot
-  | HomeSectionTextCta
   | Cta
-  | HomeSectionDoubleMedia
-  | HomeSectionMedia
-  | CarouselSection
   | AboutPageReference
   | HomePageReference
   | PageReference

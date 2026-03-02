@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import type { HOME_PAGE_QUERY_RESULT } from '../../../sanity.types'
+  import { formatProjectSubtitle } from '../../utils'
 
   import Media from './Media.svelte'
 
@@ -31,18 +32,7 @@
     autoplayIntervalMs = 3000,
   }: Props = $props()
 
-  let yearsLabel = $derived.by(() => {
-    if (!anneeDebut) return ''
-    if (anneeFin && anneeFin !== anneeDebut) return `${anneeDebut}–${anneeFin}`
-    return `${anneeDebut}`
-  })
-
-  let subtitle = $derived.by(() => {
-    const parts: string[] = []
-    if (location) parts.push(location)
-    if (yearsLabel) parts.push(yearsLabel)
-    return parts.join(', ')
-  })
+  let subtitle = $derived(formatProjectSubtitle(location, anneeDebut, anneeFin))
 
   let currentIndex = $state(0)
   let isPaused = $state(false)

@@ -1,9 +1,7 @@
 <script lang="ts">
-  import { imageBuilder } from '@/utils/sanity/image'
+  import { urlFor } from '@/utils/sanity/image'
   import { stegaClean } from '@sanity/client/stega'
-  import type { PROJECT_QUERY_RESULT } from '../../../sanity.types'
-
-  type ExpandedImage = NonNullable<PROJECT_QUERY_RESULT>['coverImage']
+  import type { ExpandedImage } from './types'
 
   interface Props {
     /** Video URL (Vimeo, Mux, .mp4 file) */
@@ -115,8 +113,7 @@
   // Generate poster URL from Sanity image
   const posterUrl = $derived.by(() => {
     if (!poster?.asset?._id) return undefined
-    return imageBuilder
-      .image({ _ref: poster.asset._id })
+    return urlFor({ _ref: poster.asset._id })
       .width(1920)
       .quality(80)
       .auto('format')
