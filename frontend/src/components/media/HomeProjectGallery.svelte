@@ -239,6 +239,21 @@
   }
 
   @media (max-width: 768px) {
+    .home-project-gallery {
+      min-width: 0;
+      overflow-x: clip;
+    }
+
+    .gallery-expertises {
+      flex-wrap: wrap;
+      row-gap: var(--size-8);
+      padding-inline: var(--size-20);
+    }
+
+    .gallery-expertise-label {
+      white-space: normal;
+    }
+
     .home-project-gallery-desktop {
       display: none;
     }

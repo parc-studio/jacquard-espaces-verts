@@ -41,6 +41,7 @@
   --font-mono: 'SF Mono', Monaco, 'Cascadia Code', 'Courier New', monospace;
 
   --text-12: 0.75rem; /* 12px */
+  --text-10: 0.625rem; /* 10px */
   --text-14: 0.875rem; /* 14px */
   --text-16: 1rem; /* 16px */
   --text-18: 1.125rem; /* 18px */

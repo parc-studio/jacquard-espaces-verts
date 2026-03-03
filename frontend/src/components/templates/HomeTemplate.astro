@@ -79,7 +79,7 @@ const description = homePage?.seo?.description || 'Jacquard Espaces Verts'
       flex-direction: column;
       background-color: var(--color-white);
       padding-top: var(--size-50);
-      overflow: hidden;
+      min-width: 0;
     }
 
     .home-footer-backdrop {
@@ -96,6 +96,7 @@ const description = homePage?.seo?.description || 'Jacquard Espaces Verts'
       position: relative;
       z-index: 1;
       background: var(--color-white);
+      min-width: 0;
     }
 
     .section-last {
@@ -251,6 +252,23 @@ const description = homePage?.seo?.description || 'Jacquard Espaces Verts'
     }
 
     @media (max-width: 768px) {
+      .section-project-fullscreen,
+      .section-project-gallery,
+      .section-project-pair {
+        width: 100%;
+        max-width: 100%;
+        aspect-ratio: unset;
+      }
+
+      .section-project-fullscreen {
+        height: 80svh;
+      }
+
+      .section-project-pair {
+        display: flex;
+        flex-direction: column;
+      }
+
       .section-project-fullscreen.section-last,
       .section-project-pair.section-last,
       .section-project-gallery.section-last {
@@ -266,12 +284,22 @@ const description = homePage?.seo?.description || 'Jacquard Espaces Verts'
       }
 
       .project-pair-item {
-        grid-column: 1 / -1;
+        grid-column: auto;
+        width: 100%;
+        max-width: 100%;
+        aspect-ratio: 500 / 400;
+        min-height: auto;
       }
 
       .section-expertise-content {
         grid-column: 1 / -1;
         padding-block: var(--size-50);
+        padding-inline: var(--size-20);
+      }
+
+      .section-project-fullscreen .project-block-link .sanity-image.cover img,
+      .section-project-fullscreen .project-block-link .video.u-fit-cover {
+        object-fit: cover;
       }
 
       .section-expertise-content h2 {
@@ -285,7 +313,7 @@ const description = homePage?.seo?.description || 'Jacquard Espaces Verts'
       }
 
       .expertise-cta {
-        font-size: 0.625rem; /* 10px */
+        font-size: var(--text-10);
         line-height: 0.75rem; /* 12px */
       }
 
