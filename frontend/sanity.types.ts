@@ -227,6 +227,14 @@ export type Project = {
   localisation: string
   anneeDebut: number
   anneeFin?: number
+  mediaGallery: Array<{
+    asset?: SanityImageAssetReference
+    media?: unknown
+    hotspot?: SanityImageHotspot
+    crop?: SanityImageCrop
+    _type: 'image'
+    _key: string
+  }>
   techniques?: Array<string>
   expertises?: Array<
     {
@@ -238,14 +246,6 @@ export type Project = {
   maitreOuvrage?: string
   maitreOeuvre?: string
   architecte?: string
-  mediaGallery: Array<{
-    asset?: SanityImageAssetReference
-    media?: unknown
-    hotspot?: SanityImageHotspot
-    crop?: SanityImageCrop
-    _type: 'image'
-    _key: string
-  }>
   seo?: Seo
 }
 
