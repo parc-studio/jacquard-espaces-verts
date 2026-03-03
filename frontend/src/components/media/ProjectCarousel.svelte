@@ -41,17 +41,32 @@
     return !!viewportEl && viewportEl.scrollWidth > viewportEl.clientWidth
   }
 
-  /** On user scroll (touch swipe), derive activeIndex from scroll position */
+  /** Get the scrollLeft target for a given slide index using its offsetLeft */
+  function slideOffsetLeft(idx: number): number {
+    if (!viewportEl) return 0
+    const slide = viewportEl.children[idx] as HTMLElement | undefined
+    return slide?.offsetLeft ?? 0
+  }
+
+  /** On user scroll (touch swipe), derive activeIndex from the nearest slide by offsetLeft */
   function handleScroll() {
     if (isProgrammatic || !viewportEl) return
     clearTimeout(scrollTimer)
     scrollTimer = setTimeout(() => {
       if (!viewportEl) return
-      const w = viewportEl.clientWidth
-      if (w === 0) return
-      const idx = Math.round(viewportEl.scrollLeft / w)
-      if (idx !== activeIndex && idx >= 0 && idx < count) {
-        activeIndex = idx
+      const scrollLeft = viewportEl.scrollLeft
+      const slides = Array.from(viewportEl.children) as HTMLElement[]
+      let nearest = 0
+      let minDist = Infinity
+      slides.forEach((slide, i) => {
+        const dist = Math.abs(slide.offsetLeft - scrollLeft)
+        if (dist < minDist) {
+          minDist = dist
+          nearest = i
+        }
+      })
+      if (nearest !== activeIndex && nearest >= 0 && nearest < count) {
+        activeIndex = nearest
       }
     }, 80)
   }
@@ -60,7 +75,7 @@
   $effect(() => {
     const idx = activeIndex
     if (!viewportEl || !isSnapActive()) return
-    const target = idx * viewportEl.clientWidth
+    const target = slideOffsetLeft(idx)
     if (Math.abs(viewportEl.scrollLeft - target) < 2) return
     isProgrammatic = true
     viewportEl.scrollTo({ left: target, behavior: 'smooth' })
@@ -125,26 +140,21 @@
     position: relative;
   }
 
-  .visually-hidden {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border-width: 0;
-  }
-
-  /* ---- Mobile: scroll-snap carousel ---- */
+  /* ---- Mobile: scroll-snap carousel with peek ---- */
   @media (max-width: 768px) {
+    .project-carousel {
+      overflow: visible;
+    }
+
     .carousel-viewport {
       display: flex;
       overflow-x: auto;
       scroll-snap-type: x mandatory;
       -webkit-overflow-scrolling: touch;
       scrollbar-width: none; /* Firefox */
+      /* Peek: next slide slightly visible on the right */
+      padding-right: var(--size-12);
+      padding-left: var(--size-12);
     }
 
     .carousel-viewport::-webkit-scrollbar {
@@ -154,11 +164,13 @@
     .carousel-slide {
       position: relative;
       display: block;
-      width: 100%;
+      /* Narrower than viewport so the next slide peeks */
+      width: calc(100% - var(--size-12));
       height: 100%;
       flex-shrink: 0;
       scroll-snap-align: center;
       pointer-events: auto;
+      padding-inline: var(--size-4);
     }
 
     /* Switch to contain so images aren't cropped and sit centered */

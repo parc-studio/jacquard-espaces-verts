@@ -463,6 +463,7 @@
       flex-direction: column;
       height: 100vh;
       position: relative;
+      overflow: hidden;
     }
 
     .hero-sidebar {
@@ -470,10 +471,12 @@
       inset: 0;
       z-index: 2;
       padding: var(--size-20);
+      pointer-events: none;
     }
 
     .hero-sidebar-top {
       gap: var(--size-16);
+      pointer-events: all;
     }
 
     .project-title {
@@ -494,6 +497,8 @@
     .info-cta {
       font-size: var(--text-12);
       text-align: center;
+      pointer-events: all;
+      padding-block: var(--size-16);
     }
 
     .hero-carousel {
@@ -501,7 +506,9 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: var(--size-96) var(--size-20) var(--size-40);
+      padding: var(--size-96) 0 var(--size-40);
+      /* Allow the next slide to peek beyond the carousel boundary */
+      overflow: visible;
     }
 
     .carousel-zone {
@@ -543,6 +550,10 @@
       overflow-x: auto;
       gap: var(--size-10);
       padding-bottom: var(--size-8);
+      padding-right: var(--size-80);
+      width: 100vw;
+      scrollbar-width: none; /* Firefox */
+      -webkit-overflow-scrolling: touch; /* iOS */
     }
 
     .next-project {

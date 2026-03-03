@@ -4,11 +4,6 @@
   import type { ExpandedImage } from './types'
 
   /**
-   * LQIP (Low Quality Image Placeholder) display options
-   */
-  type LqipMode = 'blur' | 'color' | 'none'
-
-  /**
    * Image layout modes:
    * - contain: Image maintains aspect ratio, sized to fit within bounds
    * - cover: Image covers the container, may be cropped
@@ -28,8 +23,6 @@
     sizes?: string | null
     /** Mark as high priority (eager loading, high fetchpriority) */
     priority?: boolean
-    /** LQIP placeholder mode */
-    lqip?: LqipMode
     /** Custom aspect ratio (overrides image dimensions) */
     aspect?: number
     /** Max width for srcset generation */
@@ -49,16 +42,12 @@
     fallbackAlt = '',
     sizes = '100vw',
     priority = false,
-    lqip = 'blur',
     aspect,
     width,
     height,
     quality = 80,
     class: className = '',
   }: Props = $props()
-
-  // Track whether the full image has finished loading so the LQIP can fade out
-  let imageLoaded = $state(false)
 
   // Derive the effective alt text with fallback chain
   // Priority: prop alt > fallbackAlt
@@ -69,11 +58,6 @@
 
   // Calculate aspect ratio: custom > image dimensions > default
   let aspectRatio = $derived(aspect ?? dimensions?.aspectRatio ?? 4 / 3)
-
-  // Get LQIP data URL for placeholder
-  let lqipUrl = $derived(
-    lqip !== 'none' && image?.asset?.metadata?.lqip ? image.asset.metadata.lqip : null
-  )
 
   // Build image source object for the library
   // The library expects { asset: { _ref } } but can also work with _id
@@ -87,35 +71,11 @@
     }
   })
 
-  // Compute wrapper styles
-  let wrapperStyle = $derived.by(() => {
-    const styles: string[] = []
-
-    if (lqipUrl) {
-      styles.push(`--lqip: url(${lqipUrl})`)
-    }
-
-    if (layout === 'contain') {
-      styles.push(`--aspect-ratio: ${aspectRatio}`)
-    }
-
-    return styles.join('; ')
-  })
-
-  // Reset loaded state when the image source changes
-  $effect(() => {
-    void imageSource
-    imageLoaded = false
-  })
+  let wrapperStyle = $derived(layout === 'contain' ? `--aspect-ratio: ${aspectRatio}` : undefined)
 </script>
 
 {#if imageSource}
-  <div
-    class="sanity-image {layout} {className}"
-    class:has-lqip={lqipUrl && lqip === 'blur'}
-    class:image-loaded={imageLoaded}
-    style={wrapperStyle}
-  >
+  <div class="sanity-image {layout} {className}" style={wrapperStyle}>
     <Image
       client={sanityClient}
       image={imageSource}
@@ -127,7 +87,6 @@
       {width}
       {height}
       {aspect}
-      onload={() => (imageLoaded = true)}
     />
   </div>
 {/if}
@@ -147,30 +106,7 @@
     height: 100%;
   }
 
-  /* LQIP blur background */
-  .sanity-image.has-lqip::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background-image: var(--lqip);
-    background-size: cover;
-    background-position: center;
-    filter: blur(20px);
-    transform: scale(1.1); /* Prevent blur edges showing */
-    z-index: 0;
-    opacity: 1;
-    transition: opacity var(--transition-slow);
-  }
-
-  /* Fade out the LQIP once the full image has loaded */
-  .sanity-image.has-lqip.image-loaded::before {
-    opacity: 0;
-  }
-
-  /* Hide LQIP once image loads */
   .sanity-image :global(img) {
-    position: relative;
-    z-index: 1;
     width: 100%;
     height: 100%;
   }

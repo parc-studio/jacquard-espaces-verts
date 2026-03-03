@@ -19,6 +19,7 @@
     anneeFin?: number | null
     expertises?: Expertise[] | null
     autoplayIntervalMs?: number
+    priority?: boolean
   }
 
   let {
@@ -30,6 +31,7 @@
     anneeFin,
     expertises,
     autoplayIntervalMs = 3000,
+    priority = false,
   }: Props = $props()
 
   let subtitle = $derived(formatProjectSubtitle(location, anneeDebut, anneeFin))
@@ -125,9 +127,14 @@
   {/if}
 
   <div class="home-project-gallery-desktop" aria-label={`Galerie ${title}`}>
-    {#each visibleDesktopImages as image (image._key)}
+    {#each visibleDesktopImages as image, i (image._key)}
       <a {href} class="home-project-gallery-item">
-        <Media media={{ image }} layout="cover" sizes="(max-width: 768px) 100vw, 25vw" />
+        <Media
+          media={{ image }}
+          layout="cover"
+          sizes="(max-width: 768px) 100vw, 25vw"
+          priority={i === 0 && priority}
+        />
       </a>
     {/each}
   </div>

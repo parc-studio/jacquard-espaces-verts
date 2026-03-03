@@ -38,13 +38,26 @@ const description = homePage?.seo?.description || 'Jacquard Espaces Verts'
     {
       sections.map((section, index) => {
         const isLastSection = index === sections.length - 1
+        const isFirst = index === 0
 
         if (section._type === 'homeSectionProjectReference') {
-          return <HomeSectionProject section={section} isLastSection={isLastSection} />
+          return (
+            <HomeSectionProject
+              section={section}
+              isLastSection={isLastSection}
+              priority={isFirst}
+            />
+          )
         }
 
         if (section._type === 'homeSectionProjectPair') {
-          return <HomeSectionProjectPair section={section} isLastSection={isLastSection} />
+          return (
+            <HomeSectionProjectPair
+              section={section}
+              isLastSection={isLastSection}
+              priority={isFirst}
+            />
+          )
         }
 
         if (section._type === 'homeSectionExpertiseReference') {

@@ -14,9 +14,10 @@ type PairSection = Extract<
 interface Props {
   section: PairSection
   isLastSection: boolean
+  priority?: boolean
 }
 
-const { section, isLastSection } = Astro.props
+const { section, isLastSection, priority = false } = Astro.props
 
 const projects = section.projects?.filter((p) => !!p) || []
 const slots = [projects[0], projects[1]]
@@ -53,7 +54,12 @@ const slots = [projects[0], projects[1]]
         <a href={href} class="project-pair-item">
           {mainImage ? (
             <>
-              <Media media={{ image: mainImage }} layout="cover" client:visible />
+              <Media
+                media={{ image: mainImage }}
+                layout="cover"
+                priority={index === 0 && priority}
+                client:visible
+              />
               <div class="overlay-content">
                 <h2>{projectTitle}</h2>
                 <p>{pairSubtitle}</p>

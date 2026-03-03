@@ -15,9 +15,10 @@ type ProjectSection = Extract<
 interface Props {
   section: ProjectSection
   isLastSection: boolean
+  priority?: boolean
 }
 
-const { section, isLastSection } = Astro.props
+const { section, isLastSection, priority = false } = Astro.props
 
 const project = section.project
 const displayMode = section.displayMode as string | undefined
@@ -48,6 +49,7 @@ const isGalleryMode = displayMode === 'galleryImage' || displayMode === 'carouse
         anneeDebut={project.anneeDebut}
         anneeFin={project.anneeFin}
         expertises={project.expertises}
+        priority={priority}
         client:load
       />
     </section>
@@ -61,7 +63,12 @@ const isGalleryMode = displayMode === 'galleryImage' || displayMode === 'carouse
       >
         {project.mediaGallery?.[0] ? (
           <>
-            <Media media={{ image: project.mediaGallery[0] }} layout="cover" client:visible />
+            <Media
+              media={{ image: project.mediaGallery[0] }}
+              layout="cover"
+              priority={priority}
+              client:load
+            />
             <div class="overlay-content">
               <h2>{project.titre || 'Projet sans titre'}</h2>
               <p>
