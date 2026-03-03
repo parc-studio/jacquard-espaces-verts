@@ -79,6 +79,7 @@ const description = homePage?.seo?.description || 'Jacquard Espaces Verts'
       flex-direction: column;
       background-color: var(--color-white);
       padding-top: var(--size-50);
+      overflow: hidden;
     }
 
     .home-footer-backdrop {
@@ -270,6 +271,32 @@ const description = homePage?.seo?.description || 'Jacquard Espaces Verts'
 
       .section-expertise-content {
         grid-column: 1 / -1;
+        padding-block: var(--size-50);
+      }
+
+      .section-expertise-content h2 {
+        font-size: var(--text-14);
+        line-height: var(--size-16);
+      }
+
+      .section-expertise-content p {
+        font-size: var(--text-14);
+        line-height: var(--size-20);
+      }
+
+      .expertise-cta {
+        font-size: 0.625rem; /* 10px */
+        line-height: 0.75rem; /* 12px */
+      }
+
+      .overlay-content h2,
+      .overlay-content p {
+        font-size: var(--text-18);
+        line-height: var(--size-20);
+      }
+
+      .overlay-content {
+        row-gap: var(--size-4);
       }
     }
   </style>

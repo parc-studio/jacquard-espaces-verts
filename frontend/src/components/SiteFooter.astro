@@ -115,11 +115,14 @@ const linkedinUrl = settings?.linkedin
     flex-direction: column;
     gap: var(--size-40);
     padding-block: var(--size-20);
+    padding-bottom: var(--size-64);
   }
 
   .footer-logo {
     opacity: 0;
     width: 100%;
+    overflow: hidden;
+    min-width: 0;
   }
 
   .footer-logo svg {
@@ -191,19 +194,44 @@ const linkedinUrl = settings?.linkedin
   }
 
   @media (max-width: 768px) {
+    .site-footer {
+      padding-inline: var(--size-20);
+      gap: var(--size-20);
+    }
+
     .footer-content {
       display: flex;
       flex-direction: column;
-      gap: var(--size-24);
+      gap: var(--size-20);
     }
 
-    .footer-about,
-    .footer-expertise {
-      margin-bottom: var(--size-16);
+    .footer-about {
+      padding-left: 0;
+    }
+
+    .site-footer h2 {
+      margin-bottom: var(--size-8);
+      line-height: var(--size-14);
+    }
+
+    .site-footer p,
+    .site-footer li {
+      font-size: var(--text-14);
+      line-height: var(--size-16);
     }
 
     .footer-links {
+      flex-wrap: nowrap;
       align-items: center;
+      justify-content: space-between;
+      padding-right: 0;
+      padding-top: var(--size-10);
+      width: 100%;
+    }
+
+    .footer-links a {
+      font-size: var(--text-18);
+      line-height: var(--size-20);
     }
   }
 </style>

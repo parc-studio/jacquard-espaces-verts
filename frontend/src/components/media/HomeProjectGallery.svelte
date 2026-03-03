@@ -204,6 +204,7 @@
     display: none;
     overflow: hidden;
     width: 100%;
+    position: relative;
   }
 
   .home-project-gallery-track {
