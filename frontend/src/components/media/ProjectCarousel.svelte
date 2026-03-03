@@ -132,6 +132,7 @@
     inset: 0;
     display: none;
     pointer-events: none;
+    height: 100%;
   }
 
   .carousel-slide.is-active {
