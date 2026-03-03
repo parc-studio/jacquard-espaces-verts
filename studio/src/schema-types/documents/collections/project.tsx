@@ -51,6 +51,24 @@ export const projectType = defineType({
       validation: (Rule) => Rule.integer().min(1900),
     }),
     defineField({
+      name: 'mediaGallery',
+      title: 'Galerie média',
+      type: 'array',
+      of: [
+        defineArrayMember({
+          type: 'image',
+          options: {
+            hotspot: true,
+            sources: [mediaAssetSource],
+          },
+        }),
+      ],
+      options: {
+        layout: 'grid',
+      },
+      validation: (Rule) => Rule.required().min(1),
+    }),
+    defineField({
       name: 'techniques',
       title: 'Techniques',
       type: 'array',
@@ -95,24 +113,7 @@ export const projectType = defineType({
       title: 'Architecte',
       type: 'string',
     }),
-    defineField({
-      name: 'mediaGallery',
-      title: 'Galerie média',
-      type: 'array',
-      of: [
-        defineArrayMember({
-          type: 'image',
-          options: {
-            hotspot: true,
-            sources: [mediaAssetSource],
-          },
-        }),
-      ],
-      options: {
-        layout: 'grid',
-      },
-      validation: (Rule) => Rule.required().min(1),
-    }),
+
     defineField({
       name: 'seo',
       title: 'SEO',

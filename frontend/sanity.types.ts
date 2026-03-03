@@ -175,22 +175,6 @@ export type Seo = {
   }
 }
 
-export type Tag = {
-  _id: string
-  _type: 'tag'
-  _createdAt: string
-  _updatedAt: string
-  _rev: string
-  name: string
-  slug: Slug
-}
-
-export type Slug = {
-  _type: 'slug'
-  current: string
-  source?: string
-}
-
 export type Expertise = {
   _id: string
   _type: 'expertise'
@@ -263,6 +247,12 @@ export type Project = {
     _key: string
   }>
   seo?: Seo
+}
+
+export type Slug = {
+  _type: 'slug'
+  current: string
+  source?: string
 }
 
 export type Page = {
@@ -472,12 +462,11 @@ export type AllSanitySchemaTypes =
   | Link
   | BlockContent
   | Seo
-  | Tag
-  | Slug
   | Expertise
   | Annotation
   | Settings
   | Project
+  | Slug
   | Page
   | HomePage
   | AboutPage

@@ -45,7 +45,11 @@ const description = aboutPage?.seo?.description || ''
       {
         expertises?.map((expertise) => (
           <div class="expertise" id={slugify(expertise.title)} data-expertise>
-            <h2 class="expertise-title">{expertise.title}</h2>
+            <h2 class="expertise-title">
+              <a href={`#${slugify(expertise.title)}`} class="expertise-title-link">
+                {expertise.title}
+              </a>
+            </h2>
             {expertise.description && <p class="expertise-description">{expertise.description}</p>}
           </div>
         ))
@@ -106,7 +110,7 @@ const description = aboutPage?.seo?.description || ''
 
   <style>
     .about {
-      padding: var(--size-50) var(--size-20) var(--size-20);
+      padding: var(--size-64) var(--size-20) var(--size-20);
       gap: var(--size-40);
       background: var(--color-white);
       min-height: 100vh;
@@ -122,9 +126,22 @@ const description = aboutPage?.seo?.description || ''
       gap: var(--size-40);
     }
 
+    .expertise {
+      scroll-margin-top: 80px;
+    }
+
     .expertise-title {
       text-transform: uppercase;
       margin-bottom: var(--size-16);
+    }
+
+    .expertise-title-link {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .expertise-title-link:focus-visible {
+      outline: 1px solid currentColor;
     }
 
     /* ------------------------------------------------
@@ -183,15 +200,19 @@ const description = aboutPage?.seo?.description || ''
      * ------------------------------------------------ */
     @media (min-width: 769px) {
       .about {
-        padding: var(--size-50) var(--size-20) var(--size-20);
+        padding: var(--size-80) var(--size-20) var(--size-20);
       }
 
       .expertises {
         grid-column: 1 / span 3;
+        padding-bottom: 100vh;
       }
 
       .info {
         grid-column: 5 / span 3;
+        position: sticky;
+        top: var(--size-80);
+        align-self: start;
       }
 
       .cover {
@@ -206,28 +227,37 @@ const description = aboutPage?.seo?.description || ''
   </style>
 
   <script>
-    function initHighlight() {
-      const hash = window.location.hash.slice(1)
-      if (!hash) return
+    let activeController: AbortController | null = null
 
-      const target = document.getElementById(hash)
+    function applyHighlight(id: string) {
+      const target = document.getElementById(id)
       if (!target || !target.hasAttribute('data-expertise')) return
 
       const main = document.querySelector<HTMLElement>('.about')
       if (!main) return
 
+      // Cancel listeners from any previous highlight
+      activeController?.abort()
+      activeController = new AbortController()
+      const { signal } = activeController
+
+      // Clear any pre-existing highlight
+      main
+        .querySelectorAll<HTMLElement>('.is-highlighted')
+        .forEach((el) => el.classList.remove('is-highlighted'))
+
       // Apply faded state
       main.classList.add('has-highlight')
       target.classList.add('is-highlighted')
 
-      // Scroll target into view
+      // Smooth scroll into view
       target.scrollIntoView({ behavior: 'smooth', block: 'start' })
 
       function clearHighlight() {
         main!.classList.remove('has-highlight')
         target!.classList.remove('is-highlighted')
-        window.removeEventListener('click', onClickOutside)
-        window.removeEventListener('scroll', onScroll)
+        activeController?.abort()
+        activeController = null
       }
 
       // Desktop: click anywhere else dismisses
@@ -242,17 +272,38 @@ const description = aboutPage?.seo?.description || ''
         clearHighlight()
       }
 
-      // Delay listeners so they don't fire immediately
+      // Delay listeners so they don't fire immediately on the triggering click
       requestAnimationFrame(() => {
-        window.addEventListener('click', onClickOutside)
+        window.addEventListener('click', onClickOutside, { signal })
         if (window.innerWidth <= 768) {
-          window.addEventListener('scroll', onScroll, { once: true })
+          window.addEventListener('scroll', onScroll, { signal, once: true })
         }
+      })
+    }
+
+    function initHighlight() {
+      const hash = window.location.hash.slice(1)
+      if (hash) applyHighlight(hash)
+    }
+
+    function initLinkHandlers() {
+      document.querySelectorAll<HTMLAnchorElement>('.expertise-title-link').forEach((link) => {
+        link.addEventListener('click', (e) => {
+          e.preventDefault()
+          const id = link.getAttribute('href')?.slice(1)
+          if (!id) return
+          history.pushState(null, '', `#${id}`)
+          applyHighlight(id)
+        })
       })
     }
 
     // Run on initial load and on Astro client-side navigations
     initHighlight()
-    document.addEventListener('astro:after-swap', initHighlight)
+    initLinkHandlers()
+    document.addEventListener('astro:after-swap', () => {
+      initHighlight()
+      initLinkHandlers()
+    })
   </script>
 </BaseLayout>
