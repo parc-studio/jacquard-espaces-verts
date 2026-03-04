@@ -271,13 +271,13 @@
   }
 
   .carousel-zone {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    width: 50%;
+    position: fixed;
+    top: var(--size-96);
+    bottom: var(--size-80);
+    width: 50vw;
     background: none;
     border: none;
-    z-index: 1;
+    z-index: var(--z-fixed);
     padding: 0;
     margin: 0;
     -webkit-tap-highlight-color: transparent;
