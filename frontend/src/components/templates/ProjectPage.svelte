@@ -1,5 +1,6 @@
 <script lang="ts">
   import { formatYearRange } from '@/utils'
+  import { urlFor } from '@/utils/sanity/image'
   import type { PROJECT_QUERY_RESULT } from '../../../sanity.types'
   import type { NextProjectData } from '../../data/sanity'
   import Media from '../media/Media.svelte'
@@ -75,6 +76,53 @@
     activeIndex = index
     heroEl?.scrollIntoView({ behavior: 'smooth' })
   }
+
+  $effect(() => {
+    const sources = galleryImages
+      .map((image) => {
+        if (!image?.asset?._id) return null
+        return urlFor(image).width(2000).quality(80).auto('format').url()
+      })
+      .filter((src): src is string => !!src)
+
+    if (sources.length === 0) return
+
+    let canceled = false
+    let idleHandle: number | undefined
+    let timeoutHandle: ReturnType<typeof setTimeout> | undefined
+
+    const preload = () => {
+      if (canceled) return
+
+      for (const src of sources) {
+        const img = new Image()
+        img.decoding = 'async'
+        ;(img as HTMLImageElement & { fetchPriority?: 'low' | 'high' | 'auto' }).fetchPriority =
+          'low'
+        img.src = src
+      }
+    }
+
+    const requestIdle = (
+      window as Window & {
+        requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number
+      }
+    ).requestIdleCallback
+
+    if (requestIdle) {
+      idleHandle = requestIdle(preload, { timeout: 1200 })
+    } else {
+      timeoutHandle = setTimeout(preload, 200)
+    }
+
+    return () => {
+      canceled = true
+      if (timeoutHandle) clearTimeout(timeoutHandle)
+      const cancelIdle = (window as Window & { cancelIdleCallback?: (handle: number) => void })
+        .cancelIdleCallback
+      if (cancelIdle && idleHandle) cancelIdle(idleHandle)
+    }
+  })
 </script>
 
 <!-- Section 1: Hero -->
@@ -271,7 +319,7 @@
   }
 
   .carousel-zone {
-    position: fixed;
+    position: absolute;
     top: var(--size-96);
     bottom: var(--size-80);
     width: 50vw;

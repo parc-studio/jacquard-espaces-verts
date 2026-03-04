@@ -97,6 +97,7 @@ const agentationMode = isDevMode ? 'dev' : 'review'
     {!hideFooter && <SiteFooter isPreview={isPreview} settings={settings} />}
     {isPreview && <VisualEditing pagePath={pagePath} client:only="svelte" transition:persist />}
     {enableFeedback && <AgentationWrapper client:only="react" mode={agentationMode} />}
+    {!isDevMode && <ParcCredits />}
   </body>
 </html>
 
@@ -116,7 +117,7 @@ const agentationMode = isDevMode ? 'dev' : 'review'
 <script>
   import type { TransitionBeforePreparationEvent } from 'astro:transitions/client'
 
-  const FADE_MS = 180
+  const FADE_MS = 330
 
   const prefersReducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
@@ -168,5 +169,3 @@ const agentationMode = isDevMode ? 'dev' : 'review'
     fadeIn(document.body)
   })
 </script>
-
-{isDevMode && <ParcCredits />}

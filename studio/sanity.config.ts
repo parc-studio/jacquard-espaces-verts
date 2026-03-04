@@ -10,6 +10,7 @@ import { presentationTool } from 'sanity/presentation'
 import { structureTool } from 'sanity/structure'
 
 import { LOCAL_URL, PROJECT_ID, SITE_URL } from './constants'
+import { AutoOpenStructureLayout } from './src/components/AutoOpenStructureLayout'
 import { resolve } from './src/presentation/resolve'
 import { schemaTypes } from './src/schema-types'
 import { structure } from './src/structure'
@@ -48,6 +49,11 @@ export default defineConfig({
   ],
   schema: { types: schemaTypes },
   tools: (prev) => [...prev, imageProcessingTool],
+  studio: {
+    components: {
+      layout: AutoOpenStructureLayout,
+    },
+  },
 
   // Initial value templates for pre-filled document creation
   // TODO: Add custom templates as needed
