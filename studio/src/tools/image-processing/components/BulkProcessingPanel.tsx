@@ -17,7 +17,7 @@ import { Badge, Box, Button, Card, Flex, Grid, Heading, Spinner, Stack, Text } f
 import { useCallback, useRef, useState } from 'react'
 import { useClient } from 'sanity'
 
-import { isGeminiConfigured, processImageChain } from '../lib/gemini'
+import { isCloudinaryConfigured, processImageChain } from '../lib/cloudinary'
 import {
   fetchImageAsBase64,
   humanizeFilename,
@@ -68,7 +68,7 @@ function statusTone(
 
 export function BulkProcessingPanel({ project, onDone, onCancel }: BulkProcessingPanelProps) {
   const client = useClient({ apiVersion: '2025-01-12' })
-  const configured = isGeminiConfigured()
+  const configured = isCloudinaryConfigured()
 
   // Build initial job items from project images
   const [items, setItems] = useState<BulkJobItem[]>(() =>
@@ -190,8 +190,8 @@ export function BulkProcessingPanel({ project, onDone, onCancel }: BulkProcessin
       {!configured && (
         <Card padding={3} tone="caution" radius={2}>
           <Text size={1}>
-            Gemini est activé uniquement en Studio local (<code>localhost</code>) avec
-            <code> SANITY_STUDIO_GEMINI_API_KEY</code> dans <code>.env</code>.
+            Cloudinary est activé uniquement en Studio local (<code>localhost</code>) avec
+            <code> SANITY_STUDIO_CLOUDINARY_*</code> dans <code>.env</code>.
           </Text>
         </Card>
       )}

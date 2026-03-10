@@ -10,7 +10,7 @@ import { Box, Button, Card, Flex, Heading, Spinner, Stack, Text } from '@sanity/
 import { useCallback, useMemo, useState } from 'react'
 import { useClient } from 'sanity'
 
-import { MODE_LABELS } from '../lib/prompts'
+import { MODE_LABELS } from '../lib/types'
 import {
   makeProcessedFilename,
   replaceImageInProject,
@@ -97,7 +97,7 @@ export function ReviewPanel({
         </Heading>
       </Flex>
 
-      {/* Feedback from Gemini */}
+      {/* Feedback from Cloudinary */}
       {result.feedback && (
         <Card padding={3} tone="positive" radius={2}>
           <Text size={1}>{result.feedback}</Text>

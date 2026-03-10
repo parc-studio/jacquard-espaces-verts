@@ -1,5 +1,5 @@
 /**
- * ProcessingPanel — Step 2: Choose processing mode, preview source, and trigger Gemini.
+ * ProcessingPanel — Step 2: Choose processing mode, preview source, and trigger Cloudinary.
  *
  * Displays the selected image, mode selection (equalize / cadrage),
  * and a button to start processing. Shows progress/loading state.
@@ -9,10 +9,10 @@ import { ArrowLeftIcon, PlayIcon } from '@sanity/icons'
 import { Box, Button, Card, Flex, Heading, Radio, Spinner, Stack, Text } from '@sanity/ui'
 import { useCallback, useState } from 'react'
 
-import { isGeminiConfigured, processImage } from '../lib/gemini'
+import { isCloudinaryConfigured, processImage } from '../lib/cloudinary'
 import { fetchImageAsBase64 } from '../lib/sanity-assets'
-import { MODE_DESCRIPTIONS, MODE_LABELS } from '../lib/prompts'
 import type { ProcessingMode, ProcessingResult, SanityImageAsset } from '../lib/types'
+import { MODE_DESCRIPTIONS, MODE_LABELS } from '../lib/types'
 
 interface ProcessingPanelProps {
   asset: SanityImageAsset
@@ -25,7 +25,7 @@ export function ProcessingPanel({ asset, onResult, onBack }: ProcessingPanelProp
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const configured = isGeminiConfigured()
+  const configured = isCloudinaryConfigured()
 
   const handleProcess = useCallback(async () => {
     setIsProcessing(true)
@@ -35,7 +35,7 @@ export function ProcessingPanel({ asset, onResult, onBack }: ProcessingPanelProp
       // Fetch source image as base64
       const { base64, mimeType } = await fetchImageAsBase64(asset.url)
 
-      // Send to Gemini
+      // Send to Cloudinary
       const result = await processImage(base64, mimeType, mode)
 
       onResult(result, mode)
@@ -91,8 +91,8 @@ export function ProcessingPanel({ asset, onResult, onBack }: ProcessingPanelProp
             {!configured && (
               <Card padding={3} tone="caution" radius={2}>
                 <Text size={1}>
-                  Gemini est activé uniquement en Studio local (<code>localhost</code>) avec
-                  <code> SANITY_STUDIO_GEMINI_API_KEY</code> dans <code>.env</code>.
+                  Cloudinary est activé uniquement en Studio local (<code>localhost</code>) avec
+                  <code> SANITY_STUDIO_CLOUDINARY_*</code> dans <code>.env</code>.
                 </Text>
               </Card>
             )}

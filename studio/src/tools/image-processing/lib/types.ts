@@ -28,13 +28,13 @@ export interface ProjectWithImages {
   images: SanityImageAsset[]
 }
 
-/** Result of a Gemini processing operation */
+/** Result of a Cloudinary processing operation */
 export interface ProcessingResult {
   /** Base64-encoded image data */
   base64Data: string
   /** MIME type of the result image */
   mimeType: string
-  /** Text feedback from Gemini about what was changed */
+  /** Text feedback from Cloudinary about what was changed */
   feedback?: string
 }
 
@@ -87,4 +87,17 @@ export const INITIAL_TOOL_STATE: ToolState = {
   isProcessing: false,
   result: null,
   error: null,
+}
+
+/** Human-readable labels for processing modes (French) */
+export const MODE_LABELS: Record<ProcessingMode, string> = {
+  equalize: 'Égaliser la lumière',
+  cadrage: 'Ajuster le cadrage',
+}
+
+/** Short descriptions for processing modes (French) */
+export const MODE_DESCRIPTIONS: Record<ProcessingMode, string> = {
+  equalize:
+    'Équilibre l\u2019exposition, adapte les couleurs et améliore l\u2019image automatiquement grâce à Cloudinary.',
+  cadrage: 'Améliore la composition et recadre intelligemment centré sur le sujet via Cloudinary.',
 }

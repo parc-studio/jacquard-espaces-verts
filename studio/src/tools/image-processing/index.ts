@@ -2,7 +2,7 @@
  * "Traitement d'image" — Sanity Studio custom tool.
  *
  * Registers a top-level tool for AI-powered image processing
- * using the Gemini API (lighting equalization + framing adjustment).
+ * using the Cloudinary API (lighting equalization + framing adjustment).
  */
 
 import { ImageIcon } from '@sanity/icons'
