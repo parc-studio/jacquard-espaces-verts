@@ -1,18 +1,19 @@
 /**
- * ProcessingPanel — Step 2: Choose processing mode, preview source, and trigger Cloudinary.
+ * ProcessingPanel — Step 2: Choose processing mode, preview source, and trigger Vertex AI.
  *
  * Displays the selected image, mode selection (equalize / cadrage),
  * and a button to start processing. Shows progress/loading state.
  */
 
 import { ArrowLeftIcon, PlayIcon } from '@sanity/icons'
-import { Box, Button, Card, Flex, Heading, Radio, Spinner, Stack, Text } from '@sanity/ui'
+import { Badge, Box, Button, Card, Flex, Heading, Radio, Stack, Text } from '@sanity/ui'
 import { useCallback, useState } from 'react'
+import { useClient } from 'sanity'
 
-import { isCloudinaryConfigured, processImage } from '../lib/cloudinary'
-import { fetchImageAsBase64 } from '../lib/sanity-assets'
+import { resolveOriginalAssetUrl } from '../lib/sanity-assets'
 import type { ProcessingMode, ProcessingResult, SanityImageAsset } from '../lib/types'
 import { MODE_DESCRIPTIONS, MODE_LABELS } from '../lib/types'
+import { isVertexConfigured, processImage } from '../lib/vertex'
 
 interface ProcessingPanelProps {
   asset: SanityImageAsset
@@ -21,22 +22,21 @@ interface ProcessingPanelProps {
 }
 
 export function ProcessingPanel({ asset, onResult, onBack }: ProcessingPanelProps) {
-  const [mode, setMode] = useState<ProcessingMode>('equalize')
+  const [mode, setMode] = useState<ProcessingMode>('auto_correct')
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const client = useClient({ apiVersion: '2025-01-12' })
 
-  const configured = isCloudinaryConfigured()
+  const configured = isVertexConfigured()
 
   const handleProcess = useCallback(async () => {
     setIsProcessing(true)
     setError(null)
 
     try {
-      // Fetch source image as base64
-      const { base64, mimeType } = await fetchImageAsBase64(asset.url)
-
-      // Send to Cloudinary
-      const result = await processImage(base64, mimeType, mode)
+      // Resolve original image URL (avoids double-processing)
+      const { url: sourceUrl } = await resolveOriginalAssetUrl(client, asset)
+      const result = await processImage(sourceUrl, mode)
 
       onResult(result, mode)
     } catch (err) {
@@ -68,12 +68,19 @@ export function ProcessingPanel({ asset, onResult, onBack }: ProcessingPanelProp
       <Flex gap={4} wrap="wrap">
         {/* Source image preview */}
         <Box style={{ flex: '1 1 400px', maxWidth: 600 }}>
-          <Card radius={2} shadow={1} style={{ overflow: 'hidden' }}>
+          <Card radius={2} shadow={1} style={{ overflow: 'hidden', position: 'relative' }}>
             <img
               src={previewUrl}
               alt={asset.originalFilename ?? 'Image source'}
               style={{ width: '100%', height: 'auto', display: 'block' }}
             />
+            {(asset.label === 'cloudinary-processed' || asset.label === 'ai-processed') && (
+              <Box style={{ position: 'absolute', top: 12, right: 12 }}>
+                <Badge tone="positive" fontSize={1} mode="outline">
+                  Corrigée
+                </Badge>
+              </Box>
+            )}
           </Card>
           <Box paddingTop={2}>
             <Text size={0} muted>
@@ -91,8 +98,9 @@ export function ProcessingPanel({ asset, onResult, onBack }: ProcessingPanelProp
             {!configured && (
               <Card padding={3} tone="caution" radius={2}>
                 <Text size={1}>
-                  Cloudinary est activé uniquement en Studio local (<code>localhost</code>) avec
-                  <code> SANITY_STUDIO_CLOUDINARY_*</code> dans <code>.env</code>.
+                  Identifiants GCP manquants ou Studio non-local. Ajoutez{' '}
+                  <code>SANITY_STUDIO_GCP_*</code> dans <code>.env</code> et lancez le Studio en
+                  local.
                 </Text>
               </Card>
             )}
@@ -141,7 +149,7 @@ export function ProcessingPanel({ asset, onResult, onBack }: ProcessingPanelProp
 
             {/* Process button */}
             <Button
-              icon={isProcessing ? Spinner : PlayIcon}
+              icon={isProcessing ? null : PlayIcon}
               text={isProcessing ? 'Traitement en cours…' : 'Lancer le traitement'}
               tone="positive"
               onClick={handleProcess}
@@ -152,9 +160,8 @@ export function ProcessingPanel({ asset, onResult, onBack }: ProcessingPanelProp
 
             {isProcessing && (
               <Flex gap={2} align="center" justify="center">
-                <Spinner muted />
                 <Text size={0} muted>
-                  Envoi à Gemini et génération de l&apos;image…
+                  Analyse + correction en cours…
                 </Text>
               </Flex>
             )}

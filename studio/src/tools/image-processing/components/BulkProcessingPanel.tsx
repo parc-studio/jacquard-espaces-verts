@@ -17,15 +17,15 @@ import { Badge, Box, Button, Card, Flex, Grid, Heading, Spinner, Stack, Text } f
 import { useCallback, useRef, useState } from 'react'
 import { useClient } from 'sanity'
 
-import { isCloudinaryConfigured, processImageChain } from '../lib/cloudinary'
 import {
-  fetchImageAsBase64,
   humanizeFilename,
   makeProcessedFilename,
   replaceImageInProject,
+  resolveOriginalAssetUrl,
   uploadProcessedImage,
 } from '../lib/sanity-assets'
 import type { BulkItemStatus, BulkJobItem, ProjectWithImages } from '../lib/types'
+import { isVertexConfigured, processImageChain } from '../lib/vertex'
 
 // ---------------------------------------------------------------------------
 // Props
@@ -68,7 +68,7 @@ function statusTone(
 
 export function BulkProcessingPanel({ project, onDone, onCancel }: BulkProcessingPanelProps) {
   const client = useClient({ apiVersion: '2025-01-12' })
-  const configured = isCloudinaryConfigured()
+  const configured = isVertexConfigured()
 
   // Build initial job items from project images
   const [items, setItems] = useState<BulkJobItem[]>(() =>
@@ -97,12 +97,17 @@ export function BulkProcessingPanel({ project, onDone, onCancel }: BulkProcessin
       if (!item || item.status === 'done') return
 
       try {
-        // 1. Fetch source
+        // 0. Resolve original asset URL (avoids double-processing)
+        const { url: sourceUrl, originalAssetId } = await resolveOriginalAssetUrl(
+          client,
+          item.asset
+        )
+
+        // 1. Send source image URL directly to Vertex AI
         updateItem(index, { status: 'equalize-processing' })
-        const { base64, mimeType } = await fetchImageAsBase64(item.asset.url)
 
         // 2. Equalize → Cadrage chain
-        const result = await processImageChain(base64, mimeType, (step) => {
+        const result = await processImageChain(sourceUrl, (step) => {
           if (step === 'equalize-done') updateItem(index, { status: 'cadrage-processing' })
         })
 
@@ -119,13 +124,20 @@ export function BulkProcessingPanel({ project, onDone, onCancel }: BulkProcessin
           result.base64Data,
           result.mimeType,
           filename,
-          item.asset._id,
+          originalAssetId,
           'equalize+cadrage'
         )
 
         // 4. Replace in project gallery
         updateItem(index, { status: 'replacing' })
         await replaceImageInProject(client, project._id, item.asset._id, newAssetId)
+
+        // 5. Delete the old processed asset if we're re-processing
+        if (item.asset.label === 'ai-processed' && item.asset._id !== originalAssetId) {
+          await client.delete(item.asset._id).catch(() => {
+            // Non-critical — old processed asset cleanup failed
+          })
+        }
 
         updateItem(index, { status: 'done', newAssetId })
       } catch (err) {
@@ -190,8 +202,8 @@ export function BulkProcessingPanel({ project, onDone, onCancel }: BulkProcessin
       {!configured && (
         <Card padding={3} tone="caution" radius={2}>
           <Text size={1}>
-            Cloudinary est activé uniquement en Studio local (<code>localhost</code>) avec
-            <code> SANITY_STUDIO_CLOUDINARY_*</code> dans <code>.env</code>.
+            Identifiants GCP manquants ou Studio non-local. Ajoutez <code>SANITY_STUDIO_GCP_*</code>{' '}
+            dans <code>.env</code> et lancez le Studio en local.
           </Text>
         </Card>
       )}
@@ -340,6 +352,14 @@ function BulkThumbnail({ item, isCurrent }: { item: BulkJobItem; isCurrent: bool
             transition: 'opacity 200ms ease',
           }}
         />
+
+        {(item.asset.label === 'cloudinary-processed' || item.asset.label === 'ai-processed') && (
+          <Box style={{ position: 'absolute', top: 4, right: 4 }} title="Déjà traité">
+            <Badge tone="positive" fontSize={0} mode="outline">
+              Corrigée
+            </Badge>
+          </Box>
+        )}
 
         {/* Overlay icon for done / error */}
         {item.status === 'done' && (

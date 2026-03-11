@@ -1,8 +1,8 @@
 /**
  * "Traitement d'image" — Sanity Studio custom tool.
  *
- * Registers a top-level tool for AI-powered image processing
- * using the Cloudinary API (lighting equalization + framing adjustment).
+ * Registers a top-level tool for AI-powered image correction
+ * (colour grading, exposure, contrast, straightening).
  */
 
 import { ImageIcon } from '@sanity/icons'

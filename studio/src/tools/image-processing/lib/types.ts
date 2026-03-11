@@ -1,9 +1,9 @@
 /**
- * Types for the AI image processing tool.
+ * Types for the image processing tool.
  */
 
 /** Available processing modes */
-export type ProcessingMode = 'equalize' | 'cadrage'
+export type ProcessingMode = 'auto_correct'
 
 /** A Sanity image asset with metadata needed for processing */
 export interface SanityImageAsset {
@@ -11,6 +11,8 @@ export interface SanityImageAsset {
   url: string
   originalFilename?: string
   mimeType: string
+  label?: string
+  description?: string
   metadata?: {
     dimensions?: {
       width: number
@@ -28,13 +30,13 @@ export interface ProjectWithImages {
   images: SanityImageAsset[]
 }
 
-/** Result of a Cloudinary processing operation */
+/** Result of a processing operation */
 export interface ProcessingResult {
   /** Base64-encoded image data */
   base64Data: string
   /** MIME type of the result image */
   mimeType: string
-  /** Text feedback from Cloudinary about what was changed */
+  /** Text feedback about what was changed */
   feedback?: string
 }
 
@@ -91,13 +93,11 @@ export const INITIAL_TOOL_STATE: ToolState = {
 
 /** Human-readable labels for processing modes (French) */
 export const MODE_LABELS: Record<ProcessingMode, string> = {
-  equalize: 'Égaliser la lumière',
-  cadrage: 'Ajuster le cadrage',
+  auto_correct: 'Correction photo automatique',
 }
 
 /** Short descriptions for processing modes (French) */
 export const MODE_DESCRIPTIONS: Record<ProcessingMode, string> = {
-  equalize:
-    'Équilibre l\u2019exposition, adapte les couleurs et améliore l\u2019image automatiquement grâce à Cloudinary.',
-  cadrage: 'Améliore la composition et recadre intelligemment centré sur le sujet via Cloudinary.',
+  auto_correct:
+    'Auto-niveaux, balance des blancs chaude, récupération ombres/hautes lumières, contraste et vibrance.',
 }
