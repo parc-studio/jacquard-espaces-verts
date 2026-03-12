@@ -7,7 +7,7 @@
 
 import { ArrowLeftIcon, PlayIcon } from '@sanity/icons'
 import { Badge, Box, Button, Card, Flex, Heading, Radio, Stack, Text } from '@sanity/ui'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useClient } from 'sanity'
 
 import { resolveOriginalAssetUrl } from '../lib/sanity-assets'
@@ -15,6 +15,7 @@ import { SECRET_KEYS, SECRETS_NAMESPACE, SettingsView, useGcpSecrets } from '../
 import type { ProcessingMode, ProcessingResult, SanityImageAsset } from '../lib/types'
 import { MODE_DESCRIPTIONS, MODE_LABELS } from '../lib/types'
 import { processImage } from '../lib/vertex'
+import { ComparisonSlider } from './ReviewPanel'
 
 interface ProcessingPanelProps {
   asset: SanityImageAsset
@@ -50,7 +51,24 @@ export function ProcessingPanel({ asset, onResult, onBack }: ProcessingPanelProp
   }, [asset, mode, onResult, gcpConfig])
 
   // Preview URL (larger than thumbnail)
-  const previewUrl = `${asset.url}?w=800&auto=format&q=85`
+  const previewUrl = `${asset.url}?w=1400&auto=format&q=85`
+
+  // For already-processed images, resolve the original URL for comparison
+  const isProcessed = asset.label === 'cloudinary-processed' || asset.label === 'ai-processed'
+  const [originalUrl, setOriginalUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!isProcessed) return
+    let cancelled = false
+    resolveOriginalAssetUrl(client, asset).then(({ url }) => {
+      if (!cancelled && url !== asset.url) {
+        setOriginalUrl(`${url}?w=1400&auto=format&q=85`)
+      }
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [client, asset, isProcessed])
 
   return (
     <Stack space={4}>
@@ -68,23 +86,37 @@ export function ProcessingPanel({ asset, onResult, onBack }: ProcessingPanelProp
         </Heading>
       </Flex>
 
-      <Flex gap={4} wrap="wrap">
-        {/* Source image preview */}
-        <Box style={{ flex: '1 1 400px', maxWidth: 600 }}>
-          <Card radius={2} shadow={1} style={{ overflow: 'hidden', position: 'relative' }}>
-            <img
-              src={previewUrl}
-              alt={asset.originalFilename ?? 'Image source'}
-              style={{ width: '100%', height: 'auto', display: 'block' }}
-            />
-            {(asset.label === 'cloudinary-processed' || asset.label === 'ai-processed') && (
-              <Box style={{ position: 'absolute', top: 12, right: 12 }}>
-                <Badge tone="positive" fontSize={1} mode="outline">
-                  Corrigée
-                </Badge>
-              </Box>
-            )}
-          </Card>
+      <Stack space={4}>
+        {/* Source image preview — comparison slider for already-processed images */}
+        <Box>
+          {isProcessed && originalUrl ? (
+            <Stack space={2}>
+              <Flex gap={3} align="center">
+                <Text size={1} weight="semibold">
+                  Avant / Après (traitement précédent)
+                </Text>
+                <Text size={0} muted>
+                  Glissez le curseur pour comparer
+                </Text>
+              </Flex>
+              <ComparisonSlider beforeUrl={originalUrl} afterUrl={previewUrl} />
+            </Stack>
+          ) : (
+            <Card radius={2} shadow={1} style={{ overflow: 'hidden', position: 'relative' }}>
+              <img
+                src={previewUrl}
+                alt={asset.originalFilename ?? 'Image source'}
+                style={{ width: '100%', height: 'auto', display: 'block' }}
+              />
+              {isProcessed && (
+                <Box style={{ position: 'absolute', top: 12, right: 12 }}>
+                  <Badge tone="positive" fontSize={1} mode="outline">
+                    Corrigée
+                  </Badge>
+                </Box>
+              )}
+            </Card>
+          )}
           <Box paddingTop={2}>
             <Text size={0} muted>
               {asset.originalFilename ?? 'Image'}
@@ -95,98 +127,96 @@ export function ProcessingPanel({ asset, onResult, onBack }: ProcessingPanelProp
         </Box>
 
         {/* Controls */}
-        <Box style={{ flex: '1 1 280px', maxWidth: 400 }}>
-          <Stack space={4}>
-            {/* API key warning */}
-            {!secretsLoading && !configured && (
-              <Card padding={3} tone="caution" radius={2}>
-                <Stack space={3}>
-                  <Text size={1}>
-                    Clé privée GCP manquante. Configurez-la pour activer le traitement.
-                  </Text>
-                  <Button
-                    text="Configurer la clé privée GCP"
-                    tone="primary"
-                    onClick={() => setShowSecrets(true)}
-                    fontSize={1}
-                    padding={2}
-                  />
-                </Stack>
-              </Card>
-            )}
-
-            {showSecrets && (
-              <SettingsView
-                namespace={SECRETS_NAMESPACE}
-                keys={SECRET_KEYS}
-                onClose={() => setShowSecrets(false)}
-                title="Clé privée GCP"
-              />
-            )}
-
-            {/* Mode selection */}
-            <Stack space={3}>
-              <Text size={1} weight="semibold">
-                Mode de traitement
-              </Text>
-              {(Object.keys(MODE_LABELS) as ProcessingMode[]).map((m) => (
-                <Card
-                  key={m}
-                  as="label"
-                  padding={3}
-                  radius={2}
-                  shadow={mode === m ? 1 : 0}
-                  tone={mode === m ? 'primary' : 'default'}
-                  style={{ cursor: 'pointer' }}
-                >
-                  <Flex gap={3} align="flex-start">
-                    <Radio
-                      checked={mode === m}
-                      name="processing-mode"
-                      onChange={() => setMode(m)}
-                      value={m}
-                    />
-                    <Stack space={2}>
-                      <Text size={1} weight="semibold">
-                        {MODE_LABELS[m]}
-                      </Text>
-                      <Text size={0} muted>
-                        {MODE_DESCRIPTIONS[m]}
-                      </Text>
-                    </Stack>
-                  </Flex>
-                </Card>
-              ))}
-            </Stack>
-
-            {/* Error */}
-            {error && (
-              <Card padding={3} tone="critical" radius={2}>
-                <Text size={1}>{error}</Text>
-              </Card>
-            )}
-
-            {/* Process button */}
-            <Button
-              icon={isProcessing ? null : PlayIcon}
-              text={isProcessing ? 'Traitement en cours…' : 'Lancer le traitement'}
-              tone="positive"
-              onClick={handleProcess}
-              disabled={isProcessing || !configured}
-              fontSize={1}
-              padding={3}
-            />
-
-            {isProcessing && (
-              <Flex gap={2} align="center" justify="center">
-                <Text size={0} muted>
-                  Analyse + correction en cours…
+        <Stack space={4}>
+          {/* API key warning */}
+          {!secretsLoading && !configured && (
+            <Card padding={3} tone="caution" radius={2}>
+              <Stack space={3}>
+                <Text size={1}>
+                  Clé privée GCP manquante. Configurez-la pour activer le traitement.
                 </Text>
-              </Flex>
-            )}
+                <Button
+                  text="Configurer la clé privée GCP"
+                  tone="primary"
+                  onClick={() => setShowSecrets(true)}
+                  fontSize={1}
+                  padding={2}
+                />
+              </Stack>
+            </Card>
+          )}
+
+          {showSecrets && (
+            <SettingsView
+              namespace={SECRETS_NAMESPACE}
+              keys={SECRET_KEYS}
+              onClose={() => setShowSecrets(false)}
+              title="Clé privée GCP"
+            />
+          )}
+
+          {/* Mode selection */}
+          <Stack space={3}>
+            <Text size={1} weight="semibold">
+              Mode de traitement
+            </Text>
+            {(Object.keys(MODE_LABELS) as ProcessingMode[]).map((m) => (
+              <Card
+                key={m}
+                as="label"
+                padding={3}
+                radius={2}
+                shadow={mode === m ? 1 : 0}
+                tone={mode === m ? 'primary' : 'default'}
+                style={{ cursor: 'pointer' }}
+              >
+                <Flex gap={3} align="flex-start">
+                  <Radio
+                    checked={mode === m}
+                    name="processing-mode"
+                    onChange={() => setMode(m)}
+                    value={m}
+                  />
+                  <Stack space={2}>
+                    <Text size={1} weight="semibold">
+                      {MODE_LABELS[m]}
+                    </Text>
+                    <Text size={0} muted>
+                      {MODE_DESCRIPTIONS[m]}
+                    </Text>
+                  </Stack>
+                </Flex>
+              </Card>
+            ))}
           </Stack>
-        </Box>
-      </Flex>
+
+          {/* Error */}
+          {error && (
+            <Card padding={3} tone="critical" radius={2}>
+              <Text size={1}>{error}</Text>
+            </Card>
+          )}
+
+          {/* Process button */}
+          <Button
+            icon={isProcessing ? null : PlayIcon}
+            text={isProcessing ? 'Traitement en cours…' : 'Lancer le traitement'}
+            tone="positive"
+            onClick={handleProcess}
+            disabled={isProcessing || !configured}
+            fontSize={1}
+            padding={3}
+          />
+
+          {isProcessing && (
+            <Flex gap={2} align="center" justify="center">
+              <Text size={0} muted>
+                Analyse + correction en cours…
+              </Text>
+            </Flex>
+          )}
+        </Stack>
+      </Stack>
     </Stack>
   )
 }

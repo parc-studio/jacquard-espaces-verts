@@ -98,7 +98,7 @@ async function getAccessToken(config: GcpConfig): Promise<string> {
 // ---------------------------------------------------------------------------
 
 /** Correction parameters the AI prescribes per image. */
-interface CorrectionParams {
+export interface CorrectionParams {
   exposure: number // [-1, 1]
   contrast: number // [-1, 1]
   highlights: number // [-1, 1]
@@ -110,15 +110,15 @@ interface CorrectionParams {
   straightenAngle: number // [-10, 10] degrees — clockwise rotation to straighten
 }
 
-const DEFAULT_PARAMS: CorrectionParams = {
+export const DEFAULT_PARAMS: CorrectionParams = {
   exposure: -0.06,
-  contrast: 0.04,
-  highlights: -0.18,
-  shadows: 0.03,
-  temperature: 0.06,
-  saturation: -0.25,
-  levelsClipLow: 0.003,
-  levelsClipHigh: 0.003,
+  contrast: -0.15,
+  highlights: 0.11,
+  shadows: 0.29,
+  temperature: 0.17,
+  saturation: -0.06,
+  levelsClipLow: 0.004,
+  levelsClipHigh: 0.021,
   straightenAngle: 0,
 }
 
@@ -127,14 +127,14 @@ const DEFAULT_PARAMS: CorrectionParams = {
  * Dark, muted, sepia-toned. Desaturated with a warm brown tint.
  * Only exposure and straightenAngle are determined per-image by the AI.
  */
-const FIXED_AESTHETIC: Omit<CorrectionParams, 'exposure' | 'straightenAngle'> = {
-  contrast: 0.04,
-  highlights: -0.18,
-  shadows: 0.03,
-  temperature: 0.06,
-  saturation: -0.25,
-  levelsClipLow: 0.003,
-  levelsClipHigh: 0.003,
+export const FIXED_AESTHETIC: Omit<CorrectionParams, 'exposure' | 'straightenAngle'> = {
+  contrast: -0.15,
+  highlights: 0.11,
+  shadows: 0.29,
+  temperature: 0.17,
+  saturation: -0.06,
+  levelsClipLow: 0.004,
+  levelsClipHigh: 0.021,
 }
 
 const ANALYSIS_PROMPT = `You are a photo analysis assistant. You receive ONE outdoor/architectural photo.
@@ -250,7 +250,7 @@ async function analyzeImage(imageUrl: string, config: GcpConfig): Promise<Analys
 // Canvas helpers
 // ---------------------------------------------------------------------------
 
-function loadImage(url: string): Promise<HTMLImageElement> {
+export function loadImage(url: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image()
     img.crossOrigin = 'anonymous'
@@ -297,7 +297,7 @@ function buildLevelsLut(low: number, high: number): Uint8Array {
  *  4. Tone curve   — shadow lift + highlight recovery + S-curve contrast
  *  5. Saturation   — per-pixel HSL-based boost/cut (preserves luminance)
  */
-function applyCorrections(imageData: ImageData, params: CorrectionParams): void {
+export function applyCorrections(imageData: ImageData, params: CorrectionParams): void {
   const { data } = imageData
   const totalPixels = data.length / 4
 

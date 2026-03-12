@@ -115,7 +115,7 @@
     if (!poster?.asset?._id) return undefined
     return urlFor({ _ref: poster.asset._id })
       .width(1920)
-      .quality(80)
+      .quality(85)
       .auto('format')
       .fit('max')
       .url()
