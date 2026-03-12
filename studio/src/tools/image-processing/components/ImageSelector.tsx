@@ -268,7 +268,7 @@ function ImageThumbnail({
   onClick: () => void
   onRevert: () => void
 }) {
-  const thumbUrl = `${asset.url}?w=300&h=200&fit=crop&auto=format&q=75`
+  const thumbUrl = `${asset.url}?w=600&h=400&fit=crop&auto=format&q=85`
   const dims = asset.metadata?.dimensions
   const displayName = humanizeFilename(asset.originalFilename)
   const isProcessed = asset.label === 'cloudinary-processed' || asset.label === 'ai-processed'
@@ -337,14 +337,20 @@ function ImageThumbnail({
               textOverflow: 'ellipsis',
             }}
           >
-            <Text size={1} textOverflow="ellipsis" title={asset.originalFilename ?? 'Sans nom'}>
-              {displayName}
-            </Text>
             {dims && (
-              <Text size={0} muted style={{ marginTop: 4 }}>
+              <Text size={1} weight="semibold">
                 {dims.width}×{dims.height}
               </Text>
             )}
+            <Text
+              size={0}
+              muted
+              style={{ marginTop: 6 }}
+              textOverflow="ellipsis"
+              title={asset.originalFilename ?? 'Sans nom'}
+            >
+              {displayName}
+            </Text>
           </Box>
           {isProcessed && (
             <Tooltip

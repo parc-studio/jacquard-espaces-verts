@@ -38,6 +38,8 @@ export interface ProcessingResult {
   mimeType: string
   /** Text feedback about what was changed */
   feedback?: string
+  /** True when AI analysis failed and fixed fallback values were used */
+  analysisFailed?: boolean
 }
 
 /** Workflow step */

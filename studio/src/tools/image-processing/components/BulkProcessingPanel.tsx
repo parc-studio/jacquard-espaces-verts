@@ -12,8 +12,21 @@ import {
   CloseCircleIcon,
   PauseIcon,
   PlayIcon,
+  ResetIcon,
 } from '@sanity/icons'
-import { Badge, Box, Button, Card, Flex, Grid, Heading, Spinner, Stack, Text } from '@sanity/ui'
+import {
+  Badge,
+  Box,
+  Button,
+  Card,
+  Flex,
+  Grid,
+  Heading,
+  Spinner,
+  Stack,
+  Text,
+  Tooltip,
+} from '@sanity/ui'
 import { useCallback, useRef, useState } from 'react'
 import { useClient } from 'sanity'
 
@@ -180,6 +193,38 @@ export function BulkProcessingPanel({ project, onDone, onCancel }: BulkProcessin
     onDone(doneCount, errorCount)
   }, [onDone, doneCount, errorCount])
 
+  // Retry a single failed image
+  const handleRetryItem = useCallback(
+    async (index: number) => {
+      const item = items[index]
+      if (!item || item.status !== 'error') return
+      updateItem(index, { status: 'pending', error: undefined })
+      setIsRunning(true)
+      setCurrentIndex(index)
+      await processOneImage(index, { ...item, status: 'pending' })
+      setIsRunning(false)
+    },
+    [items, processOneImage, updateItem]
+  )
+
+  // Retry all failed images
+  const handleRetryAllErrors = useCallback(async () => {
+    setIsRunning(true)
+    stopRequestedRef.current = false
+
+    for (let i = 0; i < totalCount; i++) {
+      if (stopRequestedRef.current) break
+      const current = items[i]
+      if (current.status !== 'error') continue
+
+      updateItem(i, { status: 'pending', error: undefined })
+      setCurrentIndex(i)
+      await processOneImage(i, { ...current, status: 'pending' })
+    }
+
+    setIsRunning(false)
+  }, [items, totalCount, processOneImage, updateItem])
+
   // ------------------------------------------------------------------
   // Render
   // ------------------------------------------------------------------
@@ -268,6 +313,7 @@ export function BulkProcessingPanel({ project, onDone, onCancel }: BulkProcessin
             key={item.asset._id}
             item={item}
             isCurrent={isRunning && idx === currentIndex}
+            onRetry={!isRunning && item.status === 'error' ? () => handleRetryItem(idx) : undefined}
           />
         ))}
       </Grid>
@@ -315,6 +361,18 @@ export function BulkProcessingPanel({ project, onDone, onCancel }: BulkProcessin
           />
         )}
 
+        {!isRunning && errorCount > 0 && (
+          <Button
+            icon={ResetIcon}
+            text={`Réessayer ${errorCount} erreur${errorCount > 1 ? 's' : ''}`}
+            tone="primary"
+            onClick={handleRetryAllErrors}
+            disabled={!configured}
+            fontSize={1}
+            padding={3}
+          />
+        )}
+
         {isFinished && (
           <Button
             icon={CheckmarkCircleIcon}
@@ -338,8 +396,17 @@ export function BulkProcessingPanel({ project, onDone, onCancel }: BulkProcessin
 // Bulk thumbnail sub-component
 // ---------------------------------------------------------------------------
 
-function BulkThumbnail({ item, isCurrent }: { item: BulkJobItem; isCurrent: boolean }) {
-  const thumbUrl = `${item.asset.url}?w=300&h=200&fit=crop&auto=format&q=75`
+function BulkThumbnail({
+  item,
+  isCurrent,
+  onRetry,
+}: {
+  item: BulkJobItem
+  isCurrent: boolean
+  onRetry?: () => void
+}) {
+  const thumbUrl = `${item.asset.url}?w=600&h=400&fit=crop&auto=format&q=85`
+  const dims = item.asset.metadata?.dimensions
   const displayName = humanizeFilename(item.asset.originalFilename)
 
   return (
@@ -426,18 +493,47 @@ function BulkThumbnail({ item, isCurrent }: { item: BulkJobItem; isCurrent: bool
       </Box>
 
       {/* Info */}
-      <Box
-        padding={3}
-        style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
-      >
-        <Text size={1} textOverflow="ellipsis" title={item.asset.originalFilename ?? 'Sans nom'}>
-          {displayName}
-        </Text>
-        <Box paddingTop={1}>
-          <Badge tone={statusTone(item.status)} fontSize={0}>
-            {STATUS_LABEL[item.status]}
-          </Badge>
-        </Box>
+      <Box padding={3}>
+        <Stack space={2}>
+          {dims && (
+            <Text size={1} weight="semibold">
+              {dims.width}×{dims.height}
+            </Text>
+          )}
+          <Text
+            size={0}
+            muted
+            textOverflow="ellipsis"
+            title={item.asset.originalFilename ?? 'Sans nom'}
+          >
+            {displayName}
+          </Text>
+          <Flex gap={2} align="center">
+            <Badge tone={statusTone(item.status)} fontSize={0}>
+              {STATUS_LABEL[item.status]}
+            </Badge>
+            {onRetry && (
+              <Tooltip
+                content={
+                  <Box padding={2}>
+                    <Text size={1}>Réessayer cette image</Text>
+                  </Box>
+                }
+                placement="top"
+              >
+                <Button
+                  icon={ResetIcon}
+                  text="Réessayer"
+                  mode="ghost"
+                  tone="primary"
+                  fontSize={0}
+                  padding={1}
+                  onClick={onRetry}
+                />
+              </Tooltip>
+            )}
+          </Flex>
+        </Stack>
       </Box>
     </Card>
   )

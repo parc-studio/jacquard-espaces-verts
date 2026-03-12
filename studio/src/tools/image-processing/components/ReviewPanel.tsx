@@ -59,7 +59,7 @@ export function ReviewPanel({
   )
 
   // Original preview
-  const originalUrl = `${asset.url}?w=1400&auto=format&q=85`
+  const originalUrl = `${asset.url}?w=2400&auto=format&q=90`
 
   // ------------------------------------------------------------------
   // Parameter tuning state
@@ -69,6 +69,8 @@ export function ReviewPanel({
     ...FIXED_AESTHETIC,
     exposure: DEFAULT_PARAMS.exposure,
     straightenAngle: DEFAULT_PARAMS.straightenAngle,
+    shadows: DEFAULT_PARAMS.shadows,
+    highlights: DEFAULT_PARAMS.highlights,
   })
   const [tunedDataUri, setTunedDataUri] = useState<string | null>(null)
   const [tuning, setTuning] = useState(false)
@@ -79,7 +81,7 @@ export function ReviewPanel({
     if (!showTuner) return
     let cancelled = false
     const separator = asset.url.includes('?') ? '&' : '?'
-    const pngUrl = `${asset.url}${separator}fm=png&w=1200`
+    const pngUrl = `${asset.url}${separator}fm=png&w=2400`
     loadImage(pngUrl).then((img) => {
       if (!cancelled) sourceImageRef.current = img
     })
@@ -135,6 +137,8 @@ export function ReviewPanel({
       ...FIXED_AESTHETIC,
       exposure: DEFAULT_PARAMS.exposure,
       straightenAngle: DEFAULT_PARAMS.straightenAngle,
+      shadows: DEFAULT_PARAMS.shadows,
+      highlights: DEFAULT_PARAMS.highlights,
     })
   }, [])
 
@@ -206,7 +210,7 @@ export function ReviewPanel({
 
       {/* Feedback from AI analysis */}
       {result.feedback && (
-        <Card padding={3} tone="positive" radius={2}>
+        <Card padding={3} tone={result.analysisFailed ? 'caution' : 'positive'} radius={2}>
           <Text size={1}>{result.feedback}</Text>
         </Card>
       )}

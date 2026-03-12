@@ -51,7 +51,7 @@ export function ProcessingPanel({ asset, onResult, onBack }: ProcessingPanelProp
   }, [asset, mode, onResult, gcpConfig])
 
   // Preview URL (larger than thumbnail)
-  const previewUrl = `${asset.url}?w=1400&auto=format&q=85`
+  const previewUrl = `${asset.url}?w=2400&auto=format&q=90`
 
   // For already-processed images, resolve the original URL for comparison
   const isProcessed = asset.label === 'cloudinary-processed' || asset.label === 'ai-processed'
@@ -62,7 +62,7 @@ export function ProcessingPanel({ asset, onResult, onBack }: ProcessingPanelProp
     let cancelled = false
     resolveOriginalAssetUrl(client, asset).then(({ url }) => {
       if (!cancelled && url !== asset.url) {
-        setOriginalUrl(`${url}?w=1400&auto=format&q=85`)
+        setOriginalUrl(`${url}?w=2400&auto=format&q=90`)
       }
     })
     return () => {
@@ -193,7 +193,19 @@ export function ProcessingPanel({ asset, onResult, onBack }: ProcessingPanelProp
           {/* Error */}
           {error && (
             <Card padding={3} tone="critical" radius={2}>
-              <Text size={1}>{error}</Text>
+              <Stack space={3}>
+                <Text size={1}>{error}</Text>
+                <Button
+                  icon={PlayIcon}
+                  text="Réessayer"
+                  tone="primary"
+                  mode="ghost"
+                  onClick={handleProcess}
+                  disabled={isProcessing || !configured}
+                  fontSize={1}
+                  padding={2}
+                />
+              </Stack>
             </Card>
           )}
 

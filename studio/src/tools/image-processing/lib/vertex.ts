@@ -125,50 +125,67 @@ export const DEFAULT_PARAMS: CorrectionParams = {
 /**
  * Fixed aesthetic parameters — identical for every image.
  * Dark, muted, sepia-toned. Desaturated with a warm brown tint.
- * Only exposure and straightenAngle are determined per-image by the AI.
+ * exposure, straightenAngle, shadows, and highlights are determined per-image by the AI.
  */
-export const FIXED_AESTHETIC: Omit<CorrectionParams, 'exposure' | 'straightenAngle'> = {
+export const FIXED_AESTHETIC: Omit<
+  CorrectionParams,
+  'exposure' | 'straightenAngle' | 'shadows' | 'highlights'
+> = {
   contrast: -0.15,
-  highlights: 0.11,
-  shadows: 0.29,
   temperature: 0.17,
   saturation: -0.06,
   levelsClipLow: 0.004,
   levelsClipHigh: 0.021,
 }
 
-const ANALYSIS_PROMPT = `You are a photo analysis assistant. You receive ONE outdoor/architectural photo.
+const ANALYSIS_PROMPT = `You are an image analysis model. You will receive exactly one outdoor or architectural photograph.
 
-Your ONLY job is to determine TWO things:
-1. EXPOSURE CORRECTION: How much to brighten or darken this specific image so it is correctly exposed. Analyse the overall brightness — is it underexposed (dark), correct, or overexposed (bright)?
-2. STRAIGHTEN ANGLE: How many degrees to rotate the image clockwise to make the horizon perfectly level and verticals truly vertical. Look at horizon lines, building edges, fence lines, tree trunks, lamp posts.
+Analyse the image and return four numeric values:
 
-EXPOSURE GUIDE:
-- Very dark / underexposed → +0.10 to +0.20
-- Slightly dark → +0.03 to +0.08
-- Correctly exposed → -0.02 to +0.02
-- Slightly bright → -0.03 to -0.08
-- Overexposed → -0.10 to -0.15
+## 1. exposure (float, range −0.30 to +0.30)
+Determine how much to brighten or darken this image to achieve correct exposure.
+- Evaluate the overall luminance distribution: is the image underexposed (too dark), correctly exposed, or overexposed (too bright)?
+- Mapping:
+  · Severely underexposed  → +0.15 to +0.25
+  · Moderately underexposed → +0.05 to +0.12
+  · Correctly exposed       → −0.02 to +0.02
+  · Moderately overexposed  → −0.05 to −0.10
+  · Severely overexposed    → −0.12 to −0.20
 
-STRAIGHTEN GUIDE:
-- Look for the strongest horizontal reference line (horizon, roofline, water surface, path edge).
-- Look for vertical reference lines (building corners, door frames, lamp posts, tree trunks).
-- A POSITIVE angle rotates clockwise. Use positive if the image tilts left (left side lower).
-- A NEGATIVE angle rotates counter-clockwise. Use negative if the image tilts right (right side lower).
-- Most photos need between -2.0 and +2.0 degrees. Only exceed this for severely tilted images.
-- If the image is already level, use exactly 0.
-- Be PRECISE — 0.5 degree matters. Analyse carefully.
+## 2. straightenAngle (float, range −10.0 to +10.0, degrees)
+Determine the clockwise rotation needed to level the image.
+- Identify the dominant horizontal reference: horizon line, roofline, water surface, path edge, fence line.
+- Identify vertical references: building corners, door frames, lamp posts, tree trunks.
+- Convention: positive = clockwise rotation. If the left side is lower than the right, return a positive value.
+- Most images need −2.0 to +2.0 degrees. Exceed this only for clearly tilted images.
+- If the image is already level, return exactly 0.
+- Precision matters: 0.5° makes a visible difference.
 
-Return ONLY a JSON object (no markdown fences):
-{
-  "comment": string,  // 1-2 sentences: what you observe about exposure and geometry.
-  "exposure": float,  // [-0.30, +0.30]
-  "straightenAngle": float  // [-10, +10] degrees clockwise
-}`
+## 3. shadows (float, range −1.0 to +1.0)
+Determine how much shadow recovery is needed.
+- Evaluate how much detail is lost in the dark areas of the image.
+- Mapping:
+  · Deep crushed shadows, backlit subject    → +0.30 to +0.50
+  · Moderate shadow loss, some detail hidden  → +0.15 to +0.30
+  · Balanced shadows, good detail             → +0.05 to +0.15
+  · Shadows already bright / flat lighting    → −0.05 to +0.05
+  · Needs deeper blacks for contrast          → −0.10 to −0.20
 
-interface AnalysisResult extends CorrectionParams {
-  comment: string
-}
+## 4. highlights (float, range −1.0 to +1.0)
+Determine how much highlight recovery is needed.
+- Evaluate whether bright areas (sky, reflections, white surfaces) are clipped or blown out.
+- Mapping:
+  · Severely blown highlights, white sky      → −0.15 to −0.30
+  · Moderate clipping in bright areas         → −0.05 to −0.15
+  · Well-preserved highlights                 → +0.05 to +0.15
+  · Dull / flat highlights needing lift        → +0.15 to +0.30
+  · Overcast / low-contrast scene needing pop  → +0.10 to +0.20
+
+## Output format
+Return a single JSON object with no markdown fences, no extra keys:
+{"exposure": <float>, "straightenAngle": <float>, "shadows": <float>, "highlights": <float>}`
+
+type AnalysisResult = CorrectionParams
 
 async function analyzeImage(imageUrl: string, config: GcpConfig): Promise<AnalysisResult> {
   const token = await getAccessToken(config)
@@ -220,14 +237,13 @@ async function analyzeImage(imageUrl: string, config: GcpConfig): Promise<Analys
   } = await response.json()
 
   const text = result.candidates?.[0]?.content?.parts?.[0]?.text
-  if (!text) return { ...DEFAULT_PARAMS, comment: '' }
+  if (!text) return { ...DEFAULT_PARAMS }
 
   try {
     const parsed: unknown = JSON.parse(text)
-    if (!parsed || typeof parsed !== 'object') return { ...DEFAULT_PARAMS, comment: '' }
+    if (!parsed || typeof parsed !== 'object') return { ...DEFAULT_PARAMS }
     const p = parsed as Record<string, unknown>
 
-    // Validate and clamp each parameter
     const num = (key: string, min: number, max: number, fallback: number): number => {
       const v = p[key]
       if (typeof v !== 'number' || !isFinite(v)) return fallback
@@ -235,14 +251,14 @@ async function analyzeImage(imageUrl: string, config: GcpConfig): Promise<Analys
     }
 
     return {
-      comment: typeof p.comment === 'string' ? p.comment : '',
       exposure: num('exposure', -0.3, 0.3, DEFAULT_PARAMS.exposure),
       straightenAngle: num('straightenAngle', -10, 10, DEFAULT_PARAMS.straightenAngle),
-      // All aesthetic params come from FIXED_AESTHETIC — not from the AI
+      shadows: num('shadows', -1, 1, DEFAULT_PARAMS.shadows),
+      highlights: num('highlights', -1, 1, DEFAULT_PARAMS.highlights),
       ...FIXED_AESTHETIC,
     }
   } catch {
-    return { ...DEFAULT_PARAMS, comment: '' }
+    return { ...DEFAULT_PARAMS }
   }
 }
 
@@ -388,10 +404,16 @@ export function applyCorrections(imageData: ImageData, params: CorrectionParams)
 // ---------------------------------------------------------------------------
 
 async function processImageHybrid(imageUrl: string, config: GcpConfig): Promise<ProcessingResult> {
-  // Step 1: AI analyses the image and prescribes parameters
-  const { comment, ...params } = await analyzeImage(imageUrl, config)
-  console.log('[Image Processing] AI comment:', comment)
-  console.log('[Image Processing] AI params:', JSON.stringify(params, null, 2))
+  // Step 1: AI analysis — fallback to defaults on failure
+  let params: CorrectionParams
+  let analysisFailed = false
+
+  try {
+    params = await analyzeImage(imageUrl, config)
+  } catch {
+    analysisFailed = true
+    params = { ...DEFAULT_PARAMS }
+  }
 
   // Step 2: Load full-resolution image into Canvas (no downscaling)
   const separator = imageUrl.includes('?') ? '&' : '?'
@@ -481,7 +503,10 @@ async function processImageHybrid(imageUrl: string, config: GcpConfig): Promise<
   return {
     base64Data: base64,
     mimeType: 'image/jpeg',
-    feedback: `Correction IA adaptée (${paramSummary})`,
+    feedback: analysisFailed
+      ? `⚠ Analyse IA échouée — correction appliquée avec les valeurs par défaut (${paramSummary})`
+      : `Correction IA adaptée (${paramSummary})`,
+    analysisFailed,
   }
 }
 
