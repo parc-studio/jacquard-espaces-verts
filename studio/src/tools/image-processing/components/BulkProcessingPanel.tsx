@@ -409,7 +409,6 @@ function BulkThumbnail({
   onRetry?: () => void
 }) {
   const thumbUrl = `${item.asset.url}?w=600&h=400&fit=crop&auto=format&q=85`
-  const dims = item.asset.metadata?.dimensions
   const displayName = humanizeFilename(item.asset.originalFilename)
 
   return (
@@ -498,19 +497,6 @@ function BulkThumbnail({
       {/* Info */}
       <Box padding={3}>
         <Stack space={2}>
-          {dims && (
-            <Text size={1} weight="semibold">
-              {dims.width}×{dims.height}
-            </Text>
-          )}
-          <Text
-            size={0}
-            muted
-            textOverflow="ellipsis"
-            title={item.asset.originalFilename ?? 'Sans nom'}
-          >
-            {displayName}
-          </Text>
           <Flex gap={2} align="center">
             <Badge tone={statusTone(item.status)} fontSize={0}>
               {STATUS_LABEL[item.status]}

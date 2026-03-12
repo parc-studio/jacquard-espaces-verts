@@ -269,7 +269,6 @@ function ImageThumbnail({
   onRevert: () => void
 }) {
   const thumbUrl = `${asset.url}?w=600&h=400&fit=crop&auto=format&q=85`
-  const dims = asset.metadata?.dimensions
   const displayName = humanizeFilename(asset.originalFilename)
   const isProcessed = asset.label === 'cloudinary-processed' || asset.label === 'ai-processed'
 
@@ -318,41 +317,15 @@ function ImageThumbnail({
             display: 'block',
           }}
         />
-        {(asset.label === 'cloudinary-processed' || asset.label === 'ai-processed') && (
+        {isProcessed && (
           <Box style={{ position: 'absolute', top: 4, right: 4 }}>
             <Badge tone="positive" fontSize={0} mode="outline">
               Corrigée
             </Badge>
           </Box>
         )}
-      </Box>
-      <Box padding={3}>
-        <Flex align="center" gap={2}>
-          <Box
-            style={{
-              flex: 1,
-              minWidth: 0,
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-            }}
-          >
-            {dims && (
-              <Text size={1} weight="semibold">
-                {dims.width}×{dims.height}
-              </Text>
-            )}
-            <Text
-              size={0}
-              muted
-              style={{ marginTop: 6 }}
-              textOverflow="ellipsis"
-              title={asset.originalFilename ?? 'Sans nom'}
-            >
-              {displayName}
-            </Text>
-          </Box>
-          {isProcessed && (
+        {isProcessed && (
+          <Box style={{ position: 'absolute', bottom: 4, right: 4 }}>
             <Tooltip
               content={
                 <Box padding={2}>
@@ -367,14 +340,15 @@ function ImageThumbnail({
                 tone="caution"
                 fontSize={0}
                 padding={1}
+                style={{ background: 'rgba(0,0,0,0.55)', borderRadius: 4 }}
                 onClick={(e: React.MouseEvent) => {
                   e.stopPropagation()
                   onRevert()
                 }}
               />
             </Tooltip>
-          )}
-        </Flex>
+          </Box>
+        )}
       </Box>
     </Card>
   )
