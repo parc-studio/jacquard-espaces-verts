@@ -52,7 +52,7 @@ async function importPrivateKey(pem: string): Promise<CryptoKey> {
   )
 }
 
-async function getAccessToken(config: GcpConfig): Promise<string> {
+export async function getAccessToken(config: GcpConfig): Promise<string> {
   const now = Math.floor(Date.now() / 1000)
   if (cachedToken && cachedToken.expiresAt > now + 300) return cachedToken.token
 

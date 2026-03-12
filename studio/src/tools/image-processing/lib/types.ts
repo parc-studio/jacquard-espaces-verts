@@ -3,7 +3,7 @@
  */
 
 /** Available processing modes */
-export type ProcessingMode = 'auto_correct'
+export type ProcessingMode = 'auto_correct' | 'video_generate'
 
 /** A Sanity image asset with metadata needed for processing */
 export interface SanityImageAsset {
@@ -95,10 +95,13 @@ export const INITIAL_TOOL_STATE: ToolState = {
 /** Human-readable labels for processing modes (French) */
 export const MODE_LABELS: Record<ProcessingMode, string> = {
   auto_correct: 'Correction photo automatique',
+  video_generate: 'Génération vidéo — brise végétale',
 }
 
 /** Short descriptions for processing modes (French) */
 export const MODE_DESCRIPTIONS: Record<ProcessingMode, string> = {
   auto_correct:
     'Auto-niveaux, balance des blancs chaude, récupération ombres/hautes lumières, contraste et vibrance.',
+  video_generate:
+    'Génère une courte vidéo en boucle où seule la végétation bouge dans une brise légère. Tout le reste reste figé.',
 }

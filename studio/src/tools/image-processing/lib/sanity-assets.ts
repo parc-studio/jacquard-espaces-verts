@@ -385,3 +385,41 @@ export function humanizeFilename(filename: string | undefined): string {
   // Title-case
   return name.replace(/\b\w/g, (c) => c.toUpperCase())
 }
+
+// ---------------------------------------------------------------------------
+// Video helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Generate a filename for a generated video.
+ */
+export function makeVideoFilename(originalFilename: string | undefined): string {
+  const base = originalFilename?.replace(/\.[^.]+$/, '') ?? 'image'
+  return `${base}-vegetation-loop-${Date.now()}.mp4`
+}
+
+/**
+ * Upload a base64-encoded video to Sanity as a file asset.
+ *
+ * @returns The created file asset document ID
+ */
+export async function uploadVideoToSanity(
+  client: SanityClient,
+  base64Data: string,
+  filename: string
+): Promise<string> {
+  const byteChars = atob(base64Data)
+  const byteArray = new Uint8Array(byteChars.length)
+  for (let i = 0; i < byteChars.length; i++) {
+    byteArray[i] = byteChars.charCodeAt(i)
+  }
+  const blob = new Blob([byteArray], { type: 'video/mp4' })
+  const file = new File([blob], filename, { type: 'video/mp4' })
+
+  const asset = await client.assets.upload('file', file, {
+    filename,
+    contentType: 'video/mp4',
+  })
+
+  return asset._id
+}

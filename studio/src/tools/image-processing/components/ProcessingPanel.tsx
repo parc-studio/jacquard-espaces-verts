@@ -5,15 +5,16 @@
  * and a button to start processing. Shows progress/loading state.
  */
 
-import { ArrowLeftIcon, PlayIcon } from '@sanity/icons'
+import { ArrowLeftIcon, CloseIcon, PlayIcon } from '@sanity/icons'
 import { Badge, Box, Button, Card, Flex, Heading, Radio, Stack, Text } from '@sanity/ui'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useClient } from 'sanity'
 
 import { resolveOriginalAssetUrl } from '../lib/sanity-assets'
 import { SECRET_KEYS, SECRETS_NAMESPACE, SettingsView, useGcpSecrets } from '../lib/secrets'
 import type { ProcessingMode, ProcessingResult, SanityImageAsset } from '../lib/types'
 import { MODE_DESCRIPTIONS, MODE_LABELS } from '../lib/types'
+import { generateVideoFromImage } from '../lib/veo'
 import { processImage } from '../lib/vertex'
 import { ComparisonSlider } from './ReviewPanel'
 
@@ -27,26 +28,49 @@ export function ProcessingPanel({ asset, onResult, onBack }: ProcessingPanelProp
   const [mode, setMode] = useState<ProcessingMode>('auto_correct')
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [progressText, setProgressText] = useState<string | null>(null)
   const [showSecrets, setShowSecrets] = useState(false)
+  const abortRef = useRef<AbortController | null>(null)
   const client = useClient({ apiVersion: '2025-01-12' })
 
   const { loading: secretsLoading, config: gcpConfig } = useGcpSecrets()
   const configured = gcpConfig !== null
 
+  const handleCancel = useCallback(() => {
+    abortRef.current?.abort()
+    abortRef.current = null
+  }, [])
+
   const handleProcess = useCallback(async () => {
     setIsProcessing(true)
     setError(null)
+    setProgressText(null)
+
+    const controller = new AbortController()
+    abortRef.current = controller
 
     try {
       // Resolve original image URL (avoids double-processing)
       const { url: sourceUrl, originalAssetId } = await resolveOriginalAssetUrl(client, asset)
-      const result = await processImage(sourceUrl, mode, gcpConfig!)
+
+      let result: ProcessingResult
+      if (mode === 'video_generate') {
+        result = await generateVideoFromImage(sourceUrl, gcpConfig!, {
+          signal: controller.signal,
+          onProgress: setProgressText,
+        })
+      } else {
+        result = await processImage(sourceUrl, mode, gcpConfig!)
+      }
 
       onResult(result, mode, originalAssetId)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Une erreur inattendue est survenue.')
+      const message = err instanceof Error ? err.message : 'Une erreur inattendue est survenue.'
+      setError(message)
     } finally {
       setIsProcessing(false)
+      setProgressText(null)
+      abortRef.current = null
     }
   }, [asset, mode, onResult, gcpConfig])
 
@@ -209,18 +233,44 @@ export function ProcessingPanel({ asset, onResult, onBack }: ProcessingPanelProp
             </Card>
           )}
 
-          {/* Process button */}
-          <Button
-            icon={isProcessing ? null : PlayIcon}
-            text={isProcessing ? 'Traitement en cours…' : 'Lancer le traitement'}
-            tone="positive"
-            onClick={handleProcess}
-            disabled={isProcessing || !configured}
-            fontSize={1}
-            padding={3}
-          />
+          {/* Video mode warning */}
+          {mode === 'video_generate' && !isProcessing && (
+            <Card padding={3} tone="caution" radius={2}>
+              <Text size={1}>
+                La génération vidéo peut prendre 1 à 3 minutes. Vous pourrez annuler à tout moment.
+              </Text>
+            </Card>
+          )}
 
-          {isProcessing && (
+          {/* Process / Cancel buttons */}
+          {isProcessing && mode === 'video_generate' ? (
+            <Stack space={3}>
+              <Flex gap={2} align="center" justify="center">
+                <Text size={1}>{progressText ?? 'Démarrage…'}</Text>
+              </Flex>
+              <Button
+                icon={CloseIcon}
+                text="Annuler la génération"
+                tone="critical"
+                mode="ghost"
+                onClick={handleCancel}
+                fontSize={1}
+                padding={3}
+              />
+            </Stack>
+          ) : (
+            <Button
+              icon={isProcessing ? null : PlayIcon}
+              text={isProcessing ? 'Traitement en cours…' : 'Lancer le traitement'}
+              tone="positive"
+              onClick={handleProcess}
+              disabled={isProcessing || !configured}
+              fontSize={1}
+              padding={3}
+            />
+          )}
+
+          {isProcessing && mode !== 'video_generate' && (
             <Flex gap={2} align="center" justify="center">
               <Text size={0} muted>
                 Analyse + correction en cours…

@@ -18,6 +18,7 @@ import { BulkProcessingPanel } from './components/BulkProcessingPanel'
 import { ImageSelector } from './components/ImageSelector'
 import { ProcessingPanel } from './components/ProcessingPanel'
 import { ReviewPanel } from './components/ReviewPanel'
+import { VideoReviewPanel } from './components/VideoReviewPanel'
 import { SECRET_KEYS, SECRETS_NAMESPACE, SettingsView } from './lib/secrets'
 import type {
   ProcessingMode,
@@ -101,10 +102,16 @@ export function ImageProcessingTool() {
   // Step 3: accepted → show success, back to Step 1
   const handleAccepted = useCallback(
     (newAssetId: string) => {
-      const replacedMsg = selectedProjectId
-        ? ' L\u2019image a été remplacée dans la galerie du projet.'
-        : ' Vous pouvez maintenant l\u2019utiliser dans vos documents.'
-      setSuccessMessage(`Image enregistrée avec succès (${newAssetId}).${replacedMsg}`)
+      const isVideo = mode === 'video_generate'
+      const primaryMsg = isVideo
+        ? `Vidéo enregistrée avec succès (${newAssetId}).`
+        : `Image enregistrée avec succès (${newAssetId}).`
+      const secondaryMsg = isVideo
+        ? ' Vous pouvez retrouver la vidéo dans les fichiers Sanity.'
+        : selectedProjectId
+          ? ' L\u2019image a été remplacée dans la galerie du projet.'
+          : ' Vous pouvez maintenant l\u2019utiliser dans vos documents.'
+      setSuccessMessage(`${primaryMsg}${secondaryMsg}`)
       setSelectedAsset(null)
       setSelectedProjectId(null)
       setResult(null)
@@ -112,7 +119,7 @@ export function ImageProcessingTool() {
       setOriginalAssetId(null)
       setStep('select')
     },
-    [selectedProjectId]
+    [selectedProjectId, mode]
   )
 
   // ------------------------------------------------------------------
@@ -196,18 +203,30 @@ export function ImageProcessingTool() {
             />
           )}
 
-          {step === 'review' && selectedAsset && result && mode && (
-            <ReviewPanel
-              asset={selectedAsset}
-              result={result}
-              mode={mode}
-              projectId={selectedProjectId}
-              originalAssetId={originalAssetId ?? selectedAsset._id}
-              onRegenerate={handleRegenerate}
-              onDiscard={handleDiscard}
-              onAccepted={handleAccepted}
-            />
-          )}
+          {step === 'review' &&
+            selectedAsset &&
+            result &&
+            mode &&
+            (mode === 'video_generate' ? (
+              <VideoReviewPanel
+                asset={selectedAsset}
+                result={result}
+                onRegenerate={handleRegenerate}
+                onDiscard={handleDiscard}
+                onAccepted={handleAccepted}
+              />
+            ) : (
+              <ReviewPanel
+                asset={selectedAsset}
+                result={result}
+                mode={mode}
+                projectId={selectedProjectId}
+                originalAssetId={originalAssetId ?? selectedAsset._id}
+                onRegenerate={handleRegenerate}
+                onDiscard={handleDiscard}
+                onAccepted={handleAccepted}
+              />
+            ))}
 
           {step === 'bulk' && selectedProject && (
             <BulkProcessingPanel
