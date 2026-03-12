@@ -6,8 +6,8 @@
  */
 
 import { ArrowLeftIcon, CheckmarkIcon, CloseIcon, ResetIcon } from '@sanity/icons'
-import { Box, Button, Card, Flex, Heading, Spinner, Stack, Text } from '@sanity/ui'
-import { useCallback, useMemo, useState } from 'react'
+import { Button, Card, Flex, Heading, Spinner, Stack, Text } from '@sanity/ui'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useClient } from 'sanity'
 
 import {
@@ -107,37 +107,18 @@ export function ReviewPanel({
         </Card>
       )}
 
-      {/* Before / After comparison */}
-      <Flex gap={4} wrap="wrap">
-        <Box style={{ flex: '1 1 400px' }}>
-          <Stack space={2}>
-            <Text size={1} weight="semibold">
-              Avant
-            </Text>
-            <Card radius={2} shadow={1} style={{ overflow: 'hidden' }}>
-              <img
-                src={originalUrl}
-                alt="Original"
-                style={{ width: '100%', height: 'auto', display: 'block' }}
-              />
-            </Card>
-          </Stack>
-        </Box>
-        <Box style={{ flex: '1 1 400px' }}>
-          <Stack space={2}>
-            <Text size={1} weight="semibold">
-              Après
-            </Text>
-            <Card radius={2} shadow={1} style={{ overflow: 'hidden' }}>
-              <img
-                src={processedDataUri}
-                alt="Traité"
-                style={{ width: '100%', height: 'auto', display: 'block' }}
-              />
-            </Card>
-          </Stack>
-        </Box>
-      </Flex>
+      {/* Before / After comparison slider */}
+      <Stack space={2}>
+        <Flex gap={3} align="center">
+          <Text size={1} weight="semibold">
+            Avant / Après
+          </Text>
+          <Text size={0} muted>
+            Glissez le curseur pour comparer
+          </Text>
+        </Flex>
+        <ComparisonSlider beforeUrl={originalUrl} afterUrl={processedDataUri} />
+      </Stack>
 
       {/* Upload error */}
       {uploadError && (
@@ -179,5 +160,155 @@ export function ReviewPanel({
         />
       </Flex>
     </Stack>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Comparison slider
+// ---------------------------------------------------------------------------
+
+function ComparisonSlider({ beforeUrl, afterUrl }: { beforeUrl: string; afterUrl: string }) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [position, setPosition] = useState(50)
+  const dragging = useRef(false)
+
+  const updatePosition = useCallback((clientX: number) => {
+    const el = containerRef.current
+    if (!el) return
+    const rect = el.getBoundingClientRect()
+    const pct = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100))
+    setPosition(pct)
+  }, [])
+
+  const onPointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      dragging.current = true
+      ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+      updatePosition(e.clientX)
+    },
+    [updatePosition]
+  )
+
+  const onPointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      if (!dragging.current) return
+      updatePosition(e.clientX)
+    },
+    [updatePosition]
+  )
+
+  const onPointerUp = useCallback(() => {
+    dragging.current = false
+  }, [])
+
+  return (
+    <Card radius={2} shadow={1} style={{ overflow: 'hidden' }}>
+      <div
+        ref={containerRef}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        style={{
+          position: 'relative',
+          cursor: 'col-resize',
+          userSelect: 'none',
+          touchAction: 'none',
+        }}
+      >
+        {/* After (full width, behind) */}
+        <img
+          src={afterUrl}
+          alt="Après"
+          draggable={false}
+          style={{ width: '100%', height: 'auto', display: 'block' }}
+        />
+
+        {/* Before (clipped to left of divider) */}
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            clipPath: `inset(0 ${100 - position}% 0 0)`,
+          }}
+        >
+          <img
+            src={beforeUrl}
+            alt="Avant"
+            draggable={false}
+            style={{ width: '100%', height: 'auto', display: 'block' }}
+          />
+        </div>
+
+        {/* Divider line */}
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            bottom: 0,
+            left: `${position}%`,
+            width: 2,
+            background: 'white',
+            boxShadow: '0 0 4px rgba(0,0,0,0.5)',
+            transform: 'translateX(-1px)',
+            pointerEvents: 'none',
+          }}
+        />
+
+        {/* Handle */}
+        <div
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: `${position}%`,
+            transform: 'translate(-50%, -50%)',
+            width: 36,
+            height: 36,
+            borderRadius: '50%',
+            background: 'white',
+            boxShadow: '0 1px 4px rgba(0,0,0,0.4)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            pointerEvents: 'none',
+            fontSize: 14,
+            color: '#333',
+          }}
+        >
+          ‹›
+        </div>
+
+        {/* Labels */}
+        <div
+          style={{
+            position: 'absolute',
+            top: 8,
+            left: 8,
+            background: 'rgba(0,0,0,0.55)',
+            color: 'white',
+            padding: '2px 8px',
+            borderRadius: 4,
+            fontSize: 12,
+            pointerEvents: 'none',
+          }}
+        >
+          Avant
+        </div>
+        <div
+          style={{
+            position: 'absolute',
+            top: 8,
+            right: 8,
+            background: 'rgba(0,0,0,0.55)',
+            color: 'white',
+            padding: '2px 8px',
+            borderRadius: 4,
+            fontSize: 12,
+            pointerEvents: 'none',
+          }}
+        >
+          Après
+        </div>
+      </div>
+    </Card>
   )
 }

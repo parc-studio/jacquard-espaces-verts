@@ -455,14 +455,15 @@ async function processImageHybrid(imageUrl: string, config: GcpConfig): Promise<
     )
   })
 
-  const arrayBuf = await blob.arrayBuffer()
-  const bytes = new Uint8Array(arrayBuf)
-  const CHUNK = 8192
-  let binary = ''
-  for (let i = 0; i < bytes.length; i += CHUNK) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK))
-  }
-  const base64 = btoa(binary)
+  const base64 = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const dataUrl = reader.result as string
+      resolve(dataUrl.slice(dataUrl.indexOf(',') + 1))
+    }
+    reader.onerror = () => reject(new Error('Échec de la conversion base64.'))
+    reader.readAsDataURL(blob)
+  })
 
   const parts = [
     `expo=${params.exposure.toFixed(2)}`,
