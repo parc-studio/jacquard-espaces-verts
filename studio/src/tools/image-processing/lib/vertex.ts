@@ -6,7 +6,8 @@
  * 2. Applies those parameters deterministically via Canvas 2D.
  *    The AI never modifies pixels — it only prescribes adjustments.
  *
- * Requires GCP service account credentials in .env for the analysis step.
+ * Requires GCP service account credentials configured via @sanity/studio-secrets
+ * (see lib/secrets.ts) for the analysis step.
  */
 
 import { fetchImageAsBase64 } from './sanity-assets'

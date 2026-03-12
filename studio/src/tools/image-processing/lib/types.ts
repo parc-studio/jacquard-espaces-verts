@@ -53,7 +53,6 @@ export type WorkflowStep = 'select' | 'process' | 'review' | 'bulk'
 export type BulkItemStatus =
   | 'pending'
   | 'analyzing'
-  | 'analysis-done'
   | 'correcting'
   | 'correction-done'
   | 'uploading'

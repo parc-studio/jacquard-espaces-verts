@@ -206,6 +206,7 @@
       scroll-snap-align: center;
       pointer-events: auto;
       padding-inline: var(--size-4);
+      visibility: visible;
     }
 
     /* Switch to contain so images aren't cropped and sit centered */

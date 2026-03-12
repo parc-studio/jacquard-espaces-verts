@@ -58,7 +58,6 @@ interface BulkProcessingPanelProps {
 const STATUS_LABEL: Record<BulkItemStatus, string> = {
   pending: 'En attente',
   analyzing: 'Analyse…',
-  'analysis-done': 'Analyse ✓',
   correcting: 'Correction…',
   'correction-done': 'Correction ✓',
   uploading: 'Envoi…',
@@ -124,7 +123,11 @@ export function BulkProcessingPanel({ project, onDone, onCancel }: BulkProcessin
 
         // 2. AI auto_correct pipeline
         const result = await processImageChain(sourceUrl, gcpConfig!, (step) => {
-          if (step === 'analysis-done') updateItem(index, { status: 'correcting' })
+          if (step === 'analysis-done') {
+            updateItem(index, { status: 'correcting' })
+          } else if (step === 'correction-done') {
+            updateItem(index, { status: 'correction-done' })
+          }
         })
 
         updateItem(index, { status: 'uploading' })

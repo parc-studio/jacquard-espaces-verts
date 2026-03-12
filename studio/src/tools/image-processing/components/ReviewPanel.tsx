@@ -58,8 +58,23 @@ export function ReviewPanel({
     [result]
   )
 
-  // Original preview
-  const originalUrl = `${asset.url}?w=2400&auto=format&q=90`
+  // Resolve the true original URL for the "before" preview
+  const [originalUrl, setOriginalUrl] = useState(`${asset.url}?w=2400&auto=format&q=90`)
+
+  useEffect(() => {
+    if (originalAssetId === asset._id) return
+    let cancelled = false
+    client
+      .fetch<{ url?: string }>(`*[_id == $id][0]{ url }`, { id: originalAssetId })
+      .then((doc) => {
+        if (!cancelled && doc?.url) {
+          setOriginalUrl(`${doc.url}?w=2400&auto=format&q=90`)
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [client, asset._id, originalAssetId])
 
   // ------------------------------------------------------------------
   // Parameter tuning state
@@ -425,7 +440,7 @@ export function ComparisonSlider({ beforeUrl, afterUrl }: { beforeUrl: string; a
   const onPointerDown = useCallback(
     (e: React.PointerEvent) => {
       dragging.current = true
-      ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+      e.currentTarget.setPointerCapture(e.pointerId)
       updatePosition(e.clientX)
     },
     [updatePosition]

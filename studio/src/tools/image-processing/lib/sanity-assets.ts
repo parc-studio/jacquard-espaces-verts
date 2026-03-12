@@ -130,7 +130,7 @@ export async function resolveOriginalAssetUrl(
   client: SanityClient,
   asset: SanityImageAsset
 ): Promise<{ url: string; originalAssetId: string }> {
-  if (asset.label !== 'ai-processed') {
+  if (asset.label !== 'ai-processed' && asset.label !== 'cloudinary-processed') {
     return { url: asset.url, originalAssetId: asset._id }
   }
 
