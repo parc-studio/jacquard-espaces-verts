@@ -12,6 +12,13 @@
   let { images, activeIndex = $bindable(0) }: Props = $props()
 
   let count = $derived(images.length)
+
+  /** Indices of prev/next slides to preload (rendered but hidden) */
+  let adjacentIndices = $derived.by(() => {
+    if (count < 2) return new Set<number>()
+    return new Set([(activeIndex - 1 + count) % count, (activeIndex + 1) % count])
+  })
+
   let viewportEl: HTMLDivElement | undefined = $state()
 
   /** Guard to ignore scroll events caused by programmatic scrollTo */
@@ -84,6 +91,24 @@
       isProgrammatic = false
     }, 500)
   })
+
+  /** Force-decode adjacent images so the bitmap is ready before the slide becomes active */
+  $effect(() => {
+    // Subscribe to activeIndex so this re-runs on navigation
+    void activeIndex
+    if (!viewportEl) return
+
+    const imgs = viewportEl.querySelectorAll<HTMLImageElement>('.carousel-slide.is-adjacent img')
+
+    for (const img of imgs) {
+      const decode = () => img.decode().catch(() => {})
+      if (img.complete) {
+        decode()
+      } else {
+        img.addEventListener('load', decode, { once: true })
+      }
+    }
+  })
 </script>
 
 <svelte:window onkeydown={handleKeydown} />
@@ -95,15 +120,18 @@
 >
   <div class="carousel-viewport" bind:this={viewportEl} onscroll={handleScroll}>
     {#each images as image, i (image._key)}
+      {@const isActive = i === activeIndex}
+      {@const isAdjacent = adjacentIndices.has(i)}
       <div
         class="carousel-slide"
-        class:is-active={i === activeIndex}
+        class:is-active={isActive}
+        class:is-adjacent={!isActive && isAdjacent}
         role="group"
         aria-roledescription="slide"
         aria-label="Image {i + 1} sur {count}"
-        aria-hidden={i !== activeIndex}
+        aria-hidden={!isActive}
       >
-        <Media media={{ image }} layout="cover" sizes="75vw" priority={i === 0} />
+        <Media media={{ image }} layout="cover" sizes="100vw" priority={i === 0} />
       </div>
     {/each}
   </div>
@@ -133,6 +161,12 @@
     display: none;
     pointer-events: none;
     height: 100%;
+  }
+
+  /* Adjacent slides: rendered so the browser loads + decodes images ahead of time */
+  .carousel-slide.is-adjacent {
+    display: block;
+    visibility: hidden;
   }
 
   .carousel-slide.is-active {
@@ -172,6 +206,7 @@
       scroll-snap-align: center;
       pointer-events: auto;
       padding-inline: var(--size-4);
+      visibility: visible;
     }
 
     /* Switch to contain so images aren't cropped and sit centered */

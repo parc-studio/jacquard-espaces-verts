@@ -5,7 +5,7 @@
  * User clicks an image thumbnail to select it for processing.
  */
 
-import { PlayIcon, SearchIcon } from '@sanity/icons'
+import { PlayIcon, ResetIcon, SearchIcon } from '@sanity/icons'
 import {
   Badge,
   Box,
@@ -27,6 +27,7 @@ import {
   fetchAllImageAssets,
   fetchProjectsWithImages,
   humanizeFilename,
+  revertProcessedImage,
 } from '../lib/sanity-assets'
 import type { ProjectWithImages, SanityImageAsset } from '../lib/types'
 
@@ -45,6 +46,7 @@ export function ImageSelector({ onSelect, onBulkSelect }: ImageSelectorProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
+  const [refreshKey, setRefreshKey] = useState(0)
 
   // Fetch data based on browse mode
   useEffect(() => {
@@ -74,7 +76,25 @@ export function ImageSelector({ onSelect, onBulkSelect }: ImageSelectorProps) {
     return () => {
       cancelled = true
     }
-  }, [client, browseMode])
+  }, [client, browseMode, refreshKey])
+
+  // Revert a processed image back to its original
+  const handleRevert = useCallback(
+    async (asset: SanityImageAsset) => {
+      if (
+        !window.confirm('Restaurer l\u2019image originale ? L\u2019image traitée sera supprimée.')
+      ) {
+        return
+      }
+      try {
+        await revertProcessedImage(client, asset._id)
+        setRefreshKey((k) => k + 1)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Erreur lors de la restauration.')
+      }
+    },
+    [client]
+  )
 
   // Filter projects by search term
   const filteredProjects = useMemo(() => {
@@ -203,6 +223,7 @@ export function ImageSelector({ onSelect, onBulkSelect }: ImageSelectorProps) {
                     key={asset._id}
                     asset={asset}
                     onClick={() => handleSelect(asset, project._id)}
+                    onRevert={() => handleRevert(asset)}
                   />
                 ))}
               </Grid>
@@ -227,6 +248,7 @@ export function ImageSelector({ onSelect, onBulkSelect }: ImageSelectorProps) {
                 key={asset._id}
                 asset={asset}
                 onClick={() => handleSelect(asset, null)}
+                onRevert={() => handleRevert(asset)}
               />
             ))}
           </Grid>
@@ -237,16 +259,30 @@ export function ImageSelector({ onSelect, onBulkSelect }: ImageSelectorProps) {
 }
 
 /** Thumbnail card for a single image asset */
-function ImageThumbnail({ asset, onClick }: { asset: SanityImageAsset; onClick: () => void }) {
-  const thumbUrl = `${asset.url}?w=300&h=200&fit=crop&auto=format&q=75`
-  const dims = asset.metadata?.dimensions
+function ImageThumbnail({
+  asset,
+  onClick,
+  onRevert,
+}: {
+  asset: SanityImageAsset
+  onClick: () => void
+  onRevert: () => void
+}) {
+  const thumbUrl = `${asset.url}?w=600&h=400&fit=crop&auto=format&q=85`
   const displayName = humanizeFilename(asset.originalFilename)
+  const isProcessed = asset.label === 'cloudinary-processed' || asset.label === 'ai-processed'
 
   return (
     <Card
-      as="button"
-      type="button"
+      role="button"
+      tabIndex={0}
       onClick={onClick}
+      onKeyDown={(e: React.KeyboardEvent<HTMLDivElement>) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onClick()
+        }
+      }}
       padding={0}
       radius={2}
       shadow={1}
@@ -281,22 +317,37 @@ function ImageThumbnail({ asset, onClick }: { asset: SanityImageAsset; onClick: 
             display: 'block',
           }}
         />
-      </Box>
-      <Box
-        padding={3}
-        style={{
-          whiteSpace: 'nowrap',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-        }}
-      >
-        <Text size={1} textOverflow="ellipsis" title={asset.originalFilename ?? 'Sans nom'}>
-          {displayName}
-        </Text>
-        {dims && (
-          <Text size={0} muted style={{ marginTop: 4 }}>
-            {dims.width}×{dims.height}
-          </Text>
+        {isProcessed && (
+          <Box style={{ position: 'absolute', top: 4, right: 4 }}>
+            <Badge tone="positive" fontSize={0} mode="outline">
+              Corrigée
+            </Badge>
+          </Box>
+        )}
+        {isProcessed && (
+          <Box style={{ position: 'absolute', bottom: 4, right: 4 }}>
+            <Tooltip
+              content={
+                <Box padding={2}>
+                  <Text size={1}>Restaurer l'original</Text>
+                </Box>
+              }
+              placement="top"
+            >
+              <Button
+                icon={ResetIcon}
+                mode="ghost"
+                tone="caution"
+                fontSize={0}
+                padding={1}
+                style={{ background: 'rgba(0,0,0,0.55)', borderRadius: 4 }}
+                onClick={(e: React.MouseEvent) => {
+                  e.stopPropagation()
+                  onRevert()
+                }}
+              />
+            </Tooltip>
+          </Box>
         )}
       </Box>
     </Card>

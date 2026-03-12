@@ -7,16 +7,23 @@
 
 import { ArrowLeftIcon, CheckmarkIcon, CloseIcon, ResetIcon } from '@sanity/icons'
 import { Box, Button, Card, Flex, Heading, Spinner, Stack, Text } from '@sanity/ui'
-import { useCallback, useMemo, useState } from 'react'
-import { useClient } from 'sanity'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { isDev, useClient } from 'sanity'
 
-import { MODE_LABELS } from '../lib/prompts'
 import {
   makeProcessedFilename,
   replaceImageInProject,
   uploadProcessedImage,
 } from '../lib/sanity-assets'
 import type { ProcessingMode, ProcessingResult, SanityImageAsset } from '../lib/types'
+import { MODE_LABELS } from '../lib/types'
+import {
+  applyCorrections,
+  type CorrectionParams,
+  DEFAULT_PARAMS,
+  FIXED_AESTHETIC,
+  loadImage,
+} from '../lib/vertex'
 
 interface ReviewPanelProps {
   asset: SanityImageAsset
@@ -24,6 +31,8 @@ interface ReviewPanelProps {
   mode: ProcessingMode
   /** If set, the accepted image will replace the original in this project's gallery. */
   projectId: string | null
+  /** The true original asset ID (before any prior processing). */
+  originalAssetId: string
   onRegenerate: () => void
   onDiscard: () => void
   onAccepted: (newAssetId: string) => void
@@ -34,6 +43,7 @@ export function ReviewPanel({
   result,
   mode,
   projectId,
+  originalAssetId,
   onRegenerate,
   onDiscard,
   onAccepted,
@@ -42,14 +52,131 @@ export function ReviewPanel({
   const [isUploading, setIsUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
 
-  // Build data URI for the processed image
+  // Build data URI for the processed image (from AI pipeline)
   const processedDataUri = useMemo(
     () => `data:${result.mimeType};base64,${result.base64Data}`,
     [result]
   )
 
-  // Original preview
-  const originalUrl = `${asset.url}?w=800&auto=format&q=85`
+  // Resolve the true original URL for the "before" preview
+  const [originalUrl, setOriginalUrl] = useState(`${asset.url}?w=2400&auto=format&q=90`)
+
+  useEffect(() => {
+    if (originalAssetId === asset._id) return
+    let cancelled = false
+    client
+      .fetch<{ url?: string }>(`*[_id == $id][0]{ url }`, { id: originalAssetId })
+      .then((doc) => {
+        if (!cancelled && doc?.url) {
+          setOriginalUrl(`${doc.url}?w=2400&auto=format&q=90`)
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [client, asset._id, originalAssetId])
+
+  // ------------------------------------------------------------------
+  // Parameter tuning state
+  // ------------------------------------------------------------------
+  const [showTuner, setShowTuner] = useState(false)
+  const [tuneParams, setTuneParams] = useState<CorrectionParams>({
+    ...FIXED_AESTHETIC,
+    exposure: DEFAULT_PARAMS.exposure,
+    straightenAngle: DEFAULT_PARAMS.straightenAngle,
+    shadows: DEFAULT_PARAMS.shadows,
+    highlights: DEFAULT_PARAMS.highlights,
+  })
+  const [tunedDataUri, setTunedDataUri] = useState<string | null>(null)
+  const [tuning, setTuning] = useState(false)
+  const sourceImageRef = useRef<HTMLImageElement | null>(null)
+
+  // Load original image once for Canvas re-renders
+  useEffect(() => {
+    if (!showTuner) return
+    let cancelled = false
+    const separator = asset.url.includes('?') ? '&' : '?'
+    const pngUrl = `${asset.url}${separator}fm=png&w=2400`
+    loadImage(pngUrl).then((img) => {
+      if (!cancelled) sourceImageRef.current = img
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [asset.url, showTuner])
+
+  // Re-render with tuned params (debounced)
+  const renderTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => {
+    if (!showTuner || !sourceImageRef.current) return
+    if (renderTimerRef.current) clearTimeout(renderTimerRef.current)
+
+    renderTimerRef.current = setTimeout(async () => {
+      setTuning(true)
+      const img = sourceImageRef.current!
+      const canvas = document.createElement('canvas')
+      canvas.width = img.naturalWidth
+      canvas.height = img.naturalHeight
+      const ctx = canvas.getContext('2d')!
+      ctx.drawImage(img, 0, 0)
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+      applyCorrections(imageData, tuneParams)
+      ctx.putImageData(imageData, 0, 0)
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob(
+          (b) => (b ? resolve(b) : reject(new Error('Canvas export failed'))),
+          'image/jpeg',
+          0.92
+        )
+      })
+      const dataUrl = await new Promise<string>((resolve) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(reader.result as string)
+        reader.readAsDataURL(blob)
+      })
+      setTunedDataUri(dataUrl)
+      setTuning(false)
+    }, 150)
+
+    return () => {
+      if (renderTimerRef.current) clearTimeout(renderTimerRef.current)
+    }
+  }, [showTuner, tuneParams])
+
+  const updateParam = useCallback((key: keyof CorrectionParams, value: number) => {
+    setTuneParams((prev) => ({ ...prev, [key]: value }))
+  }, [])
+
+  const resetParams = useCallback(() => {
+    setTuneParams({
+      ...FIXED_AESTHETIC,
+      exposure: DEFAULT_PARAMS.exposure,
+      straightenAngle: DEFAULT_PARAMS.straightenAngle,
+      shadows: DEFAULT_PARAMS.shadows,
+      highlights: DEFAULT_PARAMS.highlights,
+    })
+  }, [])
+
+  const copyParamsToClipboard = useCallback(() => {
+    const code = `const FIXED_AESTHETIC = ${JSON.stringify(
+      {
+        contrast: tuneParams.contrast,
+        highlights: tuneParams.highlights,
+        shadows: tuneParams.shadows,
+        temperature: tuneParams.temperature,
+        saturation: tuneParams.saturation,
+        levelsClipLow: tuneParams.levelsClipLow,
+        levelsClipHigh: tuneParams.levelsClipHigh,
+      },
+      null,
+      2
+    )}`
+    navigator.clipboard.writeText(code)
+  }, [tuneParams])
+
+  // ------------------------------------------------------------------
+  // Upload handler
+  // ------------------------------------------------------------------
 
   const handleAccept = useCallback(async () => {
     setIsUploading(true)
@@ -62,11 +189,10 @@ export function ReviewPanel({
         result.base64Data,
         result.mimeType,
         filename,
-        asset._id,
+        originalAssetId,
         mode
       )
 
-      // Replace the image reference in the project gallery (if we know the project)
       if (projectId) {
         await replaceImageInProject(client, projectId, asset._id, newAssetId)
       }
@@ -97,44 +223,25 @@ export function ReviewPanel({
         </Heading>
       </Flex>
 
-      {/* Feedback from Gemini */}
+      {/* Feedback from AI analysis */}
       {result.feedback && (
-        <Card padding={3} tone="positive" radius={2}>
+        <Card padding={3} tone={result.analysisFailed ? 'caution' : 'positive'} radius={2}>
           <Text size={1}>{result.feedback}</Text>
         </Card>
       )}
 
-      {/* Before / After comparison */}
-      <Flex gap={4} wrap="wrap">
-        <Box style={{ flex: '1 1 400px' }}>
-          <Stack space={2}>
-            <Text size={1} weight="semibold">
-              Avant
-            </Text>
-            <Card radius={2} shadow={1} style={{ overflow: 'hidden' }}>
-              <img
-                src={originalUrl}
-                alt="Original"
-                style={{ width: '100%', height: 'auto', display: 'block' }}
-              />
-            </Card>
-          </Stack>
-        </Box>
-        <Box style={{ flex: '1 1 400px' }}>
-          <Stack space={2}>
-            <Text size={1} weight="semibold">
-              Après
-            </Text>
-            <Card radius={2} shadow={1} style={{ overflow: 'hidden' }}>
-              <img
-                src={processedDataUri}
-                alt="Traité"
-                style={{ width: '100%', height: 'auto', display: 'block' }}
-              />
-            </Card>
-          </Stack>
-        </Box>
-      </Flex>
+      {/* Before / After comparison slider */}
+      <Stack space={2}>
+        <Flex gap={3} align="center">
+          <Text size={1} weight="semibold">
+            Avant / Après
+          </Text>
+          <Text size={0} muted>
+            Glissez le curseur pour comparer
+          </Text>
+        </Flex>
+        <ComparisonSlider beforeUrl={originalUrl} afterUrl={processedDataUri} />
+      </Stack>
 
       {/* Upload error */}
       {uploadError && (
@@ -175,6 +282,330 @@ export function ReviewPanel({
           padding={3}
         />
       </Flex>
+
+      {/* Labo couleur toggle — dev only */}
+      {isDev && (
+        <Button
+          text={showTuner ? 'Masquer le labo couleur' : '🎨 Labo couleur — ajuster les réglages'}
+          mode="ghost"
+          tone="primary"
+          onClick={() => setShowTuner((v) => !v)}
+          disabled={isUploading}
+          fontSize={1}
+          padding={3}
+          style={{ width: '100%' }}
+        />
+      )}
+
+      {/* Parameter tuning lab — dev only */}
+      {isDev && showTuner && (
+        <Card padding={4} tone="transparent" radius={2} shadow={1}>
+          <Stack space={4}>
+            <Flex gap={3} align="center" justify="space-between">
+              <Text size={1} weight="semibold">
+                Labo couleur — Réglages esthétiques
+              </Text>
+              <Flex gap={2}>
+                <Button
+                  text="Réinitialiser"
+                  mode="ghost"
+                  tone="caution"
+                  onClick={resetParams}
+                  fontSize={0}
+                  padding={2}
+                />
+                <Button
+                  text="Copier code"
+                  mode="ghost"
+                  tone="primary"
+                  onClick={copyParamsToClipboard}
+                  fontSize={0}
+                  padding={2}
+                />
+              </Flex>
+            </Flex>
+
+            <Text size={0} muted>
+              Ajustez les curseurs et observez le rendu en temps réel. Une fois satisfait, copiez
+              les paramètres avec « Copier code » pour les intégrer dans vertex.ts.
+            </Text>
+
+            <Box style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <ParamSlider
+                label="Exposition"
+                value={tuneParams.exposure}
+                min={-0.5}
+                max={0.5}
+                step={0.01}
+                onChange={(v) => updateParam('exposure', v)}
+              />
+              <ParamSlider
+                label="Contraste"
+                value={tuneParams.contrast}
+                min={-1}
+                max={1}
+                step={0.01}
+                onChange={(v) => updateParam('contrast', v)}
+              />
+              <ParamSlider
+                label="Hautes lumières"
+                value={tuneParams.highlights}
+                min={-1}
+                max={1}
+                step={0.01}
+                onChange={(v) => updateParam('highlights', v)}
+              />
+              <ParamSlider
+                label="Ombres"
+                value={tuneParams.shadows}
+                min={-1}
+                max={1}
+                step={0.01}
+                onChange={(v) => updateParam('shadows', v)}
+              />
+              <ParamSlider
+                label="Température"
+                value={tuneParams.temperature}
+                min={-1}
+                max={1}
+                step={0.01}
+                onChange={(v) => updateParam('temperature', v)}
+              />
+              <ParamSlider
+                label="Saturation"
+                value={tuneParams.saturation}
+                min={-1}
+                max={1}
+                step={0.01}
+                onChange={(v) => updateParam('saturation', v)}
+              />
+              <ParamSlider
+                label="Niveaux — noir"
+                value={tuneParams.levelsClipLow}
+                min={0}
+                max={0.05}
+                step={0.001}
+                onChange={(v) => updateParam('levelsClipLow', v)}
+              />
+              <ParamSlider
+                label="Niveaux — blanc"
+                value={tuneParams.levelsClipHigh}
+                min={0}
+                max={0.05}
+                step={0.001}
+                onChange={(v) => updateParam('levelsClipHigh', v)}
+              />
+            </Box>
+
+            {/* Tuned preview with comparison slider */}
+            {tunedDataUri && (
+              <Stack space={2}>
+                <Flex gap={2} align="center">
+                  <Text size={1} weight="semibold">
+                    Aperçu labo
+                  </Text>
+                  {tuning && (
+                    <Text size={0} muted>
+                      Rendu…
+                    </Text>
+                  )}
+                </Flex>
+                <ComparisonSlider beforeUrl={originalUrl} afterUrl={tunedDataUri} />
+              </Stack>
+            )}
+          </Stack>
+        </Card>
+      )}
     </Stack>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Comparison slider
+// ---------------------------------------------------------------------------
+
+export function ComparisonSlider({ beforeUrl, afterUrl }: { beforeUrl: string; afterUrl: string }) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [position, setPosition] = useState(50)
+  const dragging = useRef(false)
+
+  const updatePosition = useCallback((clientX: number) => {
+    const el = containerRef.current
+    if (!el) return
+    const rect = el.getBoundingClientRect()
+    const pct = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100))
+    setPosition(pct)
+  }, [])
+
+  const onPointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      dragging.current = true
+      e.currentTarget.setPointerCapture(e.pointerId)
+      updatePosition(e.clientX)
+    },
+    [updatePosition]
+  )
+
+  const onPointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      if (!dragging.current) return
+      updatePosition(e.clientX)
+    },
+    [updatePosition]
+  )
+
+  const onPointerUp = useCallback(() => {
+    dragging.current = false
+  }, [])
+
+  return (
+    <Card radius={2} shadow={1} style={{ overflow: 'hidden' }}>
+      <div
+        ref={containerRef}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        style={{
+          position: 'relative',
+          cursor: 'col-resize',
+          userSelect: 'none',
+          touchAction: 'none',
+        }}
+      >
+        {/* After (full width, behind) */}
+        <img
+          src={afterUrl}
+          alt="Après"
+          draggable={false}
+          style={{ width: '100%', height: 'auto', display: 'block' }}
+        />
+
+        {/* Before (clipped to left of divider) */}
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            clipPath: `inset(0 ${100 - position}% 0 0)`,
+          }}
+        >
+          <img
+            src={beforeUrl}
+            alt="Avant"
+            draggable={false}
+            style={{ width: '100%', height: 'auto', display: 'block' }}
+          />
+        </div>
+
+        {/* Divider line */}
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            bottom: 0,
+            left: `${position}%`,
+            width: 2,
+            background: 'white',
+            boxShadow: '0 0 4px rgba(0,0,0,0.5)',
+            transform: 'translateX(-1px)',
+            pointerEvents: 'none',
+          }}
+        />
+
+        {/* Handle */}
+        <div
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: `${position}%`,
+            transform: 'translate(-50%, -50%)',
+            width: 36,
+            height: 36,
+            borderRadius: '50%',
+            background: 'white',
+            boxShadow: '0 1px 4px rgba(0,0,0,0.4)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            pointerEvents: 'none',
+            fontSize: 14,
+            color: '#333',
+          }}
+        >
+          ‹›
+        </div>
+
+        {/* Labels */}
+        <div
+          style={{
+            position: 'absolute',
+            top: 8,
+            left: 8,
+            background: 'rgba(0,0,0,0.55)',
+            color: 'white',
+            padding: '2px 8px',
+            borderRadius: 4,
+            fontSize: 12,
+            pointerEvents: 'none',
+          }}
+        >
+          Avant
+        </div>
+        <div
+          style={{
+            position: 'absolute',
+            top: 8,
+            right: 8,
+            background: 'rgba(0,0,0,0.55)',
+            color: 'white',
+            padding: '2px 8px',
+            borderRadius: 4,
+            fontSize: 12,
+            pointerEvents: 'none',
+          }}
+        >
+          Après
+        </div>
+      </div>
+    </Card>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Parameter slider
+// ---------------------------------------------------------------------------
+
+function ParamSlider({
+  label,
+  value,
+  min,
+  max,
+  step,
+  onChange,
+}: {
+  label: string
+  value: number
+  min: number
+  max: number
+  step: number
+  onChange: (v: number) => void
+}) {
+  return (
+    <Box>
+      <Flex justify="space-between" align="center" style={{ marginBottom: 4 }}>
+        <Text size={0}>{label}</Text>
+        <Text size={0} muted>
+          {value.toFixed(step < 0.01 ? 3 : 2)}
+        </Text>
+      </Flex>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(e) => onChange(parseFloat(e.target.value))}
+        style={{ width: '100%', accentColor: 'var(--card-focus-ring-color)' }}
+      />
+    </Box>
   )
 }

@@ -1,9 +1,9 @@
 /**
- * Types for the AI image processing tool.
+ * Types for the image processing tool.
  */
 
 /** Available processing modes */
-export type ProcessingMode = 'equalize' | 'cadrage'
+export type ProcessingMode = 'auto_correct'
 
 /** A Sanity image asset with metadata needed for processing */
 export interface SanityImageAsset {
@@ -11,6 +11,8 @@ export interface SanityImageAsset {
   url: string
   originalFilename?: string
   mimeType: string
+  label?: string
+  description?: string
   metadata?: {
     dimensions?: {
       width: number
@@ -28,14 +30,16 @@ export interface ProjectWithImages {
   images: SanityImageAsset[]
 }
 
-/** Result of a Gemini processing operation */
+/** Result of a processing operation */
 export interface ProcessingResult {
   /** Base64-encoded image data */
   base64Data: string
   /** MIME type of the result image */
   mimeType: string
-  /** Text feedback from Gemini about what was changed */
+  /** Text feedback about what was changed */
   feedback?: string
+  /** True when AI analysis failed and fixed fallback values were used */
+  analysisFailed?: boolean
 }
 
 /** Workflow step */
@@ -48,10 +52,9 @@ export type WorkflowStep = 'select' | 'process' | 'review' | 'bulk'
 /** Status of a single image in a bulk job */
 export type BulkItemStatus =
   | 'pending'
-  | 'equalize-processing'
-  | 'equalize-done'
-  | 'cadrage-processing'
-  | 'cadrage-done'
+  | 'analyzing'
+  | 'correcting'
+  | 'correction-done'
   | 'uploading'
   | 'replacing'
   | 'done'
@@ -61,8 +64,8 @@ export type BulkItemStatus =
 export interface BulkJobItem {
   asset: SanityImageAsset
   status: BulkItemStatus
-  equalizeResult?: ProcessingResult
-  cadrageResult?: ProcessingResult
+  analysisResult?: ProcessingResult
+  correctionResult?: ProcessingResult
   newAssetId?: string
   error?: string
 }
@@ -87,4 +90,15 @@ export const INITIAL_TOOL_STATE: ToolState = {
   isProcessing: false,
   result: null,
   error: null,
+}
+
+/** Human-readable labels for processing modes (French) */
+export const MODE_LABELS: Record<ProcessingMode, string> = {
+  auto_correct: 'Correction photo automatique',
+}
+
+/** Short descriptions for processing modes (French) */
+export const MODE_DESCRIPTIONS: Record<ProcessingMode, string> = {
+  auto_correct:
+    'Auto-niveaux, balance des blancs chaude, récupération ombres/hautes lumières, contraste et vibrance.',
 }

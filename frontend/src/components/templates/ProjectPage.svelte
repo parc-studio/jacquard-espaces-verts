@@ -81,7 +81,7 @@
     const sources = galleryImages
       .map((image) => {
         if (!image?.asset?._id) return null
-        return urlFor(image).width(2000).quality(80).auto('format').url()
+        return urlFor(image).width(2000).quality(85).auto('format').url()
       })
       .filter((src): src is string => !!src)
 

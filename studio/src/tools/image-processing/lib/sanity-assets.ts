@@ -24,7 +24,7 @@ function isSanityImageAsset(value: unknown): value is SanityImageAsset {
  * Fetch all projects that have images in their media gallery.
  */
 export async function fetchProjectsWithImages(client: SanityClient): Promise<ProjectWithImages[]> {
-  const query = `*[_type == "project" && defined(mediaGallery)] | order(titre asc) {
+  const query = `*[_type == "project" && !(_id in path("drafts.**")) && defined(mediaGallery)] | order(titre asc) {
     _id,
     titre,
     localisation,
@@ -33,6 +33,8 @@ export async function fetchProjectsWithImages(client: SanityClient): Promise<Pro
       url,
       originalFilename,
       mimeType,
+      label,
+      description,
       metadata {
         dimensions {
           width,
@@ -62,6 +64,8 @@ export async function fetchAllImageAssets(client: SanityClient): Promise<SanityI
     url,
     originalFilename,
     mimeType,
+    label,
+    description,
     metadata {
       dimensions {
         width,
@@ -77,12 +81,17 @@ export async function fetchAllImageAssets(client: SanityClient): Promise<SanityI
 /**
  * Fetch image data from a Sanity CDN URL and return as base64.
  *
- * We fetch the original image (no CDN transforms) to preserve maximum quality.
+ * Vertex AI accepts PNG, JPEG, GIF, BMP (max 20 MB after transcode).
+ * We request high-quality JPEG (`fm=jpg&q=95`) from Sanity's image pipeline.
  */
 export async function fetchImageAsBase64(
   imageUrl: string
 ): Promise<{ base64: string; mimeType: string }> {
-  const response = await fetch(imageUrl)
+  // Fetch full-resolution image for Vertex AI analysis (no resizing)
+  const separator = imageUrl.includes('?') ? '&' : '?'
+  const optimizedUrl = `${imageUrl}${separator}fm=jpg&q=95`
+
+  const response = await fetch(optimizedUrl)
   if (!response.ok) {
     throw new Error(`Impossible de télécharger l'image : ${response.status} ${response.statusText}`)
   }
@@ -108,6 +117,46 @@ export async function fetchImageAsBase64(
 }
 
 /**
+ * Resolve the original (unprocessed) image URL for a given asset.
+ *
+ * If the asset has already been processed (`label === 'ai-processed'`),
+ * extracts the original asset ID from its `description` field and fetches
+ * the original asset's URL so re-processing always starts from the raw image.
+ *
+ * @returns `{ url, originalAssetId }` — the URL to use for processing and
+ *          the original asset ID to store as source reference.
+ */
+export async function resolveOriginalAssetUrl(
+  client: SanityClient,
+  asset: SanityImageAsset
+): Promise<{ url: string; originalAssetId: string }> {
+  if (asset.label !== 'ai-processed' && asset.label !== 'cloudinary-processed') {
+    return { url: asset.url, originalAssetId: asset._id }
+  }
+
+  // Extract original asset ID from description "Source: <id> — Mode: <mode>"
+  const match = asset.description?.match(/Source:\s*(\S+)/)
+  if (!match?.[1]) {
+    // No source reference — fall back to processing the current asset
+    return { url: asset.url, originalAssetId: asset._id }
+  }
+
+  const originalAssetId = match[1]
+
+  // Fetch original asset URL
+  const original = await client.fetch<{ url?: string }>(`*[_id == $id][0]{ url }`, {
+    id: originalAssetId,
+  })
+
+  if (!original?.url) {
+    // Original no longer exists — fall back to current asset
+    return { url: asset.url, originalAssetId: asset._id }
+  }
+
+  return { url: original.url, originalAssetId }
+}
+
+/**
  * Upload a base64-encoded image to Sanity as a new asset and tag it as AI-processed.
  *
  * @param client - Authenticated Sanity client
@@ -124,7 +173,7 @@ export async function uploadProcessedImage(
   mimeType: string,
   filename: string,
   originalAssetId?: string,
-  mode?: ProcessingMode | 'equalize+cadrage'
+  mode?: ProcessingMode | 'equalize+cadrage' | 'auto_correct'
 ): Promise<string> {
   // Convert base64 to Blob
   const byteChars = atob(base64Data)
@@ -140,7 +189,7 @@ export async function uploadProcessedImage(
     contentType: mimeType,
   })
 
-  // Tag the asset as AI-processed for easy filtering in the media library
+  // Tag the asset as ai-processed for easy filtering in the media library
   const description = [
     originalAssetId ? `Source: ${originalAssetId}` : null,
     mode ? `Mode: ${mode}` : null,
@@ -219,6 +268,82 @@ export async function replaceImageInProject(
 // ---------------------------------------------------------------------------
 
 /**
+ * Revert a processed image back to its original.
+ *
+ * 1. Reads the `description` field of the processed asset to extract the
+ *    original asset ID (format: "Source: <id> — Mode: <mode>").
+ * 2. Finds any project whose `mediaGallery` references the processed asset.
+ * 3. Swaps the reference back to the original asset.
+ * 4. Deletes the processed asset.
+ */
+export async function revertProcessedImage(
+  client: SanityClient,
+  processedAssetId: string
+): Promise<{ originalAssetId: string; revertedProjects: string[] }> {
+  // Fetch the processed asset to extract the original source ID
+  const asset = await client.fetch<{ description?: string; label?: string }>(
+    `*[_id == $id][0]{ description, label }`,
+    { id: processedAssetId }
+  )
+
+  if (!asset) {
+    throw new Error(`Image traitée introuvable (${processedAssetId}).`)
+  }
+
+  // Extract original asset ID from description "Source: <id> — Mode: <mode>"
+  const match = asset.description?.match(/Source:\s*(\S+)/)
+  if (!match?.[1]) {
+    throw new Error(
+      `Impossible de trouver l'image originale : le champ description ne contient pas de référence source.`
+    )
+  }
+  const originalAssetId = match[1]
+
+  // Verify the original asset still exists
+  const originalExists = await client.fetch<boolean>(`defined(*[_id == $id][0]._id)`, {
+    id: originalAssetId,
+  })
+  if (!originalExists) {
+    throw new Error(`L'image originale (${originalAssetId}) n'existe plus dans Sanity.`)
+  }
+
+  // Find all projects referencing the processed asset in their gallery
+  const projects = await client.fetch<
+    Array<{ _id: string; _rev: string; mediaGallery: GalleryItem[] }>
+  >(
+    `*[_type == "project" && $ref in mediaGallery[].asset._ref]{
+      _id, _rev, mediaGallery[]{ _key, _type, asset, hotspot, crop }
+    }`,
+    { ref: processedAssetId }
+  )
+
+  // Swap references back to original in each project
+  const revertedProjects: string[] = []
+  for (const project of projects) {
+    for (const item of project.mediaGallery) {
+      if (item.asset?._ref === processedAssetId) {
+        await client
+          .patch(project._id)
+          .ifRevisionId(project._rev)
+          .set({ [`mediaGallery[_key=="${item._key}"].asset._ref`]: originalAssetId })
+          .commit()
+        revertedProjects.push(project._id)
+        break
+      }
+    }
+  }
+
+  // Delete the processed asset
+  await client.delete(processedAssetId)
+
+  return { originalAssetId, revertedProjects }
+}
+
+// ---------------------------------------------------------------------------
+// Filename helpers (continued)
+// ---------------------------------------------------------------------------
+
+/**
  * Generate a filename for a processed image.
  * Uses the actual output mimeType to determine extension.
  */
@@ -250,7 +375,7 @@ export function humanizeFilename(filename: string | undefined): string {
     // Strip trailing timestamp (13-digit epoch)
     .replace(/-\d{13}$/, '')
     // Strip known processing-mode suffixes
-    .replace(/-(equalize|cadrage|equalize\+cadrage)$/i, '')
+    .replace(/-(equalize|cadrage|equalize\+cadrage|auto_correct)$/i, '')
 
   // Replace separators with spaces
   name = name.replace(/[-_]+/g, ' ').trim()

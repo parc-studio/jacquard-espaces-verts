@@ -1,7 +1,7 @@
 /**
  * BulkProcessingPanel — Process all images of a project sequentially.
  *
- * For each image the pipeline runs:  equalize → cadrage → upload → replace in gallery.
+ * For each image the pipeline runs:  analyse → correction → upload → replace in gallery.
  * A progress indicator and per-image status badges keep the user informed.
  * The user can stop the job after the current image finishes.
  */
@@ -12,20 +12,34 @@ import {
   CloseCircleIcon,
   PauseIcon,
   PlayIcon,
+  ResetIcon,
 } from '@sanity/icons'
-import { Badge, Box, Button, Card, Flex, Grid, Heading, Spinner, Stack, Text } from '@sanity/ui'
+import {
+  Badge,
+  Box,
+  Button,
+  Card,
+  Flex,
+  Grid,
+  Heading,
+  Spinner,
+  Stack,
+  Text,
+  Tooltip,
+} from '@sanity/ui'
 import { useCallback, useRef, useState } from 'react'
 import { useClient } from 'sanity'
 
-import { isGeminiConfigured, processImageChain } from '../lib/gemini'
 import {
-  fetchImageAsBase64,
   humanizeFilename,
   makeProcessedFilename,
   replaceImageInProject,
+  resolveOriginalAssetUrl,
   uploadProcessedImage,
 } from '../lib/sanity-assets'
+import { SECRET_KEYS, SECRETS_NAMESPACE, SettingsView, useGcpSecrets } from '../lib/secrets'
 import type { BulkItemStatus, BulkJobItem, ProjectWithImages } from '../lib/types'
+import { processImageChain } from '../lib/vertex'
 
 // ---------------------------------------------------------------------------
 // Props
@@ -43,10 +57,9 @@ interface BulkProcessingPanelProps {
 
 const STATUS_LABEL: Record<BulkItemStatus, string> = {
   pending: 'En attente',
-  'equalize-processing': 'Lumière…',
-  'equalize-done': 'Lumière ✓',
-  'cadrage-processing': 'Cadrage…',
-  'cadrage-done': 'Cadrage ✓',
+  analyzing: 'Analyse…',
+  correcting: 'Correction…',
+  'correction-done': 'Correction ✓',
   uploading: 'Envoi…',
   replacing: 'Remplacement…',
   done: 'Terminé',
@@ -68,7 +81,9 @@ function statusTone(
 
 export function BulkProcessingPanel({ project, onDone, onCancel }: BulkProcessingPanelProps) {
   const client = useClient({ apiVersion: '2025-01-12' })
-  const configured = isGeminiConfigured()
+  const { loading: secretsLoading, config: gcpConfig } = useGcpSecrets()
+  const configured = gcpConfig !== null
+  const [showSecrets, setShowSecrets] = useState(false)
 
   // Build initial job items from project images
   const [items, setItems] = useState<BulkJobItem[]>(() =>
@@ -97,13 +112,22 @@ export function BulkProcessingPanel({ project, onDone, onCancel }: BulkProcessin
       if (!item || item.status === 'done') return
 
       try {
-        // 1. Fetch source
-        updateItem(index, { status: 'equalize-processing' })
-        const { base64, mimeType } = await fetchImageAsBase64(item.asset.url)
+        // 0. Resolve original asset URL (avoids double-processing)
+        const { url: sourceUrl, originalAssetId } = await resolveOriginalAssetUrl(
+          client,
+          item.asset
+        )
 
-        // 2. Equalize → Cadrage chain
-        const result = await processImageChain(base64, mimeType, (step) => {
-          if (step === 'equalize-done') updateItem(index, { status: 'cadrage-processing' })
+        // 1. Send source image URL directly to Vertex AI
+        updateItem(index, { status: 'analyzing' })
+
+        // 2. AI auto_correct pipeline
+        const result = await processImageChain(sourceUrl, gcpConfig!, (step) => {
+          if (step === 'analysis-done') {
+            updateItem(index, { status: 'correcting' })
+          } else if (step === 'correction-done') {
+            updateItem(index, { status: 'correction-done' })
+          }
         })
 
         updateItem(index, { status: 'uploading' })
@@ -111,7 +135,7 @@ export function BulkProcessingPanel({ project, onDone, onCancel }: BulkProcessin
         // 3. Upload
         const filename = makeProcessedFilename(
           item.asset.originalFilename,
-          'equalize+cadrage',
+          'auto_correct',
           result.mimeType
         )
         const newAssetId = await uploadProcessedImage(
@@ -119,13 +143,20 @@ export function BulkProcessingPanel({ project, onDone, onCancel }: BulkProcessin
           result.base64Data,
           result.mimeType,
           filename,
-          item.asset._id,
-          'equalize+cadrage'
+          originalAssetId,
+          'auto_correct'
         )
 
         // 4. Replace in project gallery
         updateItem(index, { status: 'replacing' })
         await replaceImageInProject(client, project._id, item.asset._id, newAssetId)
+
+        // 5. Delete the old processed asset if we're re-processing
+        if (item.asset.label === 'ai-processed' && item.asset._id !== originalAssetId) {
+          await client.delete(item.asset._id).catch(() => {
+            // Non-critical — old processed asset cleanup failed
+          })
+        }
 
         updateItem(index, { status: 'done', newAssetId })
       } catch (err) {
@@ -133,7 +164,7 @@ export function BulkProcessingPanel({ project, onDone, onCancel }: BulkProcessin
         updateItem(index, { status: 'error', error: message })
       }
     },
-    [client, project._id, updateItem]
+    [client, project._id, updateItem, gcpConfig]
   )
 
   // ------------------------------------------------------------------
@@ -165,6 +196,38 @@ export function BulkProcessingPanel({ project, onDone, onCancel }: BulkProcessin
     onDone(doneCount, errorCount)
   }, [onDone, doneCount, errorCount])
 
+  // Retry a single failed image
+  const handleRetryItem = useCallback(
+    async (index: number) => {
+      const item = items[index]
+      if (!item || item.status !== 'error') return
+      updateItem(index, { status: 'pending', error: undefined })
+      setIsRunning(true)
+      setCurrentIndex(index)
+      await processOneImage(index, { ...item, status: 'pending' })
+      setIsRunning(false)
+    },
+    [items, processOneImage, updateItem]
+  )
+
+  // Retry all failed images
+  const handleRetryAllErrors = useCallback(async () => {
+    setIsRunning(true)
+    stopRequestedRef.current = false
+
+    for (let i = 0; i < totalCount; i++) {
+      if (stopRequestedRef.current) break
+      const current = items[i]
+      if (current.status !== 'error') continue
+
+      updateItem(i, { status: 'pending', error: undefined })
+      setCurrentIndex(i)
+      await processOneImage(i, { ...current, status: 'pending' })
+    }
+
+    setIsRunning(false)
+  }, [items, totalCount, processOneImage, updateItem])
+
   // ------------------------------------------------------------------
   // Render
   // ------------------------------------------------------------------
@@ -187,13 +250,30 @@ export function BulkProcessingPanel({ project, onDone, onCancel }: BulkProcessin
       </Flex>
 
       {/* API key warning */}
-      {!configured && (
+      {!secretsLoading && !configured && (
         <Card padding={3} tone="caution" radius={2}>
-          <Text size={1}>
-            Gemini est activé uniquement en Studio local (<code>localhost</code>) avec
-            <code> SANITY_STUDIO_GEMINI_API_KEY</code> dans <code>.env</code>.
-          </Text>
+          <Stack space={3}>
+            <Text size={1}>
+              Clé privée GCP manquante. Configurez-la pour activer le traitement.
+            </Text>
+            <Button
+              text="Configurer la clé privée GCP"
+              tone="primary"
+              onClick={() => setShowSecrets(true)}
+              fontSize={1}
+              padding={2}
+            />
+          </Stack>
         </Card>
+      )}
+
+      {showSecrets && (
+        <SettingsView
+          namespace={SECRETS_NAMESPACE}
+          keys={SECRET_KEYS}
+          onClose={() => setShowSecrets(false)}
+          title="Clé privée GCP"
+        />
       )}
 
       {/* Progress bar */}
@@ -236,6 +316,7 @@ export function BulkProcessingPanel({ project, onDone, onCancel }: BulkProcessin
             key={item.asset._id}
             item={item}
             isCurrent={isRunning && idx === currentIndex}
+            onRetry={!isRunning && item.status === 'error' ? () => handleRetryItem(idx) : undefined}
           />
         ))}
       </Grid>
@@ -283,6 +364,18 @@ export function BulkProcessingPanel({ project, onDone, onCancel }: BulkProcessin
           />
         )}
 
+        {!isRunning && errorCount > 0 && (
+          <Button
+            icon={ResetIcon}
+            text={`Réessayer ${errorCount} erreur${errorCount > 1 ? 's' : ''}`}
+            tone="primary"
+            onClick={handleRetryAllErrors}
+            disabled={!configured}
+            fontSize={1}
+            padding={3}
+          />
+        )}
+
         {isFinished && (
           <Button
             icon={CheckmarkCircleIcon}
@@ -306,8 +399,16 @@ export function BulkProcessingPanel({ project, onDone, onCancel }: BulkProcessin
 // Bulk thumbnail sub-component
 // ---------------------------------------------------------------------------
 
-function BulkThumbnail({ item, isCurrent }: { item: BulkJobItem; isCurrent: boolean }) {
-  const thumbUrl = `${item.asset.url}?w=300&h=200&fit=crop&auto=format&q=75`
+function BulkThumbnail({
+  item,
+  isCurrent,
+  onRetry,
+}: {
+  item: BulkJobItem
+  isCurrent: boolean
+  onRetry?: () => void
+}) {
+  const thumbUrl = `${item.asset.url}?w=600&h=400&fit=crop&auto=format&q=85`
   const displayName = humanizeFilename(item.asset.originalFilename)
 
   return (
@@ -340,6 +441,14 @@ function BulkThumbnail({ item, isCurrent }: { item: BulkJobItem; isCurrent: bool
             transition: 'opacity 200ms ease',
           }}
         />
+
+        {(item.asset.label === 'cloudinary-processed' || item.asset.label === 'ai-processed') && (
+          <Box style={{ position: 'absolute', top: 4, right: 4 }} title="Déjà traité">
+            <Badge tone="positive" fontSize={0} mode="outline">
+              Corrigée
+            </Badge>
+          </Box>
+        )}
 
         {/* Overlay icon for done / error */}
         {item.status === 'done' && (
@@ -386,18 +495,34 @@ function BulkThumbnail({ item, isCurrent }: { item: BulkJobItem; isCurrent: bool
       </Box>
 
       {/* Info */}
-      <Box
-        padding={3}
-        style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
-      >
-        <Text size={1} textOverflow="ellipsis" title={item.asset.originalFilename ?? 'Sans nom'}>
-          {displayName}
-        </Text>
-        <Box paddingTop={1}>
-          <Badge tone={statusTone(item.status)} fontSize={0}>
-            {STATUS_LABEL[item.status]}
-          </Badge>
-        </Box>
+      <Box padding={3}>
+        <Stack space={2}>
+          <Flex gap={2} align="center">
+            <Badge tone={statusTone(item.status)} fontSize={0}>
+              {STATUS_LABEL[item.status]}
+            </Badge>
+            {onRetry && (
+              <Tooltip
+                content={
+                  <Box padding={2}>
+                    <Text size={1}>Réessayer cette image</Text>
+                  </Box>
+                }
+                placement="top"
+              >
+                <Button
+                  icon={ResetIcon}
+                  text="Réessayer"
+                  mode="ghost"
+                  tone="primary"
+                  fontSize={0}
+                  padding={1}
+                  onClick={onRetry}
+                />
+              </Tooltip>
+            )}
+          </Flex>
+        </Stack>
       </Box>
     </Card>
   )

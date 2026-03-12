@@ -11,6 +11,11 @@ dist/
 .env.local
 .env.production
 
+# Secrets / credentials
+*.credentials.json
+*-service-account*.json
+image-transformation-*.json
+
 # IDE
 .vscode/
 .idea/
