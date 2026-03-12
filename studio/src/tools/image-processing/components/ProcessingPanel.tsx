@@ -1,7 +1,7 @@
 /**
  * ProcessingPanel — Step 2: Choose processing mode, preview source, and trigger Vertex AI.
  *
- * Displays the selected image, mode selection (equalize / cadrage),
+ * Displays the selected image, mode selection (auto_correct),
  * and a button to start processing. Shows progress/loading state.
  */
 
@@ -11,13 +11,14 @@ import { useCallback, useState } from 'react'
 import { useClient } from 'sanity'
 
 import { resolveOriginalAssetUrl } from '../lib/sanity-assets'
+import { SECRET_KEYS, SECRETS_NAMESPACE, SettingsView, useGcpSecrets } from '../lib/secrets'
 import type { ProcessingMode, ProcessingResult, SanityImageAsset } from '../lib/types'
 import { MODE_DESCRIPTIONS, MODE_LABELS } from '../lib/types'
-import { isVertexConfigured, processImage } from '../lib/vertex'
+import { processImage } from '../lib/vertex'
 
 interface ProcessingPanelProps {
   asset: SanityImageAsset
-  onResult: (result: ProcessingResult, mode: ProcessingMode) => void
+  onResult: (result: ProcessingResult, mode: ProcessingMode, originalAssetId: string) => void
   onBack: () => void
 }
 
@@ -25,9 +26,11 @@ export function ProcessingPanel({ asset, onResult, onBack }: ProcessingPanelProp
   const [mode, setMode] = useState<ProcessingMode>('auto_correct')
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showSecrets, setShowSecrets] = useState(false)
   const client = useClient({ apiVersion: '2025-01-12' })
 
-  const configured = isVertexConfigured()
+  const { loading: secretsLoading, config: gcpConfig } = useGcpSecrets()
+  const configured = gcpConfig !== null
 
   const handleProcess = useCallback(async () => {
     setIsProcessing(true)
@@ -35,16 +38,16 @@ export function ProcessingPanel({ asset, onResult, onBack }: ProcessingPanelProp
 
     try {
       // Resolve original image URL (avoids double-processing)
-      const { url: sourceUrl } = await resolveOriginalAssetUrl(client, asset)
-      const result = await processImage(sourceUrl, mode)
+      const { url: sourceUrl, originalAssetId } = await resolveOriginalAssetUrl(client, asset)
+      const result = await processImage(sourceUrl, mode, gcpConfig!)
 
-      onResult(result, mode)
+      onResult(result, mode, originalAssetId)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Une erreur inattendue est survenue.')
     } finally {
       setIsProcessing(false)
     }
-  }, [asset, mode, onResult])
+  }, [asset, mode, onResult, gcpConfig])
 
   // Preview URL (larger than thumbnail)
   const previewUrl = `${asset.url}?w=800&auto=format&q=85`
@@ -95,14 +98,30 @@ export function ProcessingPanel({ asset, onResult, onBack }: ProcessingPanelProp
         <Box style={{ flex: '1 1 280px', maxWidth: 400 }}>
           <Stack space={4}>
             {/* API key warning */}
-            {!configured && (
+            {!secretsLoading && !configured && (
               <Card padding={3} tone="caution" radius={2}>
-                <Text size={1}>
-                  Identifiants GCP manquants ou Studio non-local. Ajoutez{' '}
-                  <code>SANITY_STUDIO_GCP_*</code> dans <code>.env</code> et lancez le Studio en
-                  local.
-                </Text>
+                <Stack space={3}>
+                  <Text size={1}>
+                    Clé privée GCP manquante. Configurez-la pour activer le traitement.
+                  </Text>
+                  <Button
+                    text="Configurer la clé privée GCP"
+                    tone="primary"
+                    onClick={() => setShowSecrets(true)}
+                    fontSize={1}
+                    padding={2}
+                  />
+                </Stack>
               </Card>
+            )}
+
+            {showSecrets && (
+              <SettingsView
+                namespace={SECRETS_NAMESPACE}
+                keys={SECRET_KEYS}
+                onClose={() => setShowSecrets(false)}
+                title="Clé privée GCP"
+              />
             )}
 
             {/* Mode selection */}

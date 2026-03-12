@@ -24,6 +24,8 @@ interface ReviewPanelProps {
   mode: ProcessingMode
   /** If set, the accepted image will replace the original in this project's gallery. */
   projectId: string | null
+  /** The true original asset ID (before any prior processing). */
+  originalAssetId: string
   onRegenerate: () => void
   onDiscard: () => void
   onAccepted: (newAssetId: string) => void
@@ -34,6 +36,7 @@ export function ReviewPanel({
   result,
   mode,
   projectId,
+  originalAssetId,
   onRegenerate,
   onDiscard,
   onAccepted,
@@ -62,7 +65,7 @@ export function ReviewPanel({
         result.base64Data,
         result.mimeType,
         filename,
-        asset._id,
+        originalAssetId,
         mode
       )
 

@@ -32,6 +32,7 @@ export function ImageProcessingTool() {
   const [selectedProject, setSelectedProject] = useState<ProjectWithImages | null>(null)
   const [result, setResult] = useState<ProcessingResult | null>(null)
   const [mode, setMode] = useState<ProcessingMode | null>(null)
+  const [originalAssetId, setOriginalAssetId] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
   // ------------------------------------------------------------------
@@ -50,9 +51,14 @@ export function ImageProcessingTool() {
 
   // Step 2 → Step 3: processing complete
   const handleResult = useCallback(
-    (processingResult: ProcessingResult, processingMode: ProcessingMode) => {
+    (
+      processingResult: ProcessingResult,
+      processingMode: ProcessingMode,
+      procOriginalAssetId: string
+    ) => {
       setResult(processingResult)
       setMode(processingMode)
+      setOriginalAssetId(procOriginalAssetId)
       setStep('review')
     },
     []
@@ -64,6 +70,7 @@ export function ImageProcessingTool() {
     setSelectedProjectId(null)
     setResult(null)
     setMode(null)
+    setOriginalAssetId(null)
     setSuccessMessage(null)
     setStep('select')
   }, [])
@@ -71,6 +78,7 @@ export function ImageProcessingTool() {
   // Step 3: regenerate → back to Step 2 with same asset
   const handleRegenerate = useCallback(() => {
     setResult(null)
+    setOriginalAssetId(null)
     setStep('process')
   }, [])
 
@@ -80,6 +88,7 @@ export function ImageProcessingTool() {
     setSelectedProjectId(null)
     setResult(null)
     setMode(null)
+    setOriginalAssetId(null)
     setStep('select')
   }, [])
 
@@ -94,6 +103,7 @@ export function ImageProcessingTool() {
       setSelectedProjectId(null)
       setResult(null)
       setMode(null)
+      setOriginalAssetId(null)
       setStep('select')
     },
     [selectedProjectId]
@@ -163,6 +173,7 @@ export function ImageProcessingTool() {
               result={result}
               mode={mode}
               projectId={selectedProjectId}
+              originalAssetId={originalAssetId ?? selectedAsset._id}
               onRegenerate={handleRegenerate}
               onDiscard={handleDiscard}
               onAccepted={handleAccepted}

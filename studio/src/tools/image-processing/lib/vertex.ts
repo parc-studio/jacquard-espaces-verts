@@ -10,42 +10,14 @@
  */
 
 import { fetchImageAsBase64 } from './sanity-assets'
+import type { GcpConfig } from './secrets'
 import type { ProcessingMode, ProcessingResult } from './types'
 
 // ---------------------------------------------------------------------------
 // Configuration
 // ---------------------------------------------------------------------------
 
-const DEFAULT_REGION = 'us-central1'
 const ANALYSIS_MODEL = 'gemini-2.5-flash-lite'
-
-interface GcpConfig {
-  projectId: string
-  clientEmail: string
-  privateKey: string
-  region: string
-}
-
-function isLocalDevelopmentStudio(): boolean {
-  if (typeof window === 'undefined') return false
-  return window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-}
-
-function getConfig(): GcpConfig | null {
-  if (!isLocalDevelopmentStudio()) return null
-  const projectId = import.meta.env.SANITY_STUDIO_GCP_PROJECT_ID as string | undefined
-  const clientEmail = import.meta.env.SANITY_STUDIO_GCP_CLIENT_EMAIL as string | undefined
-  const rawKey = import.meta.env.SANITY_STUDIO_GCP_PRIVATE_KEY as string | undefined
-  const region = (import.meta.env.SANITY_STUDIO_GCP_REGION as string | undefined) || DEFAULT_REGION
-  if (!projectId || !clientEmail || !rawKey) return null
-  const privateKey = rawKey.replace(/\\n/g, '\n')
-  return { projectId, clientEmail, privateKey, region }
-}
-
-/** Check whether Vertex AI config is complete */
-export function isVertexConfigured(): boolean {
-  return getConfig() !== null
-}
 
 // ---------------------------------------------------------------------------
 // Self-signed JWT auth (browser Web Crypto API)
@@ -79,12 +51,9 @@ async function importPrivateKey(pem: string): Promise<CryptoKey> {
   )
 }
 
-async function getAccessToken(): Promise<string> {
+async function getAccessToken(config: GcpConfig): Promise<string> {
   const now = Math.floor(Date.now() / 1000)
   if (cachedToken && cachedToken.expiresAt > now + 300) return cachedToken.token
-
-  const config = getConfig()
-  if (!config) throw new Error('Identifiants GCP non configurés.')
 
   const header = { alg: 'RS256', typ: 'JWT' }
   const payload = {
@@ -201,11 +170,8 @@ interface AnalysisResult extends CorrectionParams {
   comment: string
 }
 
-async function analyzeImage(imageUrl: string): Promise<AnalysisResult> {
-  const config = getConfig()
-  if (!config) return { ...DEFAULT_PARAMS, comment: '' }
-
-  const token = await getAccessToken()
+async function analyzeImage(imageUrl: string, config: GcpConfig): Promise<AnalysisResult> {
+  const token = await getAccessToken(config)
 
   const rawImg = await fetchImageAsBase64(imageUrl)
 
@@ -244,7 +210,7 @@ async function analyzeImage(imageUrl: string): Promise<AnalysisResult> {
     console.warn('AI analysis failed:', response.status, response.statusText, errBody)
     throw new Error(
       `Analyse IA échouée (${response.status} ${response.statusText}). ` +
-        `Vérifiez que le modèle "${ANALYSIS_MODEL}" est disponible dans la région ${config?.region ?? DEFAULT_REGION}. ` +
+        `Vérifiez que le modèle "${ANALYSIS_MODEL}" est disponible dans la région ${config.region}. ` +
         `Détails: ${errBody.slice(0, 200)}`
     )
   }
@@ -421,14 +387,15 @@ function applyCorrections(imageData: ImageData, params: CorrectionParams): void 
 // Orchestrator: analyse → correct → export
 // ---------------------------------------------------------------------------
 
-async function processImageHybrid(imageUrl: string): Promise<ProcessingResult> {
+async function processImageHybrid(imageUrl: string, config: GcpConfig): Promise<ProcessingResult> {
   // Step 1: AI analyses the image and prescribes parameters
-  const { comment, ...params } = await analyzeImage(imageUrl)
+  const { comment, ...params } = await analyzeImage(imageUrl, config)
   console.log('[Image Processing] AI comment:', comment)
   console.log('[Image Processing] AI params:', JSON.stringify(params, null, 2))
 
   // Step 2: Load full-resolution image into Canvas (no downscaling)
-  const srcUrl = `${imageUrl}?fm=png`
+  const separator = imageUrl.includes('?') ? '&' : '?'
+  const srcUrl = `${imageUrl}${separator}fm=png`
   const img = await loadImage(srcUrl)
 
   const w = img.naturalWidth
@@ -490,8 +457,11 @@ async function processImageHybrid(imageUrl: string): Promise<ProcessingResult> {
 
   const arrayBuf = await blob.arrayBuffer()
   const bytes = new Uint8Array(arrayBuf)
+  const CHUNK = 8192
   let binary = ''
-  for (const b of bytes) binary += String.fromCharCode(b)
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK))
+  }
   const base64 = btoa(binary)
 
   const parts = [
@@ -520,22 +490,20 @@ async function processImageHybrid(imageUrl: string): Promise<ProcessingResult> {
 
 export async function processImage(
   imageUrl: string,
-  mode: ProcessingMode
+  mode: ProcessingMode,
+  config: GcpConfig
 ): Promise<ProcessingResult> {
-  if (!getConfig()) {
-    throw new Error('Le traitement nécessite les identifiants GCP dans .env (SANITY_STUDIO_GCP_*).')
-  }
-
-  if (mode === 'auto_correct') return processImageHybrid(imageUrl)
+  if (mode === 'auto_correct') return processImageHybrid(imageUrl, config)
   throw new Error(`Mode non supporté: ${mode as string}`)
 }
 
 export async function processImageChain(
   imageUrl: string,
-  onProgress?: (step: 'equalize-done' | 'cadrage-done', intermediate?: ProcessingResult) => void
+  config: GcpConfig,
+  onProgress?: (step: 'analysis-done' | 'correction-done', intermediate?: ProcessingResult) => void
 ): Promise<ProcessingResult> {
-  onProgress?.('equalize-done')
-  const result = await processImage(imageUrl, 'auto_correct')
-  onProgress?.('cadrage-done')
+  onProgress?.('analysis-done')
+  const result = await processImage(imageUrl, 'auto_correct', config)
+  onProgress?.('correction-done')
   return result
 }

@@ -81,8 +81,8 @@ export async function fetchAllImageAssets(client: SanityClient): Promise<SanityI
 /**
  * Fetch image data from a Sanity CDN URL and return as base64.
  *
- * Vertex AI accepts PNG, JPEG, GIF, BMP (max 20 MB after PNG transcode).
- * We request PNG from Sanity's image pipeline to stay within accepted formats.
+ * Vertex AI accepts PNG, JPEG, GIF, BMP (max 20 MB after transcode).
+ * We request high-quality JPEG (`fm=jpg&q=95`) from Sanity's image pipeline.
  */
 export async function fetchImageAsBase64(
   imageUrl: string
@@ -173,7 +173,7 @@ export async function uploadProcessedImage(
   mimeType: string,
   filename: string,
   originalAssetId?: string,
-  mode?: ProcessingMode | 'equalize+cadrage'
+  mode?: ProcessingMode | 'equalize+cadrage' | 'auto_correct'
 ): Promise<string> {
   // Convert base64 to Blob
   const byteChars = atob(base64Data)
@@ -324,6 +324,7 @@ export async function revertProcessedImage(
       if (item.asset?._ref === processedAssetId) {
         await client
           .patch(project._id)
+          .ifRevisionId(project._rev)
           .set({ [`mediaGallery[_key=="${item._key}"].asset._ref`]: originalAssetId })
           .commit()
         revertedProjects.push(project._id)
@@ -374,7 +375,7 @@ export function humanizeFilename(filename: string | undefined): string {
     // Strip trailing timestamp (13-digit epoch)
     .replace(/-\d{13}$/, '')
     // Strip known processing-mode suffixes
-    .replace(/-(equalize|cadrage|equalize\+cadrage)$/i, '')
+    .replace(/-(equalize|cadrage|equalize\+cadrage|auto_correct)$/i, '')
 
   // Replace separators with spaces
   name = name.replace(/[-_]+/g, ' ').trim()

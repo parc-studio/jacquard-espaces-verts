@@ -1,7 +1,7 @@
 /**
  * BulkProcessingPanel — Process all images of a project sequentially.
  *
- * For each image the pipeline runs:  equalize → cadrage → upload → replace in gallery.
+ * For each image the pipeline runs:  analyse → correction → upload → replace in gallery.
  * A progress indicator and per-image status badges keep the user informed.
  * The user can stop the job after the current image finishes.
  */
@@ -24,8 +24,9 @@ import {
   resolveOriginalAssetUrl,
   uploadProcessedImage,
 } from '../lib/sanity-assets'
+import { SECRET_KEYS, SECRETS_NAMESPACE, SettingsView, useGcpSecrets } from '../lib/secrets'
 import type { BulkItemStatus, BulkJobItem, ProjectWithImages } from '../lib/types'
-import { isVertexConfigured, processImageChain } from '../lib/vertex'
+import { processImageChain } from '../lib/vertex'
 
 // ---------------------------------------------------------------------------
 // Props
@@ -43,10 +44,10 @@ interface BulkProcessingPanelProps {
 
 const STATUS_LABEL: Record<BulkItemStatus, string> = {
   pending: 'En attente',
-  'equalize-processing': 'Lumière…',
-  'equalize-done': 'Lumière ✓',
-  'cadrage-processing': 'Cadrage…',
-  'cadrage-done': 'Cadrage ✓',
+  analyzing: 'Analyse…',
+  'analysis-done': 'Analyse ✓',
+  correcting: 'Correction…',
+  'correction-done': 'Correction ✓',
   uploading: 'Envoi…',
   replacing: 'Remplacement…',
   done: 'Terminé',
@@ -68,7 +69,9 @@ function statusTone(
 
 export function BulkProcessingPanel({ project, onDone, onCancel }: BulkProcessingPanelProps) {
   const client = useClient({ apiVersion: '2025-01-12' })
-  const configured = isVertexConfigured()
+  const { loading: secretsLoading, config: gcpConfig } = useGcpSecrets()
+  const configured = gcpConfig !== null
+  const [showSecrets, setShowSecrets] = useState(false)
 
   // Build initial job items from project images
   const [items, setItems] = useState<BulkJobItem[]>(() =>
@@ -104,11 +107,11 @@ export function BulkProcessingPanel({ project, onDone, onCancel }: BulkProcessin
         )
 
         // 1. Send source image URL directly to Vertex AI
-        updateItem(index, { status: 'equalize-processing' })
+        updateItem(index, { status: 'analyzing' })
 
-        // 2. Equalize → Cadrage chain
-        const result = await processImageChain(sourceUrl, (step) => {
-          if (step === 'equalize-done') updateItem(index, { status: 'cadrage-processing' })
+        // 2. AI auto_correct pipeline
+        const result = await processImageChain(sourceUrl, gcpConfig!, (step) => {
+          if (step === 'analysis-done') updateItem(index, { status: 'correcting' })
         })
 
         updateItem(index, { status: 'uploading' })
@@ -116,7 +119,7 @@ export function BulkProcessingPanel({ project, onDone, onCancel }: BulkProcessin
         // 3. Upload
         const filename = makeProcessedFilename(
           item.asset.originalFilename,
-          'equalize+cadrage',
+          'auto_correct',
           result.mimeType
         )
         const newAssetId = await uploadProcessedImage(
@@ -125,7 +128,7 @@ export function BulkProcessingPanel({ project, onDone, onCancel }: BulkProcessin
           result.mimeType,
           filename,
           originalAssetId,
-          'equalize+cadrage'
+          'auto_correct'
         )
 
         // 4. Replace in project gallery
@@ -145,7 +148,7 @@ export function BulkProcessingPanel({ project, onDone, onCancel }: BulkProcessin
         updateItem(index, { status: 'error', error: message })
       }
     },
-    [client, project._id, updateItem]
+    [client, project._id, updateItem, gcpConfig]
   )
 
   // ------------------------------------------------------------------
@@ -199,13 +202,30 @@ export function BulkProcessingPanel({ project, onDone, onCancel }: BulkProcessin
       </Flex>
 
       {/* API key warning */}
-      {!configured && (
+      {!secretsLoading && !configured && (
         <Card padding={3} tone="caution" radius={2}>
-          <Text size={1}>
-            Identifiants GCP manquants ou Studio non-local. Ajoutez <code>SANITY_STUDIO_GCP_*</code>{' '}
-            dans <code>.env</code> et lancez le Studio en local.
-          </Text>
+          <Stack space={3}>
+            <Text size={1}>
+              Clé privée GCP manquante. Configurez-la pour activer le traitement.
+            </Text>
+            <Button
+              text="Configurer la clé privée GCP"
+              tone="primary"
+              onClick={() => setShowSecrets(true)}
+              fontSize={1}
+              padding={2}
+            />
+          </Stack>
         </Card>
+      )}
+
+      {showSecrets && (
+        <SettingsView
+          namespace={SECRETS_NAMESPACE}
+          keys={SECRET_KEYS}
+          onClose={() => setShowSecrets(false)}
+          title="Clé privée GCP"
+        />
       )}
 
       {/* Progress bar */}

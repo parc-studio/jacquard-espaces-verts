@@ -7,7 +7,7 @@ Le Studio comporte cinq onglets en haut de l'écran :
 - **Contenu** — créer et modifier le contenu du site.
 - **Présentation** — prévisualiser le site en direct tout en éditant.
 - **Médias** — bibliothèque d'images partagée.
-- **Traitement d'image** — optimisation IA des photos (lumière, cadrage).
+- **Traitement d'image** — correction automatique des photos (colorimétrie/contraste + redressement).
 - **Requête** _(dev uniquement)_ — requêtes GROQ techniques.
 
 ---

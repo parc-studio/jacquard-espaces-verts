@@ -50,10 +50,10 @@ export type WorkflowStep = 'select' | 'process' | 'review' | 'bulk'
 /** Status of a single image in a bulk job */
 export type BulkItemStatus =
   | 'pending'
-  | 'equalize-processing'
-  | 'equalize-done'
-  | 'cadrage-processing'
-  | 'cadrage-done'
+  | 'analyzing'
+  | 'analysis-done'
+  | 'correcting'
+  | 'correction-done'
   | 'uploading'
   | 'replacing'
   | 'done'
@@ -63,8 +63,8 @@ export type BulkItemStatus =
 export interface BulkJobItem {
   asset: SanityImageAsset
   status: BulkItemStatus
-  equalizeResult?: ProcessingResult
-  cadrageResult?: ProcessingResult
+  analysisResult?: ProcessingResult
+  correctionResult?: ProcessingResult
   newAssetId?: string
   error?: string
 }
