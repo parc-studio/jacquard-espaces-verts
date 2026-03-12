@@ -9,14 +9,16 @@
  *   Bulk-process all images of a project  (BulkProcessingPanel)
  */
 
-import { CheckmarkCircleIcon } from '@sanity/icons'
-import { Box, Card, Container, Flex, Stack, Text } from '@sanity/ui'
+import { CheckmarkCircleIcon, CogIcon } from '@sanity/icons'
+import { Box, Button, Card, Container, Flex, Stack, Text } from '@sanity/ui'
 import { useCallback, useState } from 'react'
+import { useCurrentUser } from 'sanity'
 
 import { BulkProcessingPanel } from './components/BulkProcessingPanel'
 import { ImageSelector } from './components/ImageSelector'
 import { ProcessingPanel } from './components/ProcessingPanel'
 import { ReviewPanel } from './components/ReviewPanel'
+import { SECRET_KEYS, SECRETS_NAMESPACE, SettingsView } from './lib/secrets'
 import type {
   ProcessingMode,
   ProcessingResult,
@@ -34,6 +36,10 @@ export function ImageProcessingTool() {
   const [mode, setMode] = useState<ProcessingMode | null>(null)
   const [originalAssetId, setOriginalAssetId] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [showSecrets, setShowSecrets] = useState(false)
+
+  const currentUser = useCurrentUser()
+  const isAdmin = currentUser?.roles.some((r) => r.name === 'administrator') ?? false
 
   // ------------------------------------------------------------------
   // Single-image workflow
@@ -142,6 +148,29 @@ export function ImageProcessingTool() {
     <Box padding={4} style={{ height: '100%', overflow: 'auto' }}>
       <Container width={2}>
         <Stack space={4}>
+          {/* Admin config button */}
+          {isAdmin && (
+            <Flex justify="flex-end">
+              <Button
+                icon={CogIcon}
+                mode="bleed"
+                tone="default"
+                title="Configurer la clé privée GCP"
+                onClick={() => setShowSecrets(true)}
+                padding={2}
+              />
+            </Flex>
+          )}
+
+          {showSecrets && (
+            <SettingsView
+              namespace={SECRETS_NAMESPACE}
+              keys={SECRET_KEYS}
+              onClose={() => setShowSecrets(false)}
+              title="Clé privée GCP"
+            />
+          )}
+
           {/* Success banner */}
           {successMessage && (
             <Card padding={3} tone="positive" radius={2}>
