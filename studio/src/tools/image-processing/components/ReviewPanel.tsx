@@ -104,6 +104,11 @@ export function ReviewPanel({
     straightenAngle: DEFAULT_PARAMS.straightenAngle,
     shadows: DEFAULT_PARAMS.shadows,
     highlights: DEFAULT_PARAMS.highlights,
+    whites: DEFAULT_PARAMS.whites,
+    blacks: DEFAULT_PARAMS.blacks,
+    tint: DEFAULT_PARAMS.tint,
+    vibrance: DEFAULT_PARAMS.vibrance,
+    clarity: DEFAULT_PARAMS.clarity,
   })
   const [tunedDataUri, setTunedDataUri] = useState<string | null>(null)
   const [tuning, setTuning] = useState(false)
@@ -172,6 +177,11 @@ export function ReviewPanel({
       straightenAngle: DEFAULT_PARAMS.straightenAngle,
       shadows: DEFAULT_PARAMS.shadows,
       highlights: DEFAULT_PARAMS.highlights,
+      whites: DEFAULT_PARAMS.whites,
+      blacks: DEFAULT_PARAMS.blacks,
+      tint: DEFAULT_PARAMS.tint,
+      vibrance: DEFAULT_PARAMS.vibrance,
+      clarity: DEFAULT_PARAMS.clarity,
     })
   }, [])
 

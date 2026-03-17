@@ -228,7 +228,7 @@ export function ImageProcessingTool() {
   // ------------------------------------------------------------------
 
   return (
-    <Box padding={4} style={{ height: '100%', overflow: 'auto' }}>
+    <Box padding={4}>
       <Container width={2}>
         <Stack space={4}>
           {/* Admin config button */}

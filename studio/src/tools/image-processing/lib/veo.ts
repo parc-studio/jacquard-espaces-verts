@@ -19,17 +19,13 @@ import { getAccessToken } from './vertex'
 
 const VEO_MODEL = 'veo-3.1-generate-001'
 const POLL_INTERVAL_MS = 10_000
-const MAX_POLL_DURATION_MS = 600_000
+const MAX_POLL_DURATION_MS = 900_000 // 15 minutes
 
 // ---------------------------------------------------------------------------
 // Prompt — hardcoded vegetation-breeze loop
 // ---------------------------------------------------------------------------
 
-const VEO_PROMPT = `Cinemagraph style video where the first and last frames are identical to create a seamless loop.
-Camera: Static shot. The camera is completely fixed.
-Subject: ALL trees, leaves, grass, bushes, and green vegetation throughout the ENTIRE scene, equally in the foreground, midground, and far background.
-Action: EVERY piece of vegetation in the distance and foreground is swaying noticeably and dynamically in a moderate wind. Leaves are visibly rustling and branches are moving back and forth continuously. The wind affects all plants across the whole image depth.
-Scene: The rest of the scene is a perfectly frozen photograph. Remove all humans, pedestrians, and people from the scene entirely. If they cannot be completely removed, they must be perfectly frozen statues with zero movement. Buildings, roads, vehicles, water, reflections, and the sky are also perfectly motionless.`
+const VEO_PROMPT = `Gentle breeze animates all vegetation throughout the scene. Leaves rustle softly, branches sway back and forth, grass ripples in waves. Wind affects every plant equally across all depths — foreground, midground, and background. Everything else remains perfectly still. Seamless cinemagraph loop.`
 
 const VEO_NEGATIVE_PROMPT = `camera movement, pan, tilt, zoom, shake, dolly, tracking shot, people, human, pedestrian, crowd, moving objects, moving vehicles, moving cars, moving animals, birds, moving clouds, changing lights, shifting shadows, artifacts, distortion, text`
 
@@ -66,6 +62,9 @@ async function submitVideoGeneration(
     ],
     parameters: {
       aspectRatio: '16:9',
+      resolution: '1080p',
+      compressionQuality: 'lossless',
+      resizeMode: 'crop',
       durationSeconds: 6,
       sampleCount: 1,
       generateAudio: false,
@@ -157,7 +156,7 @@ async function pollVideoOperation(
 
     options?.onProgress?.(`Génération en cours… ${formatElapsed(elapsed)}`)
 
-    // Refresh token each iteration — polls can last up to 10 minutes
+    // Refresh token each iteration — polls can last up to 15 minutes
     const token = await getAccessToken(config)
 
     const response = await fetch(url, {
