@@ -55,7 +55,7 @@ const slots = [projects[0], projects[1]]
           {mainImage ? (
             <>
               <Media
-                media={{ image: mainImage }}
+                media={mainImage}
                 layout="cover"
                 priority={index === 0 && priority}
                 client:visible

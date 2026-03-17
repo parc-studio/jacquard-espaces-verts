@@ -1,6 +1,7 @@
 import { ImagesIcon } from '@sanity/icons'
 import { defineField, defineType } from 'sanity'
 import { mediaAssetSource } from 'sanity-plugin-media'
+import { MediaItemPreview } from '../../components/MediaItemPreview'
 import { requiredIfSiblingFalsy } from '../utils/validation'
 
 export const mediaType = defineType({
@@ -37,13 +38,17 @@ export const mediaType = defineType({
   preview: {
     select: {
       media: 'image',
-      hasVideo: 'videoUrl',
+      videoUrl: 'videoUrl',
     },
-    prepare({ media, hasVideo }) {
+    prepare({ media, videoUrl }) {
       return {
-        title: hasVideo ? 'Vidéo' : 'Image',
+        title: videoUrl ? '▶ Vidéo' : 'Image',
         media,
+        videoUrl,
       }
     },
+  },
+  components: {
+    preview: MediaItemPreview,
   },
 })

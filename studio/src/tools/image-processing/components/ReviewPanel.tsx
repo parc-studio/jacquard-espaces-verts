@@ -5,8 +5,14 @@
  * The user can accept (upload to Sanity and replace in project), regenerate, or discard.
  */
 
-import { ArrowLeftIcon, CheckmarkIcon, CloseIcon, ResetIcon } from '@sanity/icons'
-import { Box, Button, Card, Flex, Heading, Spinner, Stack, Text } from '@sanity/ui'
+import {
+  ArrowLeftIcon,
+  CheckmarkIcon,
+  CloseIcon,
+  ResetIcon,
+  SplitVerticalIcon,
+} from '@sanity/icons'
+import { Badge, Box, Button, Card, Flex, Heading, Spinner, Stack, Switch, Text } from '@sanity/ui'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { isDev, useClient } from 'sanity'
 
@@ -38,6 +44,16 @@ interface ReviewPanelProps {
   onAccepted: (newAssetId: string) => void
 }
 
+function getPreviewRatio(asset: SanityImageAsset): string {
+  const dimensions = asset.metadata?.dimensions
+
+  if (!dimensions?.width || !dimensions?.height) {
+    return '3 / 2'
+  }
+
+  return `${dimensions.width} / ${dimensions.height}`
+}
+
 export function ReviewPanel({
   asset,
   result,
@@ -51,6 +67,8 @@ export function ReviewPanel({
   const client = useClient({ apiVersion: '2025-01-12' })
   const [isUploading, setIsUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
+  const [showComparison, setShowComparison] = useState(false)
+  const previewRatio = getPreviewRatio(asset)
 
   // Build data URI for the processed image (from AI pipeline)
   const processedDataUri = useMemo(
@@ -214,7 +232,9 @@ export function ReviewPanel({
         <Button
           icon={ArrowLeftIcon}
           mode="bleed"
-          onClick={onDiscard}
+          onClick={() => {
+            if (window.confirm('Annuler et perdre le résultat du traitement ?')) onDiscard()
+          }}
           disabled={isUploading}
           padding={2}
         />
@@ -230,17 +250,66 @@ export function ReviewPanel({
         </Card>
       )}
 
-      {/* Before / After comparison slider */}
+      {/* Processed image / comparison slider */}
       <Stack space={2}>
         <Flex gap={3} align="center">
           <Text size={1} weight="semibold">
-            Avant / Après
+            Résultat
           </Text>
-          <Text size={0} muted>
-            Glissez le curseur pour comparer
-          </Text>
+          <Flex as="label" gap={2} align="center" style={{ marginLeft: 'auto', cursor: 'pointer' }}>
+            <SplitVerticalIcon />
+            <Text size={0}>Avant / Après</Text>
+            <Switch checked={showComparison} onChange={() => setShowComparison((v) => !v)} />
+          </Flex>
         </Flex>
-        <ComparisonSlider beforeUrl={originalUrl} afterUrl={processedDataUri} />
+        <Flex gap={2} wrap="wrap" align="center">
+          <Badge tone="primary" fontSize={1}>
+            Mode du resultat: {MODE_LABELS[mode]}
+          </Badge>
+          <Badge
+            tone={asset._id === originalAssetId ? 'default' : 'positive'}
+            mode="outline"
+            fontSize={1}
+          >
+            Source: {asset.originalFilename ?? 'Image sans nom'}
+          </Badge>
+        </Flex>
+        {showComparison ? (
+          <ComparisonSlider
+            beforeUrl={originalUrl}
+            afterUrl={processedDataUri}
+            aspectRatio={previewRatio}
+          />
+        ) : (
+          <Card
+            radius={2}
+            shadow={1}
+            style={{
+              overflow: 'hidden',
+              position: 'relative',
+              aspectRatio: previewRatio,
+              background: 'var(--card-code-bg-color, #f4f4f4)',
+            }}
+          >
+            <img
+              src={processedDataUri}
+              alt="Image traitée"
+              style={{
+                position: 'absolute',
+                inset: 0,
+                width: '100%',
+                height: '100%',
+                objectFit: 'contain',
+                display: 'block',
+              }}
+            />
+          </Card>
+        )}
+        <Text size={0} muted>
+          {asset.originalFilename ?? 'Image'}
+          {asset.metadata?.dimensions &&
+            ` — ${asset.metadata.dimensions.width}×${asset.metadata.dimensions.height}`}
+        </Text>
       </Stack>
 
       {/* Upload error */}
@@ -276,7 +345,9 @@ export function ReviewPanel({
           text="Annuler"
           mode="ghost"
           tone="critical"
-          onClick={onDiscard}
+          onClick={() => {
+            if (window.confirm('Annuler et perdre le résultat du traitement ?')) onDiscard()
+          }}
           disabled={isUploading}
           fontSize={1}
           padding={3}
@@ -424,7 +495,15 @@ export function ReviewPanel({
 // Comparison slider
 // ---------------------------------------------------------------------------
 
-export function ComparisonSlider({ beforeUrl, afterUrl }: { beforeUrl: string; afterUrl: string }) {
+export function ComparisonSlider({
+  beforeUrl,
+  afterUrl,
+  aspectRatio = '3 / 2',
+}: {
+  beforeUrl: string
+  afterUrl: string
+  aspectRatio?: string
+}) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [position, setPosition] = useState(50)
   const dragging = useRef(false)
@@ -458,18 +537,37 @@ export function ComparisonSlider({ beforeUrl, afterUrl }: { beforeUrl: string; a
     dragging.current = false
   }, [])
 
+  const onKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'ArrowLeft') {
+      e.preventDefault()
+      setPosition((p) => Math.max(0, p - 2))
+    } else if (e.key === 'ArrowRight') {
+      e.preventDefault()
+      setPosition((p) => Math.min(100, p + 2))
+    }
+  }, [])
+
   return (
     <Card radius={2} shadow={1} style={{ overflow: 'hidden' }}>
       <div
         ref={containerRef}
+        role="slider"
+        aria-label="Comparaison avant/après"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(position)}
+        tabIndex={0}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
+        onKeyDown={onKeyDown}
         style={{
           position: 'relative',
           cursor: 'col-resize',
           userSelect: 'none',
           touchAction: 'none',
+          aspectRatio,
+          background: 'var(--card-code-bg-color, #f4f4f4)',
         }}
       >
         {/* After (full width, behind) */}
@@ -477,7 +575,14 @@ export function ComparisonSlider({ beforeUrl, afterUrl }: { beforeUrl: string; a
           src={afterUrl}
           alt="Après"
           draggable={false}
-          style={{ width: '100%', height: 'auto', display: 'block' }}
+          style={{
+            position: 'absolute',
+            inset: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'contain',
+            display: 'block',
+          }}
         />
 
         {/* Before (clipped to left of divider) */}
@@ -492,7 +597,14 @@ export function ComparisonSlider({ beforeUrl, afterUrl }: { beforeUrl: string; a
             src={beforeUrl}
             alt="Avant"
             draggable={false}
-            style={{ width: '100%', height: 'auto', display: 'block' }}
+            style={{
+              position: 'absolute',
+              inset: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'contain',
+              display: 'block',
+            }}
           />
         </div>
 

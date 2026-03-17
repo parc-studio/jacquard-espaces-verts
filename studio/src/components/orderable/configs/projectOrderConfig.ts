@@ -19,7 +19,7 @@ export const projectOrderConfig: OrderablePaneConfig<ProjectOrderDocument> = {
   projection: `
     titre,
     slug,
-    "heroImageUrl": mediaGallery[0].asset->url
+    "heroImageUrl": coalesce(mediaGallery[0].image.asset->url, mediaGallery[0].asset->url)
   `,
   getItemLabel: getProjectLabel,
   getSearchText: (document) => {

@@ -92,6 +92,8 @@ export function BulkProcessingPanel({ project, onDone, onCancel }: BulkProcessin
   const [isRunning, setIsRunning] = useState(false)
   const [currentIndex, setCurrentIndex] = useState(0)
   const stopRequestedRef = useRef(false)
+  const itemsRef = useRef(items)
+  itemsRef.current = items
 
   // Derived counts
   const doneCount = items.filter((i) => i.status === 'done').length
@@ -177,16 +179,16 @@ export function BulkProcessingPanel({ project, onDone, onCancel }: BulkProcessin
     for (let i = 0; i < totalCount; i++) {
       if (stopRequestedRef.current) break
 
-      // Skip already-done images (e.g. when resuming)
+      // Read latest state via ref to avoid stale closure
       setCurrentIndex(i)
-      const current = items[i]
+      const current = itemsRef.current[i]
       if (current.status === 'done') continue
 
       await processOneImage(i, current)
     }
 
     setIsRunning(false)
-  }, [items, totalCount, processOneImage])
+  }, [totalCount, processOneImage])
 
   const handleStop = useCallback(() => {
     stopRequestedRef.current = true
@@ -199,7 +201,7 @@ export function BulkProcessingPanel({ project, onDone, onCancel }: BulkProcessin
   // Retry a single failed image
   const handleRetryItem = useCallback(
     async (index: number) => {
-      const item = items[index]
+      const item = itemsRef.current[index]
       if (!item || item.status !== 'error') return
       updateItem(index, { status: 'pending', error: undefined })
       setIsRunning(true)
@@ -207,7 +209,7 @@ export function BulkProcessingPanel({ project, onDone, onCancel }: BulkProcessin
       await processOneImage(index, { ...item, status: 'pending' })
       setIsRunning(false)
     },
-    [items, processOneImage, updateItem]
+    [processOneImage, updateItem]
   )
 
   // Retry all failed images
@@ -217,7 +219,7 @@ export function BulkProcessingPanel({ project, onDone, onCancel }: BulkProcessin
 
     for (let i = 0; i < totalCount; i++) {
       if (stopRequestedRef.current) break
-      const current = items[i]
+      const current = itemsRef.current[i]
       if (current.status !== 'error') continue
 
       updateItem(i, { status: 'pending', error: undefined })
@@ -226,7 +228,7 @@ export function BulkProcessingPanel({ project, onDone, onCancel }: BulkProcessin
     }
 
     setIsRunning(false)
-  }, [items, totalCount, processOneImage, updateItem])
+  }, [totalCount, processOneImage, updateItem])
 
   // ------------------------------------------------------------------
   // Render
@@ -442,10 +444,15 @@ function BulkThumbnail({
           }}
         />
 
-        {(item.asset.label === 'cloudinary-processed' || item.asset.label === 'ai-processed') && (
-          <Box style={{ position: 'absolute', top: 4, right: 4 }} title="Déjà traité">
-            <Badge tone="positive" fontSize={0} mode="outline">
-              Corrigée
+        {(item.asset.label === 'cloudinary-processed' ||
+          item.asset.label === 'ai-processed' ||
+          item.asset.hasVideo) && (
+          <Box
+            style={{ position: 'absolute', top: 4, right: 4 }}
+            title={item.asset.hasVideo ? 'Vidéo générée' : 'Déjà traité'}
+          >
+            <Badge tone={item.asset.hasVideo ? 'primary' : 'positive'} fontSize={0} mode="outline">
+              {item.asset.hasVideo ? 'Vidéo' : 'Corrigée'}
             </Badge>
           </Box>
         )}

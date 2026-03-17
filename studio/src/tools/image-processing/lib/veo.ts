@@ -17,7 +17,7 @@ import { getAccessToken } from './vertex'
 // Configuration
 // ---------------------------------------------------------------------------
 
-const VEO_MODEL = 'veo-3.1-fast-generate-001'
+const VEO_MODEL = 'veo-3.1-generate-001'
 const POLL_INTERVAL_MS = 10_000
 const MAX_POLL_DURATION_MS = 600_000
 
@@ -25,47 +25,13 @@ const MAX_POLL_DURATION_MS = 600_000
 // Prompt — hardcoded vegetation-breeze loop
 // ---------------------------------------------------------------------------
 
-const VEO_PROMPT = `Use the reference image ONLY as the base.
-Keep exactly the same composition, framing, lighting, color grading.
-The camera must be 100% locked: no pan, no zoom, no shake, no reframing.
+const VEO_PROMPT = `Cinemagraph style video where the first and last frames are identical to create a seamless loop.
+Camera: Static shot. The camera is completely fixed.
+Subject: ALL trees, leaves, grass, bushes, and green vegetation throughout the ENTIRE scene, equally in the foreground, midground, and far background.
+Action: EVERY piece of vegetation in the distance and foreground is swaying noticeably and dynamically in a moderate wind. Leaves are visibly rustling and branches are moving back and forth continuously. The wind affects all plants across the whole image depth.
+Scene: The rest of the scene is a perfectly frozen photograph. Remove all humans, pedestrians, and people from the scene entirely. If they cannot be completely removed, they must be perfectly frozen statues with zero movement. Buildings, roads, vehicles, water, reflections, and the sky are also perfectly motionless.`
 
-HARD STATIC MASK (NON-VEGETATION MUST NOT MOVE):
-Treat all non-vegetation areas as a frozen still photo.
-Every pixel that is not vegetation must be IDENTICAL in every frame:
-
-Architecture: buildings, walls, windows, doors, balconies, signs, fences, benches, pavement, roads.
-Humans: bodies, faces, hair, clothes, bags, shadows and reflections of people.
-Vehicles: cars, buses, bikes, scooters, wheels, lights, mirrors, reflections on metal and glass.
-Sky and environment: sky, clouds, sun, fog, haze, birds, wires, streetlights.
-Other elements: water, fountains, reflections in windows, shop fronts, street furniture.
-
-There must be ZERO motion and ZERO flicker in these areas from first to last frame.
-Do not change global lighting, exposure, color balance or shadows over time.
-
-ANIMATION (ONLY VEGETATION):
-Animate ONLY the vegetation in the scene:
-tree leaves and branches
-bushes
-hedges
-grass
-climbing plants and any visible green plants
-
-Add a gentle breeze: movement is clearly visible but moderate (no storm, no fast wind).
-Leaves and branches sway softly, then come back toward their original position.
-
-PERFECT LOOP:
-Duration: about 3–5 seconds.
-The first and last frame must be visually identical.
-The plant motion must be cyclical and seamless, with no popping, no jump, no sudden reset.
-
-DO NOT:
-Do not move humans at all (no blinking, no breathing, no micro movement).
-Do not move vehicles at all (no wheel rotation, no body movement, no light change).
-Do not move water or reflections.
-Do not move buildings, roads, sky, clouds or shadows.
-Do not add particles, dust, rain, snow, birds, lens flares or any new elements.
-
-Output: one seamless looping video where ONLY trees and plants move in a gentle breeze and everything else remains perfectly frozen like a still photograph`
+const VEO_NEGATIVE_PROMPT = `camera movement, pan, tilt, zoom, shake, dolly, tracking shot, people, human, pedestrian, crowd, moving objects, moving vehicles, moving cars, moving animals, birds, moving clouds, changing lights, shifting shadows, artifacts, distortion, text`
 
 // ---------------------------------------------------------------------------
 // Submit — image-to-video generation request
@@ -87,7 +53,12 @@ async function submitVideoGeneration(
     instances: [
       {
         prompt: VEO_PROMPT,
+        negativePrompt: VEO_NEGATIVE_PROMPT,
         image: {
+          bytesBase64Encoded: imageBase64,
+          mimeType: imageMimeType,
+        },
+        lastFrame: {
           bytesBase64Encoded: imageBase64,
           mimeType: imageMimeType,
         },
@@ -95,10 +66,10 @@ async function submitVideoGeneration(
     ],
     parameters: {
       aspectRatio: '16:9',
-      durationSeconds: 4,
+      durationSeconds: 6,
       sampleCount: 1,
       generateAudio: false,
-      personGeneration: 'dont_allow',
+      personGeneration: 'allow_adult',
     },
   }
 
@@ -162,7 +133,6 @@ async function pollVideoOperation(
   config: GcpConfig,
   options?: { signal?: AbortSignal; onProgress?: (status: string) => void }
 ): Promise<{ base64: string; mimeType: string }> {
-  const token = await getAccessToken(config)
   const startTime = Date.now()
 
   // Extract model path from operationName for the fetchPredictOperation endpoint
@@ -186,6 +156,9 @@ async function pollVideoOperation(
     }
 
     options?.onProgress?.(`Génération en cours… ${formatElapsed(elapsed)}`)
+
+    // Refresh token each iteration — polls can last up to 10 minutes
+    const token = await getAccessToken(config)
 
     const response = await fetch(url, {
       method: 'POST',
@@ -291,6 +264,6 @@ export async function generateVideoFromImage(
   return {
     base64Data: video.base64,
     mimeType: video.mimeType,
-    feedback: 'Vidéo générée avec succès (4s, 16:9, brise végétale)',
+    feedback: 'Vidéo générée avec succès (brise végétale, caméra fixe)',
   }
 }

@@ -79,9 +79,9 @@
 
   $effect(() => {
     const sources = galleryImages
-      .map((image) => {
-        if (!image?.asset?._id) return null
-        return urlFor(image).width(2000).quality(85).auto('format').url()
+      .map((item) => {
+        if (!item?.image?.asset?._id) return null
+        return urlFor(item.image).width(2000).quality(85).auto('format').url()
       })
       .filter((src): src is string => !!src)
 
@@ -206,7 +206,7 @@
             onclick={() => scrollToHeroWithSlide(i)}
             aria-label="Voir l'image {i + 1}"
           >
-            <Media media={{ image }} layout="cover" sizes="75px" />
+            <Media media={image} layout="cover" sizes="75px" />
           </button>
         {/each}
       </div>

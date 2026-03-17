@@ -62,6 +62,7 @@ export const projectType = defineType({
             sources: [mediaAssetSource],
           },
         }),
+        defineArrayMember({ type: 'media' }),
       ],
       options: {
         layout: 'grid',

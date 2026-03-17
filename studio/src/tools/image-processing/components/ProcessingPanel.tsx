@@ -5,11 +5,24 @@
  * and a button to start processing. Shows progress/loading state.
  */
 
-import { ArrowLeftIcon, CloseIcon, PlayIcon } from '@sanity/icons'
-import { Badge, Box, Button, Card, Flex, Heading, Radio, Stack, Text } from '@sanity/ui'
+import { ArrowLeftIcon, CloseIcon, PlayIcon, ResetIcon, SplitVerticalIcon } from '@sanity/icons'
+import {
+  Badge,
+  Box,
+  Button,
+  Card,
+  Flex,
+  Heading,
+  Radio,
+  Spinner,
+  Stack,
+  Switch,
+  Text,
+} from '@sanity/ui'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useClient } from 'sanity'
 
+import { cleanupSceneImage } from '../lib/imagen-cleanup'
 import { resolveOriginalAssetUrl } from '../lib/sanity-assets'
 import { SECRET_KEYS, SECRETS_NAMESPACE, SettingsView, useGcpSecrets } from '../lib/secrets'
 import type { ProcessingMode, ProcessingResult, SanityImageAsset } from '../lib/types'
@@ -22,9 +35,36 @@ interface ProcessingPanelProps {
   asset: SanityImageAsset
   onResult: (result: ProcessingResult, mode: ProcessingMode, originalAssetId: string) => void
   onBack: () => void
+  onRevert?: () => void
 }
 
-export function ProcessingPanel({ asset, onResult, onBack }: ProcessingPanelProps) {
+function getPreviewRatio(asset: SanityImageAsset): string {
+  const dimensions = asset.metadata?.dimensions
+
+  if (!dimensions?.width || !dimensions?.height) {
+    return '3 / 2'
+  }
+
+  return `${dimensions.width} / ${dimensions.height}`
+}
+
+function getProcessingMessage(mode: ProcessingMode, progressText: string | null): string {
+  if (progressText) {
+    return progressText
+  }
+
+  if (mode === 'scene_cleanup') {
+    return 'Suppression des elements indesirables en cours…'
+  }
+
+  if (mode === 'video_generate') {
+    return 'Preparation de la video…'
+  }
+
+  return 'Analyse et correction en cours…'
+}
+
+export function ProcessingPanel({ asset, onResult, onBack, onRevert }: ProcessingPanelProps) {
   const [mode, setMode] = useState<ProcessingMode>('auto_correct')
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -35,6 +75,13 @@ export function ProcessingPanel({ asset, onResult, onBack }: ProcessingPanelProp
 
   const { loading: secretsLoading, config: gcpConfig } = useGcpSecrets()
   const configured = gcpConfig !== null
+
+  // Abort any in-flight processing if the component unmounts
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort()
+    }
+  }, [])
 
   const handleCancel = useCallback(() => {
     abortRef.current?.abort()
@@ -50,20 +97,25 @@ export function ProcessingPanel({ asset, onResult, onBack }: ProcessingPanelProp
     abortRef.current = controller
 
     try {
-      // Resolve original image URL (avoids double-processing)
-      const { url: sourceUrl, originalAssetId } = await resolveOriginalAssetUrl(client, asset)
-
       let result: ProcessingResult
       if (mode === 'video_generate') {
-        result = await generateVideoFromImage(sourceUrl, gcpConfig!, {
+        // For video, use the current asset (which may be the processed/corrected version)
+        result = await generateVideoFromImage(asset.url, gcpConfig!, {
           signal: controller.signal,
           onProgress: setProgressText,
         })
+        onResult(result, mode, asset._id)
+      } else if (mode === 'scene_cleanup') {
+        // For scene cleanup, use the current asset directly
+        setProgressText('Suppression des humains/véhicules/animaux…')
+        result = await cleanupSceneImage(asset.url, gcpConfig!)
+        onResult(result, mode, asset._id)
       } else {
+        // For image correction, resolve back to the original to avoid double-processing
+        const { url: sourceUrl, originalAssetId } = await resolveOriginalAssetUrl(client, asset)
         result = await processImage(sourceUrl, mode, gcpConfig!)
+        onResult(result, mode, originalAssetId)
       }
-
-      onResult(result, mode, originalAssetId)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Une erreur inattendue est survenue.'
       setError(message)
@@ -72,7 +124,7 @@ export function ProcessingPanel({ asset, onResult, onBack }: ProcessingPanelProp
       setProgressText(null)
       abortRef.current = null
     }
-  }, [asset, mode, onResult, gcpConfig])
+  }, [client, asset, mode, onResult, gcpConfig])
 
   // Preview URL (larger than thumbnail)
   const previewUrl = `${asset.url}?w=2400&auto=format&q=90`
@@ -80,6 +132,14 @@ export function ProcessingPanel({ asset, onResult, onBack }: ProcessingPanelProp
   // For already-processed images, resolve the original URL for comparison
   const isProcessed = asset.label === 'cloudinary-processed' || asset.label === 'ai-processed'
   const [originalUrl, setOriginalUrl] = useState<string | null>(null)
+  const [showComparison, setShowComparison] = useState(false)
+  const previewRatio = getPreviewRatio(asset)
+  const processingMessage = getProcessingMessage(mode, progressText)
+
+  // Extract the mode that was applied to this asset (from description "Mode: xxx")
+  const appliedMode = isProcessed
+    ? ((asset.description?.match(/Mode:\s*(\S+)/)?.[1] as ProcessingMode | undefined) ?? null)
+    : null
 
   useEffect(() => {
     if (!isProcessed) return
@@ -96,7 +156,7 @@ export function ProcessingPanel({ asset, onResult, onBack }: ProcessingPanelProp
 
   return (
     <Stack space={4}>
-      {/* Header with back button */}
+      {/* Header with back button + revert */}
       <Flex gap={3} align="center">
         <Button
           icon={ArrowLeftIcon}
@@ -108,38 +168,183 @@ export function ProcessingPanel({ asset, onResult, onBack }: ProcessingPanelProp
         <Heading as="h2" size={1}>
           Traitement de l&apos;image
         </Heading>
+        {isProcessed && onRevert && (
+          <Button
+            icon={ResetIcon}
+            text="Restaurer l'original"
+            mode="ghost"
+            tone="caution"
+            fontSize={1}
+            padding={2}
+            disabled={isProcessing}
+            onClick={() => {
+              if (
+                window.confirm(
+                  'Restaurer l\u2019image originale ? L\u2019image traitée sera supprimée.'
+                )
+              )
+                onRevert()
+            }}
+            style={{ marginLeft: 'auto' }}
+          />
+        )}
       </Flex>
 
       <Stack space={4}>
-        {/* Source image preview — comparison slider for already-processed images */}
+        {/* Source image preview — toggle for comparison with original */}
         <Box>
+          <Flex gap={2} wrap="wrap" align="center" paddingBottom={2}>
+            <Badge
+              tone={isProcessed ? 'positive' : 'default'}
+              mode={isProcessed ? 'default' : 'outline'}
+            >
+              {isProcessed ? 'Image deja traitee' : 'Image originale'}
+            </Badge>
+            {appliedMode && (
+              <Badge tone="primary" mode="outline">
+                Mode applique: {MODE_LABELS[appliedMode]}
+              </Badge>
+            )}
+          </Flex>
           {isProcessed && originalUrl ? (
             <Stack space={2}>
               <Flex gap={3} align="center">
                 <Text size={1} weight="semibold">
-                  Avant / Après (traitement précédent)
+                  Image actuelle
                 </Text>
-                <Text size={0} muted>
-                  Glissez le curseur pour comparer
-                </Text>
+                <Flex
+                  as="label"
+                  gap={2}
+                  align="center"
+                  style={{ marginLeft: 'auto', cursor: 'pointer' }}
+                >
+                  <SplitVerticalIcon />
+                  <Text size={0}>Avant / Après</Text>
+                  <Switch checked={showComparison} onChange={() => setShowComparison((v) => !v)} />
+                </Flex>
               </Flex>
-              <ComparisonSlider beforeUrl={originalUrl} afterUrl={previewUrl} />
+              <Box style={{ position: 'relative' }}>
+                {showComparison ? (
+                  <ComparisonSlider
+                    beforeUrl={originalUrl}
+                    afterUrl={previewUrl}
+                    aspectRatio={previewRatio}
+                  />
+                ) : (
+                  <Card
+                    radius={2}
+                    shadow={1}
+                    style={{
+                      overflow: 'hidden',
+                      position: 'relative',
+                      aspectRatio: previewRatio,
+                      background: 'var(--card-code-bg-color, #f4f4f4)',
+                    }}
+                  >
+                    <img
+                      src={previewUrl}
+                      alt={asset.originalFilename ?? 'Image source'}
+                      style={{
+                        position: 'absolute',
+                        inset: 0,
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'contain',
+                        display: 'block',
+                      }}
+                    />
+                    <Box style={{ position: 'absolute', top: 12, right: 12 }}>
+                      <Badge tone="positive" fontSize={1} mode="outline">
+                        Corrigee
+                      </Badge>
+                    </Box>
+                  </Card>
+                )}
+
+                {isProcessing && (
+                  <Flex
+                    align="center"
+                    justify="center"
+                    direction="column"
+                    gap={3}
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      background: 'rgba(16, 24, 40, 0.38)',
+                      color: 'white',
+                      padding: 24,
+                      textAlign: 'center',
+                    }}
+                  >
+                    <Spinner />
+                    <Text size={1} weight="semibold" style={{ color: 'inherit' }}>
+                      Traitement en cours
+                    </Text>
+                    <Text size={0} style={{ color: 'inherit', maxWidth: 360 }}>
+                      {processingMessage}
+                    </Text>
+                  </Flex>
+                )}
+              </Box>
             </Stack>
           ) : (
-            <Card radius={2} shadow={1} style={{ overflow: 'hidden', position: 'relative' }}>
-              <img
-                src={previewUrl}
-                alt={asset.originalFilename ?? 'Image source'}
-                style={{ width: '100%', height: 'auto', display: 'block' }}
-              />
-              {isProcessed && (
-                <Box style={{ position: 'absolute', top: 12, right: 12 }}>
-                  <Badge tone="positive" fontSize={1} mode="outline">
-                    Corrigée
-                  </Badge>
-                </Box>
+            <Box style={{ position: 'relative' }}>
+              <Card
+                radius={2}
+                shadow={1}
+                style={{
+                  overflow: 'hidden',
+                  position: 'relative',
+                  aspectRatio: previewRatio,
+                  background: 'var(--card-code-bg-color, #f4f4f4)',
+                }}
+              >
+                <img
+                  src={previewUrl}
+                  alt={asset.originalFilename ?? 'Image source'}
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'contain',
+                    display: 'block',
+                  }}
+                />
+                {isProcessed && (
+                  <Box style={{ position: 'absolute', top: 12, right: 12 }}>
+                    <Badge tone="positive" fontSize={1} mode="outline">
+                      Corrigee
+                    </Badge>
+                  </Box>
+                )}
+              </Card>
+
+              {isProcessing && (
+                <Flex
+                  align="center"
+                  justify="center"
+                  direction="column"
+                  gap={3}
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    background: 'rgba(16, 24, 40, 0.38)',
+                    color: 'white',
+                    padding: 24,
+                    textAlign: 'center',
+                  }}
+                >
+                  <Spinner />
+                  <Text size={1} weight="semibold" style={{ color: 'inherit' }}>
+                    Traitement en cours
+                  </Text>
+                  <Text size={0} style={{ color: 'inherit', maxWidth: 360 }}>
+                    {processingMessage}
+                  </Text>
+                </Flex>
               )}
-            </Card>
+            </Box>
           )}
           <Box paddingTop={2}>
             <Text size={0} muted>
@@ -202,9 +407,16 @@ export function ProcessingPanel({ asset, onResult, onBack }: ProcessingPanelProp
                     value={m}
                   />
                   <Stack space={2}>
-                    <Text size={1} weight="semibold">
-                      {MODE_LABELS[m]}
-                    </Text>
+                    <Flex gap={2} align="center">
+                      <Text size={1} weight="semibold">
+                        {MODE_LABELS[m]}
+                      </Text>
+                      {appliedMode === m && (
+                        <Badge tone="positive" fontSize={0}>
+                          Appliqué
+                        </Badge>
+                      )}
+                    </Flex>
                     <Text size={0} muted>
                       {MODE_DESCRIPTIONS[m]}
                     </Text>
@@ -246,7 +458,7 @@ export function ProcessingPanel({ asset, onResult, onBack }: ProcessingPanelProp
           {isProcessing && mode === 'video_generate' ? (
             <Stack space={3}>
               <Flex gap={2} align="center" justify="center">
-                <Text size={1}>{progressText ?? 'Démarrage…'}</Text>
+                <Text size={1}>{processingMessage}</Text>
               </Flex>
               <Button
                 icon={CloseIcon}
@@ -260,7 +472,7 @@ export function ProcessingPanel({ asset, onResult, onBack }: ProcessingPanelProp
             </Stack>
           ) : (
             <Button
-              icon={isProcessing ? null : PlayIcon}
+              icon={PlayIcon}
               text={isProcessing ? 'Traitement en cours…' : 'Lancer le traitement'}
               tone="positive"
               onClick={handleProcess}
@@ -273,7 +485,7 @@ export function ProcessingPanel({ asset, onResult, onBack }: ProcessingPanelProp
           {isProcessing && mode !== 'video_generate' && (
             <Flex gap={2} align="center" justify="center">
               <Text size={0} muted>
-                Analyse + correction en cours…
+                {processingMessage}
               </Text>
             </Flex>
           )}
