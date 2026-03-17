@@ -16,7 +16,7 @@
     fit?: 'contain' | 'cover'
     /** Muted state */
     muted?: boolean
-    /** Autoplay video (defaults to false in dev, true in prod) */
+    /** Autoplay video */
     autoplay?: boolean
     /** Show custom controls */
     controls?: boolean
@@ -24,7 +24,7 @@
     class?: string
     /** Playsinline for mobile */
     playsinline?: boolean
-    /** When false, video is paused even if visible. Defaults to true in prod. */
+    /** When false, video is paused even if visible. */
     isActive?: boolean
     /** High priority / above-the-fold: preload full video eagerly */
     priority?: boolean

@@ -198,13 +198,9 @@ export function ProcessingPanel({ asset, onResult, onBack, onRevert }: Processin
               tone={isProcessed ? 'positive' : 'default'}
               mode={isProcessed ? 'default' : 'outline'}
             >
-              {isProcessed ? 'Image deja traitee' : 'Image originale'}
+              {isProcessed ? 'Image déjà traitée' : 'Image originale'}
             </Badge>
-            {appliedMode && (
-              <Badge tone="primary" mode="outline">
-                Mode applique: {MODE_LABELS[appliedMode]}
-              </Badge>
-            )}
+            {appliedMode && <Badge tone="primary">Mode appliqué: {MODE_LABELS[appliedMode]}</Badge>}
           </Flex>
           {isProcessed && originalUrl ? (
             <Stack space={2}>
@@ -255,7 +251,7 @@ export function ProcessingPanel({ asset, onResult, onBack, onRevert }: Processin
                     />
                     <Box style={{ position: 'absolute', top: 12, right: 12 }}>
                       <Badge tone="positive" fontSize={1} mode="outline">
-                        Corrigee
+                        Corrigée
                       </Badge>
                     </Box>
                   </Card>

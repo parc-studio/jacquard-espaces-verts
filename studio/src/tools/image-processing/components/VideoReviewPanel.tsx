@@ -157,7 +157,7 @@ export function VideoReviewPanel({
         </Card>
         <Stack space={2}>
           <Text size={0} muted>
-            Video generee a partir de l'image selectionnee
+            Vidéo générée à partir de l'image sélectionnée
           </Text>
           <Text size={1} weight="semibold">
             Image source

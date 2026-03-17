@@ -207,19 +207,33 @@ async function pollVideoOperation(
       }
     }
 
-    // Wait before next poll
+    // Wait before next poll with proper cleanup
     await new Promise<void>((resolve, reject) => {
-      const timer = setTimeout(resolve, POLL_INTERVAL_MS)
-      if (options?.signal) {
-        const onAbort = () => {
-          clearTimeout(timer)
-          reject(new Error('Génération annulée.'))
+      let onAbort: (() => void) | null = null
+
+      const cleanup = () => {
+        if (onAbort && options?.signal) {
+          options.signal.removeEventListener('abort', onAbort)
         }
+      }
+
+      const timer = setTimeout(() => {
+        cleanup()
+        resolve()
+      }, POLL_INTERVAL_MS)
+
+      if (options?.signal) {
         if (options.signal.aborted) {
           clearTimeout(timer)
           reject(new Error('Génération annulée.'))
           return
         }
+
+        onAbort = () => {
+          clearTimeout(timer)
+          reject(new Error('Génération annulée.'))
+        }
+
         options.signal.addEventListener('abort', onAbort, { once: true })
       }
     })
