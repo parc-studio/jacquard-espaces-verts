@@ -19,7 +19,7 @@ import { getAccessToken } from './vertex'
 
 const VEO_MODEL = 'veo-3.1-generate-001'
 const POLL_INTERVAL_MS = 10_000
-const MAX_POLL_DURATION_MS = 900_000
+const MAX_POLL_DURATION_MS = 900_000 // 15 minutes
 
 // ---------------------------------------------------------------------------
 // Prompt — hardcoded vegetation-breeze loop
@@ -156,7 +156,7 @@ async function pollVideoOperation(
 
     options?.onProgress?.(`Génération en cours… ${formatElapsed(elapsed)}`)
 
-    // Refresh token each iteration — polls can last up to 10 minutes
+    // Refresh token each iteration — polls can last up to 15 minutes
     const token = await getAccessToken(config)
 
     const response = await fetch(url, {

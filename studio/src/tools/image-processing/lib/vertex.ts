@@ -28,8 +28,11 @@ let cachedToken: { token: string; expiresAt: number } | null = null
 
 function base64url(buf: ArrayBuffer): string {
   const bytes = new Uint8Array(buf)
+  const CHUNK = 8192
   let binary = ''
-  for (const b of bytes) binary += String.fromCharCode(b)
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK))
+  }
   return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 }
 
@@ -237,8 +240,11 @@ async function loadReferenceImageBase64(): Promise<{ base64: string; mimeType: s
   const blob = await response.blob()
   const buffer = await blob.arrayBuffer()
   const bytes = new Uint8Array(buffer)
+  const CHUNK = 8192
   let binary = ''
-  for (const b of bytes) binary += String.fromCharCode(b)
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK))
+  }
   const base64 = btoa(binary)
 
   cachedRefImage = { base64, mimeType: blob.type || 'image/png' }
@@ -448,8 +454,9 @@ function buildLevelsLut(low: number, high: number): Uint8Array {
  *  4. Exposure       — gamma curve
  *  5. White balance  — proportional R/G/B scaling (temperature + tint)
  *  6. Tone curve     — shadow lift + highlight recovery + S-curve contrast
- *  7. Vibrance       — selective saturation (inverse-weighted)
- *  8. Clarity        — midtone local contrast via unsharp mask on luminance
+ *  7. Clarity        — midtone local contrast via unsharp mask on luminance
+ *  8. Saturation     — luma-preserving with green taming
+ *  9. Vibrance       — selective saturation (inverse-weighted by current saturation)
  */
 export function applyCorrections(
   imageData: ImageData,
@@ -539,7 +546,9 @@ export function applyCorrections(
     const lumChannel = new Float32Array(w * h)
     for (let idx = 0; idx < totalPixels; idx++) {
       const off = idx * 4
-      lumChannel[idx] = 0.299 * data[off] + 0.587 * data[off + 1] + 0.114 * data[off + 2]
+      // Use post-LUT values so blurredLum and lumC (in the pixel pass) share the same domain
+      lumChannel[idx] =
+        0.299 * rLut[data[off]] + 0.587 * gLut[data[off + 1]] + 0.114 * bLut[data[off + 2]]
     }
 
     const radius = Math.min(40, Math.max(10, Math.round(Math.min(w, h) * 0.02)))
@@ -713,7 +722,7 @@ async function processImageHybrid(imageUrl: string, config: GcpConfig): Promise<
   try {
     const refBase64 = await loadReferenceImageBase64()
     if (refBase64) {
-      const refImg = await loadImage(`data:image/png;base64,${refBase64}`)
+      const refImg = await loadImage(`data:${refBase64.mimeType};base64,${refBase64.base64}`)
       const refCanvas = document.createElement('canvas')
       refCanvas.width = refImg.naturalWidth
       refCanvas.height = refImg.naturalHeight
