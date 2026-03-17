@@ -55,12 +55,17 @@ export const expertiseFragment = `
 `
 
 /**
- * Gallery item - inline image with alt and caption
+ * Gallery item - normalizes raw images and media objects to { image, videoUrl }
  */
 export const galleryItemFragment = `
   _key,
-  ${imageFragment},
-  caption
+  _type == "media" => {
+    image { ${imageFragment} },
+    videoUrl
+  },
+  _type == "image" => {
+    "image": { ${imageFragment} }
+  }
 `
 
 /**
@@ -86,8 +91,7 @@ export const projectFragment = `
   anneeFin,
   expertises[]->{ ${expertiseFragment} },
   mediaGallery[] {
-    _key,
-    ${imageFragment}
+    ${galleryItemFragment}
   }
 `
 

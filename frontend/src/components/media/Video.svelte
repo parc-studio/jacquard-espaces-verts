@@ -16,7 +16,7 @@
     fit?: 'contain' | 'cover'
     /** Muted state */
     muted?: boolean
-    /** Autoplay video (defaults to false in dev, true in prod) */
+    /** Autoplay video */
     autoplay?: boolean
     /** Show custom controls */
     controls?: boolean
@@ -24,12 +24,11 @@
     class?: string
     /** Playsinline for mobile */
     playsinline?: boolean
-    /** When false, video is paused even if visible. Defaults to true in prod. */
+    /** When false, video is paused even if visible. */
     isActive?: boolean
+    /** High priority / above-the-fold: preload full video eagerly */
+    priority?: boolean
   }
-
-  // Disable autoplay in dev to save bandwidth
-  const isDev = import.meta.env.DEV
 
   let {
     videoUrl,
@@ -38,11 +37,12 @@
     loop = true,
     fit = 'cover',
     muted = true,
-    autoplay = isDev ? false : true,
+    autoplay = true,
     controls = false,
     playsinline = true,
     class: className = '',
-    isActive = isDev ? false : true,
+    isActive = true,
+    priority = false,
   }: Props = $props()
 
   // Clean stega-encoded URL
@@ -146,8 +146,9 @@
       src={cleanUrl}
       class="video u-fit-{fit}"
       poster={posterUrl}
-      preload="metadata"
+      preload={priority ? 'auto' : 'metadata'}
       aria-label={alt}
+      {autoplay}
       oncanplay={handleCanPlay}
       onplay={() => (isPaused = false)}
       onpause={() => (isPaused = true)}
@@ -205,7 +206,6 @@
     position: relative;
     width: 100%;
     height: 100%;
-    background-color: var(--color-surface);
     overflow: hidden;
   }
 
@@ -216,6 +216,8 @@
   }
 
   .u-fit-cover {
+    position: absolute;
+    inset: 0;
     object-fit: cover;
   }
 

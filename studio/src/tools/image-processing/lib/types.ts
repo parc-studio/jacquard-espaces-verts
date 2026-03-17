@@ -3,7 +3,7 @@
  */
 
 /** Available processing modes */
-export type ProcessingMode = 'auto_correct'
+export type ProcessingMode = 'auto_correct' | 'scene_cleanup' | 'video_generate'
 
 /** A Sanity image asset with metadata needed for processing */
 export interface SanityImageAsset {
@@ -13,6 +13,7 @@ export interface SanityImageAsset {
   mimeType: string
   label?: string
   description?: string
+  hasVideo?: boolean
   metadata?: {
     dimensions?: {
       width: number
@@ -95,10 +96,31 @@ export const INITIAL_TOOL_STATE: ToolState = {
 /** Human-readable labels for processing modes (French) */
 export const MODE_LABELS: Record<ProcessingMode, string> = {
   auto_correct: 'Correction photo automatique',
+  scene_cleanup: 'Nettoyage de scène — suppression humains/véhicules',
+  video_generate: 'Génération vidéo — brise végétale',
+}
+
+// ---------------------------------------------------------------------------
+// Video library
+// ---------------------------------------------------------------------------
+
+/** A generated video file asset with its source image reference */
+export interface VideoAsset {
+  _id: string
+  url: string
+  originalFilename?: string
+  createdAt: string
+  sourceImageId: string | null
+  sourceImageUrl?: string
+  sourceImageFilename?: string
 }
 
 /** Short descriptions for processing modes (French) */
 export const MODE_DESCRIPTIONS: Record<ProcessingMode, string> = {
   auto_correct:
     'Auto-niveaux, balance des blancs chaude, récupération ombres/hautes lumières, contraste et vibrance.',
+  scene_cleanup:
+    'Supprime automatiquement les humains, véhicules et animaux de la scène via masquage sémantique (Imagen).',
+  video_generate:
+    'Génère une courte vidéo en boucle où seule la végétation bouge dans une brise légère. Tout le reste reste figé.',
 }

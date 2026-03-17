@@ -63,12 +63,7 @@ const isGalleryMode = displayMode === 'galleryImage' || displayMode === 'carouse
       >
         {project.mediaGallery?.[0] ? (
           <>
-            <Media
-              media={{ image: project.mediaGallery[0] }}
-              layout="cover"
-              priority={priority}
-              client:load
-            />
+            <Media media={project.mediaGallery[0]} layout="cover" priority={priority} client:load />
             <div class="overlay-content">
               <h2>{project.titre || 'Projet sans titre'}</h2>
               <p>

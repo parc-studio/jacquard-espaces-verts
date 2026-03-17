@@ -7,6 +7,7 @@
 
 import { ImageIcon } from '@sanity/icons'
 import type { Tool } from 'sanity'
+import { route } from 'sanity/router'
 
 import { ImageProcessingTool } from './ImageProcessingTool'
 
@@ -15,4 +16,5 @@ export const imageProcessingTool: Tool = {
   name: 'image-processing',
   icon: ImageIcon,
   component: ImageProcessingTool,
+  router: route.create('/', [route.create('/project/:projectId'), route.create('/asset/:assetId')]),
 }

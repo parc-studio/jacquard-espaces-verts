@@ -130,7 +130,7 @@
     {#each visibleDesktopImages as image, i (image._key)}
       <a {href} class="home-project-gallery-item">
         <Media
-          media={{ image }}
+          media={image}
           layout="cover"
           sizes="(max-width: 768px) 100vw, 25vw"
           priority={i === 0 && priority}
@@ -154,7 +154,7 @@
     >
       {#each images as image (image._key)}
         <a {href} class="home-project-gallery-slide">
-          <Media media={{ image }} layout="cover" sizes="100vw" />
+          <Media media={image} layout="cover" sizes="100vw" />
         </a>
       {/each}
     </div>

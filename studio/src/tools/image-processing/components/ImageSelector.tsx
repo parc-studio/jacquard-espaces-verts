@@ -36,9 +36,18 @@ type BrowseMode = 'projects' | 'all'
 interface ImageSelectorProps {
   onSelect: (asset: SanityImageAsset, projectId: string | null) => void
   onBulkSelect?: (project: ProjectWithImages) => void
+  /** When set from the URL router, filter to show only this project. */
+  routerProjectId?: string | null
+  /** Notify parent to update the URL when the user navigates between projects. */
+  onProjectNavigate?: (projectId: string | null) => void
 }
 
-export function ImageSelector({ onSelect, onBulkSelect }: ImageSelectorProps) {
+export function ImageSelector({
+  onSelect,
+  onBulkSelect,
+  routerProjectId,
+  onProjectNavigate,
+}: ImageSelectorProps) {
   const client = useClient({ apiVersion: '2025-01-12' })
   const [browseMode, setBrowseMode] = useState<BrowseMode>('projects')
   const [projects, setProjects] = useState<ProjectWithImages[]>([])
@@ -96,14 +105,18 @@ export function ImageSelector({ onSelect, onBulkSelect }: ImageSelectorProps) {
     [client]
   )
 
-  // Filter projects by search term
+  // Filter projects by search term and optional router project ID
   const filteredProjects = useMemo(() => {
-    if (!search.trim()) return projects
+    let filtered = projects
+    if (routerProjectId) {
+      filtered = filtered.filter((p) => p._id === routerProjectId)
+    }
+    if (!search.trim()) return filtered
     const q = search.toLowerCase()
-    return projects.filter(
+    return filtered.filter(
       (p) => p.titre?.toLowerCase().includes(q) || p.localisation?.toLowerCase().includes(q)
     )
-  }, [projects, search])
+  }, [projects, search, routerProjectId])
 
   // Filter all assets by filename
   const filteredAssets = useMemo(() => {
@@ -127,6 +140,16 @@ export function ImageSelector({ onSelect, onBulkSelect }: ImageSelectorProps) {
           Sélectionner une image
         </Heading>
         <Flex gap={2} style={{ marginLeft: 'auto' }}>
+          {routerProjectId && onProjectNavigate && (
+            <Button
+              text="Voir tous les projets"
+              mode="ghost"
+              tone="default"
+              onClick={() => onProjectNavigate(null)}
+              fontSize={1}
+              padding={2}
+            />
+          )}
           <Button
             text="Par projet"
             mode={browseMode === 'projects' ? 'default' : 'ghost'}
@@ -184,7 +207,20 @@ export function ImageSelector({ onSelect, onBulkSelect }: ImageSelectorProps) {
           {filteredProjects.map((project) => (
             <Stack key={project._id} space={3}>
               <Flex gap={2} align="center" wrap="wrap">
-                <Text size={1} weight="semibold">
+                <Text
+                  size={1}
+                  weight="semibold"
+                  style={
+                    onProjectNavigate && !routerProjectId
+                      ? { cursor: 'pointer', textDecoration: 'underline' }
+                      : undefined
+                  }
+                  onClick={
+                    onProjectNavigate && !routerProjectId
+                      ? () => onProjectNavigate(project._id)
+                      : undefined
+                  }
+                >
                   {project.titre}
                 </Text>
                 {project.localisation && (
@@ -242,6 +278,11 @@ export function ImageSelector({ onSelect, onBulkSelect }: ImageSelectorProps) {
               </Text>
             </Card>
           )}
+          {allAssets.length >= 100 && (
+            <Text size={0} muted>
+              Seules les 100 images les plus récentes sont affichées.
+            </Text>
+          )}
           <Grid columns={[2, 3, 4, 5]} gap={2}>
             {filteredAssets.map((asset) => (
               <ImageThumbnail
@@ -271,6 +312,7 @@ function ImageThumbnail({
   const thumbUrl = `${asset.url}?w=600&h=400&fit=crop&auto=format&q=85`
   const displayName = humanizeFilename(asset.originalFilename)
   const isProcessed = asset.label === 'cloudinary-processed' || asset.label === 'ai-processed'
+  const hasVideo = !!asset.hasVideo
 
   return (
     <Card
@@ -317,10 +359,10 @@ function ImageThumbnail({
             display: 'block',
           }}
         />
-        {isProcessed && (
+        {(isProcessed || hasVideo) && (
           <Box style={{ position: 'absolute', top: 4, right: 4 }}>
-            <Badge tone="positive" fontSize={0} mode="outline">
-              Corrigée
+            <Badge tone={hasVideo ? 'primary' : 'positive'} fontSize={0} mode="outline">
+              {hasVideo ? 'Vidéo' : 'Corrigée'}
             </Badge>
           </Box>
         )}

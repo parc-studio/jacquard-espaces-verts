@@ -131,7 +131,7 @@
         aria-label="Image {i + 1} sur {count}"
         aria-hidden={!isActive}
       >
-        <Media media={{ image }} layout="cover" sizes="100vw" priority={i === 0} />
+        <Media media={image} layout="cover" sizes="100vw" priority={i === 0} />
       </div>
     {/each}
   </div>

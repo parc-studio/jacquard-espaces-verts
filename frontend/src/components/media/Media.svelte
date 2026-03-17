@@ -74,6 +74,7 @@
     {autoplay}
     {controls}
     {isActive}
+    {priority}
     class={className}
   />
 {:else if hasImage && media?.image}
