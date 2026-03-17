@@ -182,7 +182,7 @@ export function ImageProcessingTool() {
         router.navigate({ assetId: origId })
       }
     } catch (err) {
-      setSuccessMessage(err instanceof Error ? err.message : 'Erreur lors de la restauration.')
+      console.error('Erreur lors de la restauration de l’image originale :', err)
     }
   }, [client, selectedAsset, router])
 
