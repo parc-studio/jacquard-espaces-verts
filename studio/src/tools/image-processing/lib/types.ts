@@ -101,6 +101,17 @@ export const MODE_LABELS: Record<ProcessingMode, string> = {
 }
 
 // ---------------------------------------------------------------------------
+// Video info (for asset-level video detection)
+// ---------------------------------------------------------------------------
+
+/** Minimal video info returned when checking if an image asset has a generated video */
+export interface VideoInfo {
+  _id: string
+  url: string
+  originalFilename?: string
+}
+
+// ---------------------------------------------------------------------------
 // Video library
 // ---------------------------------------------------------------------------
 

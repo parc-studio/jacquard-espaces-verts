@@ -5,7 +5,14 @@
  * and a button to start processing. Shows progress/loading state.
  */
 
-import { ArrowLeftIcon, CloseIcon, PlayIcon, ResetIcon, SplitVerticalIcon } from '@sanity/icons'
+import {
+  ArrowLeftIcon,
+  CloseIcon,
+  PlayIcon,
+  ResetIcon,
+  SplitVerticalIcon,
+  TrashIcon,
+} from '@sanity/icons'
 import {
   Badge,
   Box,
@@ -23,9 +30,9 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useClient } from 'sanity'
 
 import { cleanupSceneImage } from '../lib/imagen-cleanup'
-import { resolveOriginalAssetUrl } from '../lib/sanity-assets'
+import { fetchVideoForImageAsset, resolveOriginalAssetUrl } from '../lib/sanity-assets'
 import { SECRET_KEYS, SECRETS_NAMESPACE, SettingsView, useGcpSecrets } from '../lib/secrets'
-import type { ProcessingMode, ProcessingResult, SanityImageAsset } from '../lib/types'
+import type { ProcessingMode, ProcessingResult, SanityImageAsset, VideoInfo } from '../lib/types'
 import { MODE_DESCRIPTIONS, MODE_LABELS } from '../lib/types'
 import { generateVideoFromImage } from '../lib/veo'
 import { processImage } from '../lib/vertex'
@@ -36,6 +43,7 @@ interface ProcessingPanelProps {
   onResult: (result: ProcessingResult, mode: ProcessingMode, originalAssetId: string) => void
   onBack: () => void
   onRevert?: () => void
+  onVideoRevert?: () => void
 }
 
 function getPreviewRatio(asset: SanityImageAsset): string {
@@ -64,12 +72,19 @@ function getProcessingMessage(mode: ProcessingMode, progressText: string | null)
   return 'Analyse et correction en cours…'
 }
 
-export function ProcessingPanel({ asset, onResult, onBack, onRevert }: ProcessingPanelProps) {
+export function ProcessingPanel({
+  asset,
+  onResult,
+  onBack,
+  onRevert,
+  onVideoRevert,
+}: ProcessingPanelProps) {
   const [mode, setMode] = useState<ProcessingMode>('auto_correct')
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [progressText, setProgressText] = useState<string | null>(null)
   const [showSecrets, setShowSecrets] = useState(false)
+  const [videoInfo, setVideoInfo] = useState<VideoInfo | null>(null)
   const abortRef = useRef<AbortController | null>(null)
   const client = useClient({ apiVersion: '2025-01-12' })
 
@@ -82,6 +97,17 @@ export function ProcessingPanel({ asset, onResult, onBack, onRevert }: Processin
       abortRef.current?.abort()
     }
   }, [])
+
+  // Detect associated video for this asset
+  useEffect(() => {
+    let cancelled = false
+    fetchVideoForImageAsset(client, asset._id).then((info) => {
+      if (!cancelled) setVideoInfo(info)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [client, asset._id, asset.hasVideo])
 
   const handleCancel = useCallback(() => {
     abortRef.current?.abort()
@@ -191,42 +217,148 @@ export function ProcessingPanel({ asset, onResult, onBack, onRevert }: Processin
       </Flex>
 
       <Stack space={4}>
-        {/* Source image preview — toggle for comparison with original */}
+        {/* Source preview — video player if video exists, otherwise image */}
         <Box>
-          <Flex gap={2} wrap="wrap" align="center" paddingBottom={2}>
-            <Badge
-              tone={isProcessed ? 'positive' : 'default'}
-              mode={isProcessed ? 'default' : 'outline'}
-            >
-              {isProcessed ? 'Image déjà traitée' : 'Image originale'}
-            </Badge>
-            {appliedMode && <Badge tone="primary">Mode appliqué: {MODE_LABELS[appliedMode]}</Badge>}
-          </Flex>
-          {isProcessed && originalUrl ? (
-            <Stack space={2}>
-              <Flex gap={3} align="center">
-                <Text size={1} weight="semibold">
-                  Image actuelle
-                </Text>
-                <Flex
-                  as="label"
-                  gap={2}
-                  align="center"
-                  style={{ marginLeft: 'auto', cursor: 'pointer' }}
-                >
-                  <SplitVerticalIcon />
-                  <Text size={0}>Avant / Après</Text>
-                  <Switch checked={showComparison} onChange={() => setShowComparison((v) => !v)} />
-                </Flex>
-              </Flex>
-              <Box style={{ position: 'relative' }}>
-                {showComparison ? (
-                  <ComparisonSlider
-                    beforeUrl={originalUrl}
-                    afterUrl={previewUrl}
-                    aspectRatio={previewRatio}
+          {videoInfo ? (
+            <Stack space={3}>
+              <Card radius={2} shadow={1} style={{ overflow: 'hidden', background: '#000' }}>
+                <video
+                  src={videoInfo.url}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  controls
+                  style={{ width: '100%', display: 'block' }}
+                />
+              </Card>
+              <Flex gap={2} align="center" wrap="wrap">
+                <Badge tone="primary" fontSize={1}>
+                  Vidéo appliquée — {MODE_LABELS.video_generate}
+                </Badge>
+                {onVideoRevert && (
+                  <Button
+                    icon={TrashIcon}
+                    text="Supprimer la vidéo"
+                    mode="ghost"
+                    tone="critical"
+                    fontSize={1}
+                    padding={2}
+                    disabled={isProcessing}
+                    onClick={() => {
+                      if (
+                        window.confirm(
+                          'Supprimer la vidéo ? L\u2019image (traitée ou originale) sera conservée.'
+                        )
+                      ) {
+                        onVideoRevert()
+                        setVideoInfo(null)
+                      }
+                    }}
+                    style={{ marginLeft: 'auto' }}
                   />
-                ) : (
+                )}
+              </Flex>
+            </Stack>
+          ) : (
+            <>
+              <Flex gap={2} wrap="wrap" align="center" paddingBottom={2}>
+                <Badge
+                  tone={isProcessed ? 'positive' : 'default'}
+                  mode={isProcessed ? 'default' : 'outline'}
+                >
+                  {isProcessed ? 'Image déjà traitée' : 'Image originale'}
+                </Badge>
+                {appliedMode && (
+                  <Badge tone="primary">Mode appliqué: {MODE_LABELS[appliedMode]}</Badge>
+                )}
+              </Flex>
+              {isProcessed && originalUrl ? (
+                <Stack space={2}>
+                  <Flex gap={3} align="center">
+                    <Text size={1} weight="semibold">
+                      Image actuelle
+                    </Text>
+                    <Flex
+                      as="label"
+                      gap={2}
+                      align="center"
+                      style={{ marginLeft: 'auto', cursor: 'pointer' }}
+                    >
+                      <SplitVerticalIcon />
+                      <Text size={0}>Avant / Après</Text>
+                      <Switch
+                        checked={showComparison}
+                        onChange={() => setShowComparison((v) => !v)}
+                      />
+                    </Flex>
+                  </Flex>
+                  <Box style={{ position: 'relative' }}>
+                    {showComparison ? (
+                      <ComparisonSlider
+                        beforeUrl={originalUrl}
+                        afterUrl={previewUrl}
+                        aspectRatio={previewRatio}
+                      />
+                    ) : (
+                      <Card
+                        radius={2}
+                        shadow={1}
+                        style={{
+                          overflow: 'hidden',
+                          position: 'relative',
+                          aspectRatio: previewRatio,
+                          background: 'var(--card-code-bg-color, #f4f4f4)',
+                        }}
+                      >
+                        <img
+                          src={previewUrl}
+                          alt={asset.originalFilename ?? 'Image source'}
+                          style={{
+                            position: 'absolute',
+                            inset: 0,
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'contain',
+                            display: 'block',
+                          }}
+                        />
+                        <Box style={{ position: 'absolute', top: 12, right: 12 }}>
+                          <Badge tone="positive" fontSize={1} mode="outline">
+                            Corrigée
+                          </Badge>
+                        </Box>
+                      </Card>
+                    )}
+
+                    {isProcessing && (
+                      <Flex
+                        align="center"
+                        justify="center"
+                        direction="column"
+                        gap={3}
+                        style={{
+                          position: 'absolute',
+                          inset: 0,
+                          background: 'rgba(16, 24, 40, 0.38)',
+                          color: 'white',
+                          padding: 24,
+                          textAlign: 'center',
+                        }}
+                      >
+                        <Spinner />
+                        <Text size={1} weight="semibold" style={{ color: 'inherit' }}>
+                          Traitement en cours
+                        </Text>
+                        <Text size={0} style={{ color: 'inherit', maxWidth: 360 }}>
+                          {processingMessage}
+                        </Text>
+                      </Flex>
+                    )}
+                  </Box>
+                </Stack>
+              ) : (
+                <Box style={{ position: 'relative' }}>
                   <Card
                     radius={2}
                     shadow={1}
@@ -249,106 +381,50 @@ export function ProcessingPanel({ asset, onResult, onBack, onRevert }: Processin
                         display: 'block',
                       }}
                     />
-                    <Box style={{ position: 'absolute', top: 12, right: 12 }}>
-                      <Badge tone="positive" fontSize={1} mode="outline">
-                        Corrigée
-                      </Badge>
-                    </Box>
+                    {isProcessed && (
+                      <Box style={{ position: 'absolute', top: 12, right: 12 }}>
+                        <Badge tone="positive" fontSize={1} mode="outline">
+                          Corrigee
+                        </Badge>
+                      </Box>
+                    )}
                   </Card>
-                )}
 
-                {isProcessing && (
-                  <Flex
-                    align="center"
-                    justify="center"
-                    direction="column"
-                    gap={3}
-                    style={{
-                      position: 'absolute',
-                      inset: 0,
-                      background: 'rgba(16, 24, 40, 0.38)',
-                      color: 'white',
-                      padding: 24,
-                      textAlign: 'center',
-                    }}
-                  >
-                    <Spinner />
-                    <Text size={1} weight="semibold" style={{ color: 'inherit' }}>
-                      Traitement en cours
-                    </Text>
-                    <Text size={0} style={{ color: 'inherit', maxWidth: 360 }}>
-                      {processingMessage}
-                    </Text>
-                  </Flex>
-                )}
-              </Box>
-            </Stack>
-          ) : (
-            <Box style={{ position: 'relative' }}>
-              <Card
-                radius={2}
-                shadow={1}
-                style={{
-                  overflow: 'hidden',
-                  position: 'relative',
-                  aspectRatio: previewRatio,
-                  background: 'var(--card-code-bg-color, #f4f4f4)',
-                }}
-              >
-                <img
-                  src={previewUrl}
-                  alt={asset.originalFilename ?? 'Image source'}
-                  style={{
-                    position: 'absolute',
-                    inset: 0,
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'contain',
-                    display: 'block',
-                  }}
-                />
-                {isProcessed && (
-                  <Box style={{ position: 'absolute', top: 12, right: 12 }}>
-                    <Badge tone="positive" fontSize={1} mode="outline">
-                      Corrigee
-                    </Badge>
-                  </Box>
-                )}
-              </Card>
-
-              {isProcessing && (
-                <Flex
-                  align="center"
-                  justify="center"
-                  direction="column"
-                  gap={3}
-                  style={{
-                    position: 'absolute',
-                    inset: 0,
-                    background: 'rgba(16, 24, 40, 0.38)',
-                    color: 'white',
-                    padding: 24,
-                    textAlign: 'center',
-                  }}
-                >
-                  <Spinner />
-                  <Text size={1} weight="semibold" style={{ color: 'inherit' }}>
-                    Traitement en cours
-                  </Text>
-                  <Text size={0} style={{ color: 'inherit', maxWidth: 360 }}>
-                    {processingMessage}
-                  </Text>
-                </Flex>
+                  {isProcessing && (
+                    <Flex
+                      align="center"
+                      justify="center"
+                      direction="column"
+                      gap={3}
+                      style={{
+                        position: 'absolute',
+                        inset: 0,
+                        background: 'rgba(16, 24, 40, 0.38)',
+                        color: 'white',
+                        padding: 24,
+                        textAlign: 'center',
+                      }}
+                    >
+                      <Spinner />
+                      <Text size={1} weight="semibold" style={{ color: 'inherit' }}>
+                        Traitement en cours
+                      </Text>
+                      <Text size={0} style={{ color: 'inherit', maxWidth: 360 }}>
+                        {processingMessage}
+                      </Text>
+                    </Flex>
+                  )}
+                </Box>
               )}
-            </Box>
+              <Box paddingTop={2}>
+                <Text size={0} muted>
+                  {asset.originalFilename ?? 'Image'}
+                  {asset.metadata?.dimensions &&
+                    ` — ${asset.metadata.dimensions.width}×${asset.metadata.dimensions.height}`}
+                </Text>
+              </Box>
+            </>
           )}
-          <Box paddingTop={2}>
-            <Text size={0} muted>
-              {asset.originalFilename ?? 'Image'}
-              {asset.metadata?.dimensions &&
-                ` — ${asset.metadata.dimensions.width}×${asset.metadata.dimensions.height}`}
-            </Text>
-          </Box>
         </Box>
 
         {/* Controls */}

@@ -10,25 +10,12 @@
  */
 
 import { CheckmarkCircleIcon, CogIcon, ImageIcon, PlayIcon } from '@sanity/icons'
-import {
-  Badge,
-  Box,
-  Button,
-  Card,
-  Container,
-  Flex,
-  Heading,
-  Stack,
-  Tab,
-  TabList,
-  TabPanel,
-  Text,
-} from '@sanity/ui'
+import { Box, Button, Card, Container, Flex, Stack, Tab, TabList, TabPanel, Text } from '@sanity/ui'
 import { useCallback, useEffect, useState } from 'react'
 import { useClient, useCurrentUser } from 'sanity'
 import { useRouter } from 'sanity/router'
 
-import { fetchImageAsset, revertProcessedImage } from './lib/sanity-assets'
+import { fetchImageAsset, revertProcessedImage, revertVideo } from './lib/sanity-assets'
 
 import { BulkProcessingPanel } from './components/BulkProcessingPanel'
 import { ImageSelector } from './components/ImageSelector'
@@ -46,29 +33,12 @@ import type {
 } from './lib/types'
 import { MODE_LABELS } from './lib/types'
 
-const SINGLE_IMAGE_STEPS: Array<{ step: Exclude<WorkflowStep, 'bulk'>; label: string }> = [
-  { step: 'select', label: '1. Selection' },
-  { step: 'process', label: '2. Traitement' },
-  { step: 'review', label: '3. Verification' },
-]
-
 function getAppliedMode(asset: SanityImageAsset | null): ProcessingMode | null {
   if (!asset || (asset.label !== 'ai-processed' && asset.label !== 'cloudinary-processed')) {
     return null
   }
 
   return (asset.description?.match(/Mode:\s*(\S+)/)?.[1] as ProcessingMode | undefined) ?? null
-}
-
-function getAssetSummary(asset: SanityImageAsset): string {
-  const parts = [asset.originalFilename ?? 'Image sans nom']
-  const dimensions = asset.metadata?.dimensions
-
-  if (dimensions) {
-    parts.push(`${dimensions.width}×${dimensions.height}`)
-  }
-
-  return parts.join(' — ')
 }
 
 export function ImageProcessingTool() {
@@ -85,24 +55,8 @@ export function ImageProcessingTool() {
 
   const client = useClient({ apiVersion: '2025-01-12' })
 
-  // Router state — sync URL ↔ internal state
+  // Router state — keep for asset deep-linking
   const router = useRouter()
-  const routerProjectId = (router.state?.projectId as string) ?? null
-  const routerAssetId = (router.state?.assetId as string) ?? null
-
-  // Auto-load asset from URL on mount / route change
-  useEffect(() => {
-    if (!routerAssetId || selectedAsset?._id === routerAssetId) return
-    let cancelled = false
-    fetchImageAsset(client, routerAssetId).then((asset) => {
-      if (cancelled || !asset) return
-      setSelectedAsset(asset)
-      setStep('process')
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [client, routerAssetId])
 
   // Auto-dismiss success banner after 8 seconds
   useEffect(() => {
@@ -120,18 +74,14 @@ export function ImageProcessingTool() {
   // ------------------------------------------------------------------
 
   // Step 1 → Step 2: image selected
-  const handleImageSelect = useCallback(
-    (asset: SanityImageAsset, projectId: string | null) => {
-      setSelectedAsset(asset)
-      setSelectedProjectId(projectId)
-      setResult(null)
-      setMode(null)
-      setSuccessMessage(null)
-      setStep('process')
-      router.navigate({ assetId: asset._id })
-    },
-    [router]
-  )
+  const handleImageSelect = useCallback((asset: SanityImageAsset, projectId: string | null) => {
+    setSelectedAsset(asset)
+    setSelectedProjectId(projectId)
+    setResult(null)
+    setMode(null)
+    setSuccessMessage(null)
+    setStep('process')
+  }, [])
 
   // Step 2 → Step 3: processing complete
   const handleResult = useCallback(
@@ -156,12 +106,8 @@ export function ImageProcessingTool() {
     setOriginalAssetId(null)
     setSuccessMessage(null)
     setStep('select')
-    if (selectedProjectId) {
-      router.navigate({ projectId: selectedProjectId })
-    } else {
-      router.navigate({})
-    }
-  }, [router, selectedProjectId])
+    router.navigate({})
+  }, [router])
 
   // Step 3: regenerate → back to Step 2 with same asset
   const handleRegenerate = useCallback(() => {
@@ -179,29 +125,34 @@ export function ImageProcessingTool() {
       if (original) {
         setSelectedAsset(original)
         setSuccessMessage('Image originale restaurée.')
-        router.navigate({ assetId: origId })
       }
     } catch (err) {
-      console.error('Erreur lors de la restauration de l’image originale :', err)
+      console.error('Erreur lors de la restauration de l’image originale :', err)
     }
-  }, [client, selectedAsset, router])
+  }, [client, selectedAsset])
+
+  // Revert video: detach from gallery + delete file asset
+  const handleVideoRevert = useCallback(async () => {
+    if (!selectedAsset) return
+    try {
+      await revertVideo(client, selectedAsset._id)
+      setSelectedAsset({ ...selectedAsset, hasVideo: false })
+      setSuccessMessage('Vidéo supprimée.')
+    } catch (err) {
+      console.error('Erreur lors de la suppression de la vidéo :', err)
+    }
+  }, [client, selectedAsset])
 
   // Step 3: discard → back to Step 1
   const handleDiscard = useCallback(() => {
-    const pid = selectedProjectId
     setSelectedAsset(null)
     setSelectedProjectId(null)
     setResult(null)
     setMode(null)
     setOriginalAssetId(null)
     setStep('select')
-    // Navigate back, preserving project if we had one
-    if (pid) {
-      router.navigate({ projectId: pid })
-    } else {
-      router.navigate({})
-    }
-  }, [router, selectedProjectId])
+    router.navigate({})
+  }, [router])
 
   // Step 3: accepted → stay on asset (process step) with refreshed data
   const handleAccepted = useCallback(
@@ -232,9 +183,8 @@ export function ImageProcessingTool() {
       setMode(null)
       setOriginalAssetId(null)
       setStep('process')
-      router.navigate({ assetId: newAssetId })
     },
-    [client, selectedAsset, selectedProjectId, mode, router]
+    [client, selectedAsset, selectedProjectId, mode]
   )
 
   // ------------------------------------------------------------------
@@ -246,7 +196,7 @@ export function ImageProcessingTool() {
       setSuccessMessage(null)
       setSelectedProject(project)
       setStep('bulk')
-      router.navigate({ projectId: project._id })
+      router.navigate({})
     },
     [router]
   )
@@ -260,28 +210,18 @@ export function ImageProcessingTool() {
         )
       if (failed > 0) parts.push(`${failed} erreur${failed > 1 ? 's' : ''}`)
       setSuccessMessage(parts.join(', ') + '.')
-      const pid = selectedProject?._id
       setSelectedProject(null)
       setStep('select')
-      if (pid) {
-        router.navigate({ projectId: pid })
-      } else {
-        router.navigate({})
-      }
+      router.navigate({})
     },
-    [router, selectedProject]
+    [router]
   )
 
   const handleBulkCancel = useCallback(() => {
-    const pid = selectedProject?._id
     setSelectedProject(null)
     setStep('select')
-    if (pid) {
-      router.navigate({ projectId: pid })
-    } else {
-      router.navigate({})
-    }
-  }, [router, selectedProject])
+    router.navigate({})
+  }, [router])
 
   // ------------------------------------------------------------------
   // Render
@@ -359,63 +299,20 @@ export function ImageProcessingTool() {
               )}
 
               {selectedAsset && step !== 'select' && step !== 'bulk' && (
-                <Card padding={4} radius={2} shadow={1} tone="transparent">
-                  <Stack space={3}>
-                    <Flex gap={2} wrap="wrap" align="center">
-                      {SINGLE_IMAGE_STEPS.map(({ step: workflowStep, label }) => {
-                        const isCurrent = workflowStep === step
-                        const isComplete =
-                          SINGLE_IMAGE_STEPS.findIndex((item) => item.step === workflowStep) <
-                          SINGLE_IMAGE_STEPS.findIndex((item) => item.step === step)
-
-                        return (
-                          <Badge
-                            key={workflowStep}
-                            tone={isCurrent ? 'primary' : isComplete ? 'positive' : 'default'}
-                            mode={isCurrent ? 'default' : 'outline'}
-                            fontSize={1}
-                          >
-                            {label}
-                          </Badge>
-                        )
-                      })}
-                    </Flex>
-
-                    <Stack space={2}>
-                      <Heading as="h3" size={0}>
-                        Image en cours
-                      </Heading>
-                      <Text size={1}>{getAssetSummary(selectedAsset)}</Text>
-                    </Stack>
-
-                    <Flex gap={2} wrap="wrap">
-                      <Badge
-                        tone={appliedMode ? 'positive' : 'default'}
-                        mode={appliedMode ? 'default' : 'outline'}
-                        fontSize={1}
-                      >
-                        {appliedMode
-                          ? `Traitement appliqué: ${MODE_LABELS[appliedMode]}`
-                          : 'Source originale'}
-                      </Badge>
-                      {mode && step === 'review' && (
-                        <Badge tone="primary" fontSize={1}>
-                          Résultat à vérifier: {MODE_LABELS[mode]}
-                        </Badge>
-                      )}
-                    </Flex>
-                  </Stack>
+                <Card padding={3} radius={2} tone="transparent">
+                  <Text size={1}>
+                    {selectedAsset.hasVideo
+                      ? `Vidéo appliquée (${MODE_LABELS.video_generate})`
+                      : appliedMode
+                        ? `Traitement appliqué : ${MODE_LABELS[appliedMode]}`
+                        : 'Image originale — aucun traitement appliqué'}
+                  </Text>
                 </Card>
               )}
 
               {/* Step routing */}
               {step === 'select' && (
-                <ImageSelector
-                  onSelect={handleImageSelect}
-                  onBulkSelect={handleBulkSelect}
-                  routerProjectId={routerProjectId}
-                  onProjectNavigate={(projectId) => router.navigate(projectId ? { projectId } : {})}
-                />
+                <ImageSelector onSelect={handleImageSelect} onBulkSelect={handleBulkSelect} />
               )}
 
               {step === 'process' && selectedAsset && (
@@ -424,6 +321,7 @@ export function ImageProcessingTool() {
                   onResult={handleResult}
                   onBack={handleBackToSelect}
                   onRevert={handleRevert}
+                  onVideoRevert={handleVideoRevert}
                 />
               )}
 

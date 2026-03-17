@@ -36,18 +36,9 @@ type BrowseMode = 'projects' | 'all'
 interface ImageSelectorProps {
   onSelect: (asset: SanityImageAsset, projectId: string | null) => void
   onBulkSelect?: (project: ProjectWithImages) => void
-  /** When set from the URL router, filter to show only this project. */
-  routerProjectId?: string | null
-  /** Notify parent to update the URL when the user navigates between projects. */
-  onProjectNavigate?: (projectId: string | null) => void
 }
 
-export function ImageSelector({
-  onSelect,
-  onBulkSelect,
-  routerProjectId,
-  onProjectNavigate,
-}: ImageSelectorProps) {
+export function ImageSelector({ onSelect, onBulkSelect }: ImageSelectorProps) {
   const client = useClient({ apiVersion: '2025-01-12' })
   const [browseMode, setBrowseMode] = useState<BrowseMode>('projects')
   const [projects, setProjects] = useState<ProjectWithImages[]>([])
@@ -105,18 +96,14 @@ export function ImageSelector({
     [client]
   )
 
-  // Filter projects by search term and optional router project ID
+  // Filter projects by search term
   const filteredProjects = useMemo(() => {
-    let filtered = projects
-    if (routerProjectId) {
-      filtered = filtered.filter((p) => p._id === routerProjectId)
-    }
-    if (!search.trim()) return filtered
+    if (!search.trim()) return projects
     const q = search.toLowerCase()
-    return filtered.filter(
+    return projects.filter(
       (p) => p.titre?.toLowerCase().includes(q) || p.localisation?.toLowerCase().includes(q)
     )
-  }, [projects, search, routerProjectId])
+  }, [projects, search])
 
   // Filter all assets by filename
   const filteredAssets = useMemo(() => {
@@ -140,16 +127,6 @@ export function ImageSelector({
           Sélectionner une image
         </Heading>
         <Flex gap={2} style={{ marginLeft: 'auto' }}>
-          {routerProjectId && onProjectNavigate && (
-            <Button
-              text="Voir tous les projets"
-              mode="ghost"
-              tone="default"
-              onClick={() => onProjectNavigate(null)}
-              fontSize={1}
-              padding={2}
-            />
-          )}
           <Button
             text="Par projet"
             mode={browseMode === 'projects' ? 'default' : 'ghost'}
@@ -207,20 +184,7 @@ export function ImageSelector({
           {filteredProjects.map((project) => (
             <Stack key={project._id} space={3}>
               <Flex gap={2} align="center" wrap="wrap">
-                <Text
-                  size={1}
-                  weight="semibold"
-                  style={
-                    onProjectNavigate && !routerProjectId
-                      ? { cursor: 'pointer', textDecoration: 'underline' }
-                      : undefined
-                  }
-                  onClick={
-                    onProjectNavigate && !routerProjectId
-                      ? () => onProjectNavigate(project._id)
-                      : undefined
-                  }
-                >
+                <Text size={1} weight="semibold">
                   {project.titre}
                 </Text>
                 {project.localisation && (

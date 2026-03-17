@@ -9,7 +9,13 @@
 
 import type { SanityClient } from 'sanity'
 
-import type { ProcessingMode, ProjectWithImages, SanityImageAsset, VideoAsset } from './types'
+import type {
+  ProcessingMode,
+  ProjectWithImages,
+  SanityImageAsset,
+  VideoAsset,
+  VideoInfo,
+} from './types'
 
 function isSanityImageAsset(value: unknown): value is SanityImageAsset {
   if (!value || typeof value !== 'object') {
@@ -638,4 +644,74 @@ export async function attachVideoToProject(
 
     await client.patch(docId).ifRevisionId(project._rev).set({ mediaGallery: gallery }).commit()
   })
+}
+
+// ---------------------------------------------------------------------------
+// Video detection & revert for a single image asset
+// ---------------------------------------------------------------------------
+
+/**
+ * Check whether a generated video exists for a given image asset.
+ *
+ * Videos are `sanity.fileAsset` docs with `label == "ai-video"` and
+ * `description` containing `Source: <imageAssetId>`.
+ */
+export async function fetchVideoForImageAsset(
+  client: SanityClient,
+  imageAssetId: string
+): Promise<VideoInfo | null> {
+  return client.fetch<VideoInfo | null>(
+    `*[_type == "sanity.fileAsset" && label == "ai-video" && description match $pattern][0]{
+      _id, url, originalFilename
+    }`,
+    { pattern: `Source: ${imageAssetId}*` }
+  )
+}
+
+/**
+ * Remove a generated video for a given image asset.
+ *
+ * 1. Finds the video file asset via `fetchVideoForImageAsset`.
+ * 2. Unsets `videoUrl` from every project gallery item that references
+ *    `imageAssetId` and has a `videoUrl` set.
+ * 3. Deletes the video file asset.
+ */
+export async function revertVideo(
+  client: SanityClient,
+  imageAssetId: string
+): Promise<{ deletedVideoId: string }> {
+  const video = await fetchVideoForImageAsset(client, imageAssetId)
+  if (!video) {
+    throw new Error('Aucune vidéo trouvée pour cette image.')
+  }
+
+  // Find projects referencing this image that have a videoUrl
+  const projects = await client.fetch<
+    Array<{ _id: string; _rev: string; mediaGallery: GalleryItem[] }>
+  >(
+    `*[_type == "project" && ($ref in mediaGallery[].asset._ref || $ref in mediaGallery[].image.asset._ref)]{
+      _id, _rev, mediaGallery[]{ _key, _type, asset, image { asset }, videoUrl }
+    }`,
+    { ref: imageAssetId }
+  )
+
+  // Unset videoUrl from matching gallery items (published + draft)
+  for (const project of projects) {
+    for (const item of project.mediaGallery) {
+      if (getGalleryItemAssetRef(item) === imageAssetId && item.videoUrl) {
+        await patchPublishedAndDraft(client, project._id, async (docId) => {
+          await client
+            .patch(docId)
+            .unset([`mediaGallery[_key=="${item._key}"].videoUrl`])
+            .commit()
+        })
+        break
+      }
+    }
+  }
+
+  // Delete the video file asset
+  await client.delete(video._id)
+
+  return { deletedVideoId: video._id }
 }
