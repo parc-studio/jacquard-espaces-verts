@@ -55,7 +55,7 @@ Le **Constructeur de page** de l'accueil propose trois types de blocs :
 
 ## Retoucher les images
 
-L'onglet **Traitement d'image** sert à améliorer une photo déjà présente dans le Studio.
+L'onglet **Traitement d'image** sert à améliorer une photo déjà présente dans le Studio ou à générer une courte vidéo à partir d'une image.
 
 ### Retoucher une image
 
@@ -66,11 +66,23 @@ L'onglet **Traitement d'image** sert à améliorer une photo déjà présente da
 
 - **Correction photo automatique** : améliore la lumière, le contraste et l'équilibre général.
 - **Nettoyage de scène** : retire, quand c'est possible, des personnes, véhicules ou petits éléments gênants.
+- **Génération vidéo — brise végétale** : crée une courte vidéo en boucle où la végétation bouge légèrement, avec une caméra fixe.
 
 1. Lancer le traitement.
 2. Vérifier le résultat à l'écran.
 3. Si le rendu vous convient, enregistrer l'image.
 4. Sinon, relancer un essai ou revenir à l'image d'origine.
+
+### Générer une vidéo à partir d'une image
+
+1. Ouvrir **Traitement d'image**.
+2. Rechercher l'image à animer.
+3. Cliquer sur la photo, puis choisir **Génération vidéo — brise végétale**.
+4. Patienter pendant la génération.
+5. Vérifier l'aperçu vidéo.
+6. Si le rendu vous convient, cliquer sur **Accepter et enregistrer**.
+7. La vidéo est enregistrée dans le Studio et, si l'image appartient à un projet, elle est attachée à la galerie du projet.
+8. Si le résultat ne convient pas, utiliser **Régénérer** pour lancer un nouvel essai, **Télécharger** pour récupérer la vidéo, ou revenir en arrière pour l'abandonner.
 
 ### Traiter toutes les images d'un projet
 
@@ -83,6 +95,7 @@ L'onglet **Traitement d'image** sert à améliorer une photo déjà présente da
 
 - Commencer par les photos les plus importantes du projet.
 - Vérifier qu'un visage, une plante ou un détail important n'a pas été mal modifié.
+- Pour la vidéo, choisir de préférence une image nette avec des feuillages, graminées ou branches bien visibles.
 - Utiliser **Restaurer l'original** si le résultat est moins bon que la photo de départ.
 - Prévisualiser le site avant de publier.
 
