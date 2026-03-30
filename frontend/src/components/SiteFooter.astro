@@ -8,7 +8,6 @@
  * (e.g. when rendered outside the main layout).
  */
 import JacquardWordmark from '@/components/JacquardWordmark.astro'
-import JacquardTree from '@/components/JacquardTree.astro'
 import { getSettings, getExpertises } from '@/data/sanity'
 
 type SettingsData = Awaited<ReturnType<typeof getSettings>>
@@ -69,9 +68,6 @@ const linkedinUrl = settings?.linkedin
       <div class="footer-logo">
         <div class="footer-logo-wordmark">
           <JacquardWordmark color="white" />
-        </div>
-        <div class="footer-logo-tree">
-          <JacquardTree color="white" />
         </div>
       </div>
 
@@ -158,9 +154,15 @@ const linkedinUrl = settings?.linkedin
     gap: 0;
   }
 
+  .footer-logo,
+  .footer-logo-wordmark {
+    gap: 0;
+  }
+
   .site-footer h2 {
     font-size: var(--text-12);
     text-transform: uppercase;
+    align-self: end;
     margin-bottom: var(--size-16);
   }
 
@@ -183,6 +185,7 @@ const linkedinUrl = settings?.linkedin
 
   .footer-expertise {
     grid-column: 4 / 7;
+    padding-left: var(--size-20);
   }
 
   .footer-expertise ul {
@@ -195,7 +198,7 @@ const linkedinUrl = settings?.linkedin
     display: flex;
     flex-wrap: wrap;
     gap: var(--size-24);
-    justify-content: space-between;
+    justify-content: flex-end;
     align-items: end;
     margin-top: auto;
     padding-right: var(--size-20);
@@ -224,7 +227,8 @@ const linkedinUrl = settings?.linkedin
       gap: var(--size-20);
     }
 
-    .footer-about {
+    .footer-about,
+    .footer-expertise {
       padding-left: 0;
     }
 

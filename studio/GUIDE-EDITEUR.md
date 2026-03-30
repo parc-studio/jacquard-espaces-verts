@@ -7,7 +7,7 @@ Le Studio comporte cinq onglets en haut de l'écran :
 - **Contenu** — créer et modifier le contenu du site.
 - **Présentation** — prévisualiser le site en direct tout en éditant.
 - **Médias** — bibliothèque d'images partagée.
-- **Traitement d'image** — correction automatique des photos (colorimétrie/contraste + redressement).
+- **Traitement d'image** — retoucher une photo, nettoyer une scène ou traiter toutes les images d'un projet.
 - **Requête** _(dev uniquement)_ — requêtes GROQ techniques.
 
 ---
@@ -53,6 +53,41 @@ Le **Constructeur de page** de l'accueil propose trois types de blocs :
 
 ---
 
+## Retoucher les images
+
+L'onglet **Traitement d'image** sert à améliorer une photo déjà présente dans le Studio.
+
+### Retoucher une image
+
+1. Ouvrir **Traitement d'image**.
+2. Rechercher l'image : soit **Par projet**, soit dans **Toutes les images**.
+3. Cliquer sur la photo à modifier.
+4. Choisir l'action à faire :
+
+- **Correction photo automatique** : améliore la lumière, le contraste et l'équilibre général.
+- **Nettoyage de scène** : retire, quand c'est possible, des personnes, véhicules ou petits éléments gênants.
+
+1. Lancer le traitement.
+2. Vérifier le résultat à l'écran.
+3. Si le rendu vous convient, enregistrer l'image.
+4. Sinon, relancer un essai ou revenir à l'image d'origine.
+
+### Traiter toutes les images d'un projet
+
+1. Dans l'affichage **Par projet**, repérer le bon projet.
+2. Cliquer sur **Traiter tout**.
+3. Patienter pendant le passage sur chaque image.
+4. Vérifier ensuite le projet et publier si un brouillon a été créé.
+
+### Conseils simples
+
+- Commencer par les photos les plus importantes du projet.
+- Vérifier qu'un visage, une plante ou un détail important n'a pas été mal modifié.
+- Utiliser **Restaurer l'original** si le résultat est moins bon que la photo de départ.
+- Prévisualiser le site avant de publier.
+
+---
+
 ## Flux de travail
 
 ### Créer un projet
@@ -92,4 +127,4 @@ Le **Constructeur de page** de l'accueil propose trois types de blocs :
 
 ---
 
-_Studio Jacquard Espaces Verts — Mars 2026_
+Studio Jacquard Espaces Verts — Mars 2026
