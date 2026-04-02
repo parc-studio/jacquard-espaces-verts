@@ -209,13 +209,14 @@
       visibility: visible;
     }
 
-    /* Switch to contain so images aren't cropped and sit centered */
+    /* Keep carousel media filling the slide on mobile */
     .carousel-slide :global(.sanity-image.cover) {
       height: 100%;
     }
 
-    .carousel-slide :global(.sanity-image.cover img) {
-      object-fit: contain;
+    .carousel-slide :global(.sanity-image.cover img),
+    .carousel-slide :global(.video.u-fit-cover) {
+      object-fit: cover;
     }
   }
 </style>
