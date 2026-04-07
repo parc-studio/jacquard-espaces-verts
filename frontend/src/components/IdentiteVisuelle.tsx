@@ -545,243 +545,249 @@ export default function IdentiteVisuelle() {
   ]
 
   return (
-    <div className="layout">
-      <aside className="sidenav">
-        <div className="sidenav__title">Sections</div>
-        <ul>
-          {SECTIONS.map((s) => (
-            <li key={s.id}>
-              <a href={`#${s.id}`}>{s.label}</a>
-            </li>
-          ))}
-        </ul>
-        <div className="sidenav__title" style={{ marginTop: 22 }}>
-          Liens externes
-        </div>
-        <ul>
-          {EXTERNAL.map((l) => (
-            <li key={l.href}>
-              <a href={l.href} target="_blank" rel="noopener noreferrer">
-                {l.label} ↗
-              </a>
-            </li>
-          ))}
-        </ul>
-      </aside>
-      <div className="page">
-        <section id="logos">
-          <h2>Logos</h2>
+    <div className="iv-root">
+      <div className="layout">
+        <aside className="sidenav">
+          <div className="sidenav__title">Sections</div>
+          <ul>
+            {SECTIONS.map((s) => (
+              <li key={s.id}>
+                <a href={`#${s.id}`}>{s.label}</a>
+              </li>
+            ))}
+          </ul>
+          <div className="sidenav__title" style={{ marginTop: 22 }}>
+            Liens externes
+          </div>
+          <ul>
+            {EXTERNAL.map((l) => (
+              <li key={l.href}>
+                <a href={l.href} target="_blank" rel="noopener noreferrer">
+                  {l.label} ↗
+                </a>
+              </li>
+            ))}
+          </ul>
+        </aside>
+        <div className="page">
+          <section id="logos">
+            <h2>Logos</h2>
 
-          <div className="logo-block" style={{ marginBottom: 22 }}>
-            <h3>Réglages communs</h3>
+            <div className="logo-block" style={{ marginBottom: 22 }}>
+              <h3>Réglages communs</h3>
+              <div
+                className="controls"
+                style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}
+              >
+                <ColorRadio label="Logo" value={fg} onChange={setFg} />
+                <ColorRadio label="Fond" value={bg} onChange={setBg} presets={BG_PRESETS} />
+                <ToggleSwitch
+                  label="Monogramme"
+                  help="Le <b>monogramme</b> est le pictogramme (l'arbre) à côté du nom."
+                  enabled={withMonogram}
+                  onChange={setWithMonogram}
+                />
+                <ToggleSwitch
+                  label="Baseline"
+                  help="La <b>baseline</b> est la mention textuelle qui accompagne le logo (téléphone, site web)."
+                  enabled={withBaseline}
+                  onChange={setWithBaseline}
+                />
+              </div>
+            </div>
+
+            <div className="logos-grid">
+              {LOGO_DEFS.map((def) => {
+                const raw = rawMap[def.id]
+                const svg = raw ? buildLogoSVG(def, raw, fg, withBaseline, withMonogram) : ''
+                return (
+                  <div key={def.id} className="logo-block">
+                    <h3>{def.label}</h3>
+                    <div className="row">
+                      <div
+                        className="frame"
+                        style={{ background: bg }}
+                        dangerouslySetInnerHTML={{ __html: svg }}
+                      />
+                      <div className="actions">
+                        <button
+                          onClick={() =>
+                            downloadLogo(def, raw, 'svg', fg, bg, withBaseline, withMonogram)
+                          }
+                        >
+                          SVG
+                        </button>
+                        <button
+                          className="alt"
+                          onClick={() =>
+                            downloadLogo(def, raw, 'png', fg, bg, withBaseline, withMonogram)
+                          }
+                        >
+                          PNG
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            <div style={{ marginTop: 18, display: 'flex', justifyContent: 'flex-end' }}>
+              <button onClick={dlAll}>Télécharger les deux logos (SVG + PNG)</button>
+            </div>
+
             <div
-              className="controls"
-              style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}
+              id="colors"
+              style={{
+                marginTop: 28,
+                paddingTop: 22,
+                borderTop: '1px solid #eee',
+                scrollMarginTop: 24,
+              }}
             >
-              <ColorRadio label="Logo" value={fg} onChange={setFg} />
-              <ColorRadio label="Fond" value={bg} onChange={setBg} presets={BG_PRESETS} />
-              <ToggleSwitch
-                label="Monogramme"
-                help="Le <b>monogramme</b> est le pictogramme (l'arbre) à côté du nom."
-                enabled={withMonogram}
-                onChange={setWithMonogram}
-              />
-              <ToggleSwitch
-                label="Baseline"
-                help="La <b>baseline</b> est la mention textuelle qui accompagne le logo (téléphone, site web)."
-                enabled={withBaseline}
-                onChange={setWithBaseline}
-              />
-            </div>
-          </div>
-
-          <div className="logos-grid">
-            {LOGO_DEFS.map((def) => {
-              const raw = rawMap[def.id]
-              const svg = raw ? buildLogoSVG(def, raw, fg, withBaseline, withMonogram) : ''
-              return (
-                <div key={def.id} className="logo-block">
-                  <h3>{def.label}</h3>
-                  <div className="row">
+              <div className="ctl-label" style={{ marginBottom: 12 }}>
+                Couleurs de la charte
+              </div>
+              <div className="swatches" style={{ gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                {[
+                  { hex: '#325928', name: 'RAL 6002', cmjn: 'CMJN 50 0 57 65', dark: true },
+                  { hex: '#F2F1E2', name: 'RAL 9012', cmjn: 'CMJN 0 2 9 3', dark: false },
+                ].map((c) => (
+                  <div key={c.hex} className={`color-card sm ${c.dark ? 'dark' : 'light'}`}>
                     <div
-                      className="frame"
-                      style={{ background: bg }}
-                      dangerouslySetInnerHTML={{ __html: svg }}
-                    />
-                    <div className="actions">
-                      <button
-                        onClick={() =>
-                          downloadLogo(def, raw, 'svg', fg, bg, withBaseline, withMonogram)
-                        }
-                      >
-                        SVG
-                      </button>
-                      <button
-                        className="alt"
-                        onClick={() =>
-                          downloadLogo(def, raw, 'png', fg, bg, withBaseline, withMonogram)
-                        }
-                      >
-                        PNG
-                      </button>
+                      className="color-card_color"
+                      style={{ background: c.hex, cursor: 'pointer' }}
+                      onClick={() => copy(c.hex)}
+                    >
+                      <span>{copied === c.hex ? 'copié ✓' : c.hex.replace('#', '')}</span>
+                    </div>
+                    <div className="color-card_info">
+                      <a className="color-card_name">{c.name}</a>
+                      <div className="color-card_meta">
+                        <span className="copy" onClick={() => copy(c.hex)}>
+                          {copied === c.hex ? 'copié ✓' : c.hex}
+                        </span>
+                        <br />
+                        <span className="copy" onClick={() => copy(c.cmjn)}>
+                          {copied === c.cmjn ? 'copié ✓' : c.cmjn}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )
-            })}
-          </div>
-
-          <div style={{ marginTop: 18, display: 'flex', justifyContent: 'flex-end' }}>
-            <button onClick={dlAll}>Télécharger les deux logos (SVG + PNG)</button>
-          </div>
-
-          <div
-            id="colors"
-            style={{
-              marginTop: 28,
-              paddingTop: 22,
-              borderTop: '1px solid #eee',
-              scrollMarginTop: 24,
-            }}
-          >
-            <div className="ctl-label" style={{ marginBottom: 12 }}>
-              Couleurs de la charte
-            </div>
-            <div className="swatches" style={{ gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-              {[
-                { hex: '#325928', name: 'RAL 6002', cmjn: 'CMJN 50 0 57 65', dark: true },
-                { hex: '#F2F1E2', name: 'RAL 9012', cmjn: 'CMJN 0 2 9 3', dark: false },
-              ].map((c) => (
-                <div key={c.hex} className={`color-card sm ${c.dark ? 'dark' : 'light'}`}>
-                  <div
-                    className="color-card_color"
-                    style={{ background: c.hex, cursor: 'pointer' }}
-                    onClick={() => copy(c.hex)}
-                  >
-                    <span>{copied === c.hex ? 'copié ✓' : c.hex.replace('#', '')}</span>
-                  </div>
-                  <div className="color-card_info">
-                    <a className="color-card_name">{c.name}</a>
-                    <div className="color-card_meta">
-                      <span className="copy" onClick={() => copy(c.hex)}>
-                        {copied === c.hex ? 'copié ✓' : c.hex}
-                      </span>
-                      <br />
-                      <span className="copy" onClick={() => copy(c.cmjn)}>
-                        {copied === c.cmjn ? 'copié ✓' : c.cmjn}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section id="signature">
-          <h2>Signature de mail</h2>
-          <div className="sig-wrap">
-            <div className="sig-card">
-              <label className="field">Nom complet</label>
-              <input value={sigName} onChange={(e) => setSigName(e.target.value)} />
-              <label className="field">Intitulé</label>
-              <input value={sigTitle} onChange={(e) => setSigTitle(e.target.value)} />
-              <label className="field">Email</label>
-              <input type="email" value={sigEmail} onChange={(e) => setSigEmail(e.target.value)} />
-              <label className="field">Téléphone</label>
-              <input value={sigPhone} onChange={(e) => setSigPhone(e.target.value)} />
-              <div className="sig-buttons">
-                <button onClick={onCopySig}>Copier la signature</button>
-                <button className="alt" onClick={onDownloadSig}>
-                  Exporter en PNG
-                </button>
-                <button className="alt" style={{ gridColumn: '1 / -1' }} onClick={onBatch}>
-                  Batch — toutes les signatures en PNG
-                </button>
-              </div>
-              <small style={{ minHeight: 14, display: 'block', color: '#888', marginTop: 8 }}>
-                {sigStatus}
-              </small>
-
-              <details style={{ marginTop: 18, borderTop: '1px solid #eee', paddingTop: 14 }}>
-                <summary style={{ cursor: 'pointer', fontWeight: 'bold', color: '#325928' }}>
-                  📧 Apple Mail (macOS)
-                </summary>
-                <ol style={{ fontSize: 12, color: '#555', lineHeight: 1.5, paddingLeft: 20 }}>
-                  <li>
-                    Clique <b>Copier la signature</b>
-                  </li>
-                  <li>
-                    Mail → <b>Réglages</b> → <b>Signatures</b>
-                  </li>
-                  <li>
-                    Sélectionne ton compte, clique <b>+</b> pour créer une nouvelle signature
-                  </li>
-                  <li>
-                    <b>Décoche</b> « Toujours utiliser la police par défaut »
-                  </li>
-                  <li>
-                    Clique dans la zone d'édition à droite et fais <b>Cmd+V</b>
-                  </li>
-                  <li>Renomme la signature, ferme les Réglages</li>
-                </ol>
-              </details>
-
-              <details style={{ marginTop: 8 }}>
-                <summary style={{ cursor: 'pointer', fontWeight: 'bold', color: '#325928' }}>
-                  📨 Gmail (web)
-                </summary>
-                <ol style={{ fontSize: 12, color: '#555', lineHeight: 1.5, paddingLeft: 20 }}>
-                  <li>
-                    Clique <b>Copier la signature</b>
-                  </li>
-                  <li>
-                    Gmail → <b>⚙️ Paramètres</b> → <b>Voir tous les paramètres</b>
-                  </li>
-                  <li>
-                    Onglet <b>Général</b>, descend jusqu'à <b>Signature</b>
-                  </li>
-                  <li>
-                    Clique <b>+ Créer</b>, donne un nom
-                  </li>
-                  <li>
-                    Clique dans la zone et fais <b>Cmd+V</b> (ou Ctrl+V)
-                  </li>
-                  <li>Sélectionne la signature comme défaut, sauvegarde en bas</li>
-                </ol>
-              </details>
-
-              <details style={{ marginTop: 8 }}>
-                <summary style={{ cursor: 'pointer', fontWeight: 'bold', color: '#325928' }}>
-                  📩 Outlook (web / desktop)
-                </summary>
-                <ol style={{ fontSize: 12, color: '#555', lineHeight: 1.5, paddingLeft: 20 }}>
-                  <li>
-                    Clique <b>Copier la signature</b>
-                  </li>
-                  <li>
-                    <b>Web :</b> ⚙️ → Voir tous les paramètres → Courrier →{' '}
-                    <b>Composer et répondre</b>
-                  </li>
-                  <li>
-                    <b>Desktop :</b> Outlook → Réglages → <b>Signatures</b>
-                  </li>
-                  <li>
-                    Crée une nouvelle signature, clique dans la zone et <b>Cmd+V</b> / Ctrl+V
-                  </li>
-                  <li>
-                    Sauvegarde, puis dans « Sélectionner les signatures par défaut » choisis-la
-                  </li>
-                </ol>
-              </details>
-            </div>
-            <div className="sig-card">
-              <div className="sig-preview">
-                <div ref={sigRef} className="sig" />
+                ))}
               </div>
             </div>
-          </div>
-        </section>
+          </section>
+
+          <section id="signature">
+            <h2>Signature de mail</h2>
+            <div className="sig-wrap">
+              <div className="sig-card">
+                <label className="field">Nom complet</label>
+                <input value={sigName} onChange={(e) => setSigName(e.target.value)} />
+                <label className="field">Intitulé</label>
+                <input value={sigTitle} onChange={(e) => setSigTitle(e.target.value)} />
+                <label className="field">Email</label>
+                <input
+                  type="email"
+                  value={sigEmail}
+                  onChange={(e) => setSigEmail(e.target.value)}
+                />
+                <label className="field">Téléphone</label>
+                <input value={sigPhone} onChange={(e) => setSigPhone(e.target.value)} />
+                <div className="sig-buttons">
+                  <button onClick={onCopySig}>Copier la signature</button>
+                  <button className="alt" onClick={onDownloadSig}>
+                    Exporter en PNG
+                  </button>
+                  <button className="alt" style={{ gridColumn: '1 / -1' }} onClick={onBatch}>
+                    Batch — toutes les signatures en PNG
+                  </button>
+                </div>
+                <small style={{ minHeight: 14, display: 'block', color: '#888', marginTop: 8 }}>
+                  {sigStatus}
+                </small>
+
+                <details style={{ marginTop: 18, borderTop: '1px solid #eee', paddingTop: 14 }}>
+                  <summary style={{ cursor: 'pointer', fontWeight: 'bold', color: '#325928' }}>
+                    📧 Apple Mail (macOS)
+                  </summary>
+                  <ol style={{ fontSize: 12, color: '#555', lineHeight: 1.5, paddingLeft: 20 }}>
+                    <li>
+                      Clique <b>Copier la signature</b>
+                    </li>
+                    <li>
+                      Mail → <b>Réglages</b> → <b>Signatures</b>
+                    </li>
+                    <li>
+                      Sélectionne ton compte, clique <b>+</b> pour créer une nouvelle signature
+                    </li>
+                    <li>
+                      <b>Décoche</b> « Toujours utiliser la police par défaut »
+                    </li>
+                    <li>
+                      Clique dans la zone d'édition à droite et fais <b>Cmd+V</b>
+                    </li>
+                    <li>Renomme la signature, ferme les Réglages</li>
+                  </ol>
+                </details>
+
+                <details style={{ marginTop: 8 }}>
+                  <summary style={{ cursor: 'pointer', fontWeight: 'bold', color: '#325928' }}>
+                    📨 Gmail (web)
+                  </summary>
+                  <ol style={{ fontSize: 12, color: '#555', lineHeight: 1.5, paddingLeft: 20 }}>
+                    <li>
+                      Clique <b>Copier la signature</b>
+                    </li>
+                    <li>
+                      Gmail → <b>⚙️ Paramètres</b> → <b>Voir tous les paramètres</b>
+                    </li>
+                    <li>
+                      Onglet <b>Général</b>, descend jusqu'à <b>Signature</b>
+                    </li>
+                    <li>
+                      Clique <b>+ Créer</b>, donne un nom
+                    </li>
+                    <li>
+                      Clique dans la zone et fais <b>Cmd+V</b> (ou Ctrl+V)
+                    </li>
+                    <li>Sélectionne la signature comme défaut, sauvegarde en bas</li>
+                  </ol>
+                </details>
+
+                <details style={{ marginTop: 8 }}>
+                  <summary style={{ cursor: 'pointer', fontWeight: 'bold', color: '#325928' }}>
+                    📩 Outlook (web / desktop)
+                  </summary>
+                  <ol style={{ fontSize: 12, color: '#555', lineHeight: 1.5, paddingLeft: 20 }}>
+                    <li>
+                      Clique <b>Copier la signature</b>
+                    </li>
+                    <li>
+                      <b>Web :</b> ⚙️ → Voir tous les paramètres → Courrier →{' '}
+                      <b>Composer et répondre</b>
+                    </li>
+                    <li>
+                      <b>Desktop :</b> Outlook → Réglages → <b>Signatures</b>
+                    </li>
+                    <li>
+                      Crée une nouvelle signature, clique dans la zone et <b>Cmd+V</b> / Ctrl+V
+                    </li>
+                    <li>
+                      Sauvegarde, puis dans « Sélectionner les signatures par défaut » choisis-la
+                    </li>
+                  </ol>
+                </details>
+              </div>
+              <div className="sig-card">
+                <div className="sig-preview">
+                  <div ref={sigRef} className="sig" />
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
       </div>
     </div>
   )

@@ -9,78 +9,44 @@ import IdentiteVisuelleApp from '../components/IdentiteVisuelle'
     <title>Identité visuelle — Jacquard</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style is:global>
-      :root {
-        --green: #325928;
-        --cream: #f2f1e2;
-      }
-      * {
-        box-sizing: border-box;
-      }
-      body {
+      /* Tout est scopé sous .iv-root pour ne pas fuiter sur les autres pages
+         (le bundle CSS est partagé via cssCodeSplit:false / inlineStylesheets). */
+      body:has(.iv-root) {
         font-family: Helvetica, Arial, sans-serif;
         margin: 0;
         padding: 32px;
         background: #f5f5f5;
         color: #222;
       }
-      @media (max-width: 720px) {
-        body {
-          padding: 16px;
-        }
-        section {
-          padding: 18px;
-        }
-        h1 {
-          font-size: 20px;
-        }
-        h2 {
-          font-size: 14px;
-        }
+      .iv-root {
+        --green: #325928;
+        --cream: #f2f1e2;
       }
-      @media (max-width: 720px) {
-        .logos-grid {
-          grid-template-columns: 1fr !important;
-        }
-        .sig-wrap {
-          grid-template-columns: 1fr !important;
-        }
-        .swatches {
-          grid-template-columns: 1fr !important;
-        }
-        .controls {
-          grid-template-columns: 1fr !important;
-        }
-        .color-card_color {
-          height: 160px;
-        }
-        .logo-block .frame {
-          padding: 16px;
-        }
+      .iv-root,
+      .iv-root * {
+        box-sizing: border-box;
       }
-      h1 {
+      .iv-root a {
+        text-decoration: none;
+      }
+      .iv-root h1 {
         font-size: 22px;
         margin: 0 0 6px;
         color: var(--green);
       }
-      h2 {
+      .iv-root h2 {
         font-size: 16px;
         text-transform: uppercase;
         margin: 0 0 16px;
         color: var(--green);
       }
-      h3 {
+      .iv-root h3 {
         margin: 0 0 12px;
         font-size: 13px;
         text-transform: uppercase;
         color: var(--green);
       }
-      a {
-        text-decoration: none;
-      }
-      html {
-        scroll-behavior: smooth;
-      }
-      .layout {
+      .iv-root .layout {
         max-width: 1320px;
         margin: 0 auto;
         display: grid;
@@ -88,25 +54,25 @@ import IdentiteVisuelleApp from '../components/IdentiteVisuelle'
         gap: 32px;
         align-items: start;
       }
-      .sidenav {
+      .iv-root .sidenav {
         position: sticky;
         top: 32px;
         font-size: 12px;
       }
-      .sidenav__title {
+      .iv-root .sidenav__title {
         text-transform: uppercase;
         color: #999;
         font-weight: 700;
         margin-bottom: 10px;
         font-size: 11px;
       }
-      .sidenav ul {
+      .iv-root .sidenav ul {
         list-style: none;
         margin: 0;
         padding: 0;
         border-left: 1px solid #e0e0e0;
       }
-      .sidenav li a {
+      .iv-root .sidenav li a {
         display: block;
         padding: 8px 14px;
         color: #666;
@@ -114,59 +80,22 @@ import IdentiteVisuelleApp from '../components/IdentiteVisuelle'
         border-left: 2px solid transparent;
         margin-left: -1px;
       }
-      .sidenav li a:hover {
+      .iv-root .sidenav li a:hover {
         color: var(--green);
         border-left-color: var(--green);
       }
-      section {
+      .iv-root section {
         scroll-margin-top: 24px;
-      }
-      .page {
-        min-width: 0;
-      }
-      @media (max-width: 900px) {
-        .layout {
-          grid-template-columns: 1fr;
-        }
-        .sidenav {
-          position: static;
-          display: none;
-        }
-      }
-      .intro {
-        color: #666;
-        font-size: 13px;
-        margin: 0 0 14px;
-      }
-      .links {
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-        margin: 0 0 28px;
-      }
-      .links a {
-        display: inline-block;
-        padding: 8px 14px;
-        border-radius: 999px;
-        background: var(--cream);
-        color: var(--green);
-        font-size: 13px;
-        font-weight: 600;
-        border: 1px solid #e5e2c8;
-      }
-      .links a:hover {
-        background: var(--green);
-        color: #fff;
-        border-color: var(--green);
-      }
-      section {
         background: #fff;
         border-radius: 10px;
         padding: 24px;
         box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
         margin-bottom: 28px;
       }
-      button {
+      .iv-root .page {
+        min-width: 0;
+      }
+      .iv-root button {
         background: var(--green);
         color: #fff;
         border: 0;
@@ -175,29 +104,29 @@ import IdentiteVisuelleApp from '../components/IdentiteVisuelle'
         font: inherit;
         cursor: pointer;
       }
-      button.alt {
+      .iv-root button.alt {
         background: #fff;
         color: var(--green);
         border: 1px solid var(--green);
       }
 
       /* Logo blocks */
-      .logo-block {
+      .iv-root .logo-block {
         border: 1px solid #eee;
         border-radius: 8px;
         padding: 18px;
       }
-      .logos-grid {
+      .iv-root .logos-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 18px;
       }
-      .logo-block .row {
+      .iv-root .logo-block .row {
         display: flex;
         flex-direction: column;
         gap: 14px;
       }
-      .logo-block .frame {
+      .iv-root .logo-block .frame {
         aspect-ratio: 16 / 9;
         display: flex;
         align-items: center;
@@ -206,33 +135,33 @@ import IdentiteVisuelleApp from '../components/IdentiteVisuelle'
         border-radius: 6px;
         border: 1px dashed #eee;
       }
-      .logo-block .frame svg {
+      .iv-root .logo-block .frame svg {
         max-width: 80%;
         max-height: 80%;
         height: auto;
       }
-      .logo-block .actions {
+      .iv-root .logo-block .actions {
         display: flex;
         gap: 8px;
       }
-      .logo-block .actions button {
+      .iv-root .logo-block .actions button {
         flex: 1;
         padding: 8px 10px;
         font-size: 12px;
       }
 
       /* Color radio (Headless UI) */
-      .ctl-label {
+      .iv-root .ctl-label {
         font-size: 11px;
         text-transform: uppercase;
         color: #666;
         margin-bottom: 6px;
       }
-      .swatch-row {
+      .iv-root .swatch-row {
         display: flex;
         gap: 6px;
       }
-      .color-pill {
+      .iv-root .color-pill {
         margin: 0;
         width: 26px;
         height: 26px;
@@ -241,11 +170,11 @@ import IdentiteVisuelleApp from '../components/IdentiteVisuelle'
         padding: 0;
         cursor: pointer;
       }
-      .color-pill.checked {
+      .iv-root .color-pill.checked {
         outline: 2px solid var(--green);
         outline-offset: 2px;
       }
-      .color-pill.transparent {
+      .iv-root .color-pill.transparent {
         background-color: #fff;
         background-image:
           linear-gradient(45deg, #ccc 25%, transparent 25%),
@@ -261,28 +190,28 @@ import IdentiteVisuelleApp from '../components/IdentiteVisuelle'
       }
 
       /* Toggle group + Headless UI Switch */
-      .toggle-group {
+      .iv-root .toggle-group {
         display: flex;
         flex-direction: column;
         gap: 6px;
       }
-      .toggle-group .label-row {
+      .iv-root .toggle-group .label-row {
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 8px;
       }
-      .toggle-group .label-row > span:first-child {
+      .iv-root .toggle-group .label-row > span:first-child {
         text-transform: uppercase;
         color: #666;
         font-size: 11px;
       }
-      .toggle-group .help {
+      .iv-root .toggle-group .help {
         font-size: 11px;
         color: #999;
         line-height: 1.45;
       }
-      .hu-switch {
+      .iv-root .hu-switch {
         position: relative;
         display: inline-flex;
         align-items: center;
@@ -298,12 +227,13 @@ import IdentiteVisuelleApp from '../components/IdentiteVisuelle'
         cursor: pointer;
         transition: all 0.2s;
       }
-      .hu-switch.on {
+      .iv-root .hu-switch.on {
         background: var(--green);
         border-color: var(--green);
         color: #fff;
+        padding: 0 32px 0 12px;
       }
-      .hu-switch__thumb {
+      .iv-root .hu-switch__thumb {
         position: absolute;
         left: 3px;
         top: 50%;
@@ -315,113 +245,110 @@ import IdentiteVisuelleApp from '../components/IdentiteVisuelle'
         box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
         transition: left 0.2s;
       }
-      .hu-switch.on .hu-switch__thumb {
+      .iv-root .hu-switch.on .hu-switch__thumb {
         left: calc(100% - 21px);
         background: #fff;
       }
-      .hu-switch.on {
-        padding: 0 32px 0 12px;
-      }
 
-      /* Color cards (coolors style) */
-      .swatches {
+      /* Color cards */
+      .iv-root .swatches {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
         gap: 24px;
       }
-      .color-card {
+      .iv-root .color-card {
         border-radius: 10px;
         overflow: hidden;
         background: #fff;
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
       }
-      .color-card_color {
+      .iv-root .color-card_color {
         height: 220px;
         display: flex;
         align-items: flex-end;
         padding: 16px 18px;
       }
-      .color-card_color span {
+      .iv-root .color-card_color span {
         font-weight: 700;
         font-size: 18px;
         text-transform: uppercase;
       }
-      .color-card.dark .color-card_color span {
+      .iv-root .color-card.dark .color-card_color span {
         color: #f2f1e2;
       }
-      .color-card.light .color-card_color span {
+      .iv-root .color-card.light .color-card_color span {
         color: var(--green);
       }
-      .color-card.sm .color-card_color {
+      .iv-root .color-card.sm .color-card_color {
         height: 90px;
         padding: 10px 12px;
       }
-      .color-card.sm .color-card_color span {
+      .iv-root .color-card.sm .color-card_color span {
         font-size: 13px;
       }
-      .color-card_info {
+      .iv-root .color-card_info {
         padding: 14px 18px 16px;
         border-top: 1px solid #f0f0f0;
       }
-      .color-card.sm .color-card_info {
+      .iv-root .color-card.sm .color-card_info {
         padding: 10px 12px 12px;
       }
-      .color-card_name {
+      .iv-root .color-card_name {
         display: block;
         font-weight: 700;
         font-size: 14px;
         color: #222;
         margin-bottom: 6px;
       }
-      .color-card.sm .color-card_name {
+      .iv-root .color-card.sm .color-card_name {
         font-size: 12px;
         margin-bottom: 3px;
       }
-      .color-card_meta {
+      .iv-root .color-card_meta {
         font-size: 12px;
         color: #888;
         line-height: 1.6;
       }
-      .color-card.sm .color-card_meta {
+      .iv-root .color-card.sm .color-card_meta {
         font-size: 10px;
       }
-      .copy {
+      .iv-root .copy {
         cursor: pointer;
       }
-      .copy:hover {
+      .iv-root .copy:hover {
         opacity: 0.7;
       }
 
       /* Signature generator */
-      .sig-wrap {
+      .iv-root .sig-wrap {
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 32px;
       }
-      .sig-card label.field {
+      .iv-root .sig-card label.field {
         display: block;
         font-size: 12px;
         text-transform: uppercase;
         color: #666;
         margin: 12px 0 4px;
       }
-      .sig-card input {
+      .iv-root .sig-card input {
         width: 100%;
         padding: 10px 12px;
         border: 1px solid #ddd;
         border-radius: 6px;
         font: inherit;
       }
-      .sig-buttons {
+      .iv-root .sig-buttons {
         margin-top: 16px;
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 8px;
       }
-      .sig-buttons button {
+      .iv-root .sig-buttons button {
         margin: 0;
       }
-      .sig-preview {
+      .iv-root .sig-preview {
         display: flex;
         align-items: center;
         justify-content: center;
@@ -431,33 +358,72 @@ import IdentiteVisuelleApp from '../components/IdentiteVisuelle'
         border-radius: 6px;
         padding: 20px;
       }
-      .sig {
+      .iv-root .sig {
         display: inline-block;
         font-family: Helvetica, Arial, sans-serif;
         color: #41693a;
       }
-      .sig .logo-row {
+      .iv-root .sig .logo-row {
         display: flex;
         align-items: center;
       }
-      .sig .logo-row svg {
+      .iv-root .sig .logo-row svg {
         display: block;
       }
-      .sig hr {
+      .iv-root .sig hr {
         border: 0;
         border-top: 1px solid #41693a;
         margin: 6px 0 8px;
       }
-      .sig .name {
+      .iv-root .sig .name {
         font-weight: 700;
         line-height: 1;
         white-space: nowrap;
         color: #41693a;
       }
-      .sig .title {
+      .iv-root .sig .title {
         font-weight: 300;
         line-height: 1.15;
         color: #41693a;
+      }
+
+      /* Responsive */
+      @media (max-width: 900px) {
+        .iv-root .layout {
+          grid-template-columns: 1fr;
+        }
+        .iv-root .sidenav {
+          position: static;
+          display: none;
+        }
+      }
+      @media (max-width: 720px) {
+        body:has(.iv-root) {
+          padding: 16px;
+        }
+        .iv-root section {
+          padding: 18px;
+        }
+        .iv-root h1 {
+          font-size: 20px;
+        }
+        .iv-root h2 {
+          font-size: 14px;
+        }
+        .iv-root .logos-grid,
+        .iv-root .sig-wrap,
+        .iv-root .swatches {
+          grid-template-columns: 1fr !important;
+        }
+        .iv-root .controls {
+          grid-template-columns: 1fr !important;
+        }
+        .iv-root .color-card_color {
+          height: 160px;
+        }
+        .iv-root .logo-block .frame {
+          padding: 16px;
+        }
       }
     </style>
   </head>
