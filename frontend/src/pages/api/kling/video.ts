@@ -6,8 +6,6 @@ import { KLING_ACCESS_KEY, KLING_SECRET_KEY } from 'astro:env/server'
 import { siteUrl, studioUrl } from '@/utils/sanity/client'
 
 const KLING_API_BASE_URL = 'https://api-singapore.klingai.com'
-const POLL_INTERVAL_MS = 5_000
-const MAX_POLL_DURATION_MS = 900_000
 const MAX_SUBMIT_RETRIES = 3
 const RETRYABLE_ERROR_CODES = new Set([1302, 1303])
 const JSON_HEADERS = {
@@ -40,12 +38,16 @@ interface KlingApiResponse<T> {
   data: T
 }
 
+type KlingTaskStatus = 'submitted' | 'processing' | 'succeed' | 'failed'
+
 interface KlingVideoCreateResponse {
   task_id?: string
+  task_status?: KlingTaskStatus
 }
 
 interface KlingVideoTaskResponse {
-  task_status: 'submitted' | 'processing' | 'succeed' | 'failed'
+  task_id?: string
+  task_status: KlingTaskStatus
   task_status_msg?: string
   task_result?: {
     videos?: Array<{
@@ -74,7 +76,7 @@ function isAllowedOrigin(origin: string | null): origin is string {
 function withCors(origin: string): Headers {
   const headers = new Headers(JSON_HEADERS)
   headers.set('Access-Control-Allow-Origin', origin)
-  headers.set('Access-Control-Allow-Methods', 'POST, OPTIONS')
+  headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
   headers.set('Access-Control-Allow-Headers', 'Content-Type')
   headers.set('Access-Control-Max-Age', '600')
   headers.set('Vary', 'Origin')
@@ -114,14 +116,6 @@ function encodeBase64Url(value: string): string {
 
 function encodeBytesBase64Url(bytes: Uint8Array): string {
   return bytesToBase64(bytes).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '')
-}
-
-function formatElapsed(ms: number): string {
-  const seconds = Math.round(ms / 1000)
-  if (seconds < 60) return `${seconds}s`
-  const minutes = Math.floor(seconds / 60)
-  const remainingSeconds = seconds % 60
-  return remainingSeconds > 0 ? `${minutes}min ${remainingSeconds}s` : `${minutes}min`
 }
 
 function getKlingSourceImageUrl(imageUrl: string): string {
@@ -250,7 +244,7 @@ async function submitVideoGeneration(
   accessKey: string,
   secretKey: string,
   signal?: AbortSignal
-): Promise<string> {
+): Promise<{ taskId: string; taskStatus: KlingTaskStatus }> {
   const sourceImage = getKlingSourceImageUrl(imageUrl)
   const payload = {
     model_name: FIXED_VIDEO_OPTIONS.modelName,
@@ -281,7 +275,10 @@ async function submitVideoGeneration(
         throw new KlingApiError('La réponse Kling ne contient pas de task_id.')
       }
 
-      return response.data.task_id
+      return {
+        taskId: response.data.task_id,
+        taskStatus: response.data.task_status ?? 'submitted',
+      }
     } catch (error) {
       const klingError = error instanceof KlingApiError ? error : null
       const shouldRetry =
@@ -300,50 +297,25 @@ async function submitVideoGeneration(
   throw new KlingApiError('Impossible de soumettre la génération vidéo à Kling.')
 }
 
-async function pollVideoTask(
+async function getVideoTask(
   taskId: string,
   accessKey: string,
   secretKey: string,
   signal?: AbortSignal
-): Promise<{ videoUrl: string; duration?: string }> {
-  const startTime = Date.now()
+): Promise<KlingVideoTaskResponse> {
+  const response = await fetchKling<KlingVideoTaskResponse>(
+    `/v1/videos/image2video/${encodeURIComponent(taskId)}`,
+    accessKey,
+    secretKey,
+    { method: 'GET' },
+    signal
+  )
 
-  while (true) {
-    if (signal?.aborted) {
-      throw new Error('Génération annulée.')
-    }
-
-    const elapsed = Date.now() - startTime
-    if (elapsed > MAX_POLL_DURATION_MS) {
-      throw new Error(
-        `Délai d'attente dépassé (${formatElapsed(MAX_POLL_DURATION_MS)}). La génération vidéo prend plus de temps que prévu.`
-      )
-    }
-
-    const response = await fetchKling<KlingVideoTaskResponse>(
-      `/v1/videos/image2video/${encodeURIComponent(taskId)}`,
-      accessKey,
-      secretKey,
-      { method: 'GET' },
-      signal
-    )
-
-    const task = response.data
-    if (task.task_status === 'failed') {
-      throw new Error(task.task_status_msg || response.message || 'La génération Kling a échoué.')
-    }
-
-    if (task.task_status === 'succeed') {
-      const video = task.task_result?.videos?.[0]
-      if (!video?.url) {
-        throw new Error('Kling a terminé la tâche sans fournir d’URL vidéo.')
-      }
-
-      return { videoUrl: video.url, duration: video.duration }
-    }
-
-    await sleep(POLL_INTERVAL_MS, signal)
+  if (!response.data?.task_status) {
+    throw new KlingApiError('La réponse Kling ne contient pas de task_status.')
   }
+
+  return response.data
 }
 
 async function downloadVideoResult(
@@ -377,6 +349,88 @@ export const OPTIONS: APIRoute = async ({ request }) => {
   })
 }
 
+export const GET: APIRoute = async ({ request }) => {
+  const origin = request.headers.get('origin')
+
+  if (!isAllowedOrigin(origin)) {
+    return new Response(JSON.stringify({ error: 'Origin non autorisée.' }), {
+      status: 403,
+      headers: JSON_HEADERS,
+    })
+  }
+
+  if (!KLING_ACCESS_KEY || !KLING_SECRET_KEY) {
+    return jsonResponse({ error: 'Le proxy Kling n’est pas configuré côté frontend.' }, 503, origin)
+  }
+
+  const taskId = new URL(request.url).searchParams.get('taskId')?.trim() ?? ''
+  if (!taskId) {
+    return jsonResponse({ error: 'Le paramètre taskId est requis.' }, 400, origin)
+  }
+
+  try {
+    const task = await getVideoTask(taskId, KLING_ACCESS_KEY, KLING_SECRET_KEY, request.signal)
+
+    if (task.task_status === 'failed') {
+      return jsonResponse(
+        {
+          error: task.task_status_msg || 'La génération Kling a échoué.',
+          taskId,
+          taskStatus: task.task_status,
+        },
+        502,
+        origin
+      )
+    }
+
+    if (task.task_status !== 'succeed') {
+      return jsonResponse(
+        {
+          taskId,
+          taskStatus: task.task_status,
+          feedback: 'La génération vidéo Kling est en cours.',
+        },
+        202,
+        origin
+      )
+    }
+
+    const video = task.task_result?.videos?.[0]
+    if (!video?.url) {
+      return jsonResponse(
+        {
+          error: 'Kling a terminé la tâche sans fournir d’URL vidéo.',
+          taskId,
+          taskStatus: task.task_status,
+        },
+        502,
+        origin
+      )
+    }
+
+    const downloadedVideo = await downloadVideoResult(video.url, request.signal)
+
+    return jsonResponse(
+      {
+        taskId,
+        taskStatus: task.task_status,
+        base64Data: downloadedVideo.base64,
+        mimeType: downloadedVideo.mimeType,
+        feedback:
+          'Vidéo générée avec succès via Kling (kling-v3, 6s, qualité pro, boucle contrainte par image de début et de fin identiques).',
+      },
+      200,
+      origin
+    )
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : 'Erreur inconnue lors de la récupération Kling.'
+    const status =
+      error instanceof KlingApiError && RETRYABLE_ERROR_CODES.has(error.code ?? -1) ? 429 : 502
+    return jsonResponse({ error: message, taskId }, status, origin)
+  }
+}
+
 export const POST: APIRoute = async ({ request }) => {
   const origin = request.headers.get('origin')
 
@@ -401,28 +455,20 @@ export const POST: APIRoute = async ({ request }) => {
 
     new URL(imageUrl)
 
-    const taskId = await submitVideoGeneration(
+    const task = await submitVideoGeneration(
       imageUrl,
       KLING_ACCESS_KEY,
       KLING_SECRET_KEY,
       request.signal
     )
-    const taskResult = await pollVideoTask(
-      taskId,
-      KLING_ACCESS_KEY,
-      KLING_SECRET_KEY,
-      request.signal
-    )
-    const video = await downloadVideoResult(taskResult.videoUrl, request.signal)
 
     return jsonResponse(
       {
-        base64Data: video.base64,
-        mimeType: video.mimeType,
-        feedback:
-          'Vidéo générée avec succès via Kling (kling-v3, 6s, qualité pro, boucle contrainte par image de début et de fin identiques).',
+        taskId: task.taskId,
+        taskStatus: task.taskStatus,
+        feedback: 'Tâche vidéo Kling créée. Vérification du statut en cours…',
       },
-      200,
+      202,
       origin
     )
   } catch (error) {
