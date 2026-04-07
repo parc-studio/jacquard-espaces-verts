@@ -1,305 +1,197 @@
 ---
 
 ---
-
-<!doctype html>
+<!DOCTYPE html>
 <html lang="fr">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Générateur de signature — Jacquard</title>
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700&display=swap"
-      rel="stylesheet"
-    />
-    <style>
-      :root {
-        --green: #41693a;
-        --sig-font: 'Inter', Helvetica, Arial, sans-serif;
-      }
-      * {
-        box-sizing: border-box;
-      }
-      body {
-        font-family: var(--sig-font);
-        margin: 0;
-        padding: 32px;
-        background: #f5f5f5;
-        color: #222;
-      }
-      h1 {
-        font-size: 20px;
-        margin: 0 0 24px;
-      }
-      .wrap {
-        max-width: 980px;
-        margin: 0 auto;
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 32px;
-      }
-      .card {
-        background: #fff;
-        border-radius: 8px;
-        padding: 24px;
-        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
-      }
-      label {
-        display: block;
-        font-size: 12px;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        color: #666;
-        margin: 12px 0 4px;
-      }
-      input {
-        width: 100%;
-        padding: 10px 12px;
-        border: 1px solid #ddd;
-        border-radius: 6px;
-        font: inherit;
-      }
-      button {
-        background: var(--green);
-        color: #fff;
-        border: 0;
-        padding: 10px 16px;
-        border-radius: 6px;
-        font: inherit;
-        cursor: pointer;
-        margin: 8px 8px 0 0;
-      }
-      button.alt {
-        background: #fff;
-        color: var(--green);
-        border: 1px solid var(--green);
-      }
-      .preview {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        min-height: 220px;
-        background: #fff;
-        border: 1px dashed #ddd;
-        border-radius: 6px;
-        padding: 20px;
-      }
-      /* Signature block — width drives everything */
-      .sig {
-        display: inline-block;
-        font-family: var(--sig-font);
-        color: #41693a;
-      }
-      .sig .logo-row {
-        display: flex;
-        align-items: center;
-      }
-      .sig .logo-row svg {
-        display: block;
-      }
-      .sig hr {
-        border: 0;
-        border-top: 1px solid #41693a;
-        margin: 6px 0 8px;
-      }
-      .sig .name {
-        font-weight: 700;
-        line-height: 1;
-        white-space: nowrap;
-        color: #41693a;
-      }
-      .sig .title {
-        font-weight: 300;
-        line-height: 1.15;
-        color: #41693a;
-      }
-      small {
-        color: #888;
-        display: block;
-        margin-top: 8px;
-        font-size: 12px;
-      }
-    </style>
-  </head>
-  <body>
-    <div class="wrap">
-      <div class="card">
-        <label>Nom complet</label>
-        <input id="name" value="Antoine JACQUARD" />
-        <label>Intitulé</label>
-        <input id="title" value="Président" />
-        <label>Email</label>
-        <input id="email" value="ajacquard@jacquardespacesverts.fr" type="email" />
-        <label>Téléphone</label>
-        <input id="phone" value="06 19 36 15 58" />
-        <div style="margin-top:16px;">
-          <button onclick="copyAppleMail()">Copier la signature</button>
-          <button class="alt" onclick="downloadPNG()">Exporter en PNG</button>
-        </div>
-        <small id="status" style="min-height:14px"></small>
-
-        <details style="margin-top:18px;border-top:1px solid #eee;padding-top:14px">
-          <summary style="cursor:pointer;font-weight:bold;color:#41693A"
-            >📧 Apple Mail (macOS)</summary
-          >
-          <ol style="font-size:12px;color:#555;line-height:1.5;padding-left:20px">
-            <li>Clique <b>Copier la signature</b></li>
-            <li>Mail → <b>Réglages</b> → <b>Signatures</b></li>
-            <li>Sélectionne ton compte, clique <b>+</b> pour créer une nouvelle signature</li>
-            <li><b>Décoche</b> « Toujours utiliser la police par défaut »</li>
-            <li>Clique dans la zone d'édition à droite et fais <b>Cmd+V</b></li>
-            <li>Renomme la signature, ferme les Réglages</li>
-          </ol>
-        </details>
-
-        <details style="margin-top:8px">
-          <summary style="cursor:pointer;font-weight:bold;color:#41693A">📨 Gmail (web)</summary>
-          <ol style="font-size:12px;color:#555;line-height:1.5;padding-left:20px">
-            <li>Clique <b>Copier la signature</b></li>
-            <li>Gmail → <b>⚙️ Paramètres</b> → <b>Voir tous les paramètres</b></li>
-            <li>Onglet <b>Général</b>, descend jusqu'à <b>Signature</b></li>
-            <li>Clique <b>+ Créer</b>, donne un nom</li>
-            <li>Clique dans la zone et fais <b>Cmd+V</b> (ou Ctrl+V)</li>
-            <li>Sélectionne la signature comme défaut, sauvegarde en bas</li>
-          </ol>
-        </details>
-
-        <details style="margin-top:8px">
-          <summary style="cursor:pointer;font-weight:bold;color:#41693A"
-            >📩 Outlook (web / desktop)</summary
-          >
-          <ol style="font-size:12px;color:#555;line-height:1.5;padding-left:20px">
-            <li>Clique <b>Copier la signature</b></li>
-            <li>
-              <b>Web :</b> ⚙️ → Voir tous les paramètres → Courrier → <b>Composer et répondre</b>
-            </li>
-            <li><b>Desktop :</b> Outlook → Réglages → <b>Signatures</b></li>
-            <li>Crée une nouvelle signature, clique dans la zone et <b>Cmd+V</b> / Ctrl+V</li>
-            <li>Sauvegarde, puis dans « Sélectionner les signatures par défaut » choisis-la</li>
-          </ol>
-        </details>
-      </div>
-      <div class="card">
-        <div class="preview">
-          <div id="sig" class="sig"></div>
-        </div>
-      </div>
+<head>
+<meta charset="UTF-8">
+<title>Générateur de signature — Jacquard</title>
+<style>
+  :root { --green:#41693A; --sig-font: Helvetica, Arial, sans-serif; }
+  * { box-sizing:border-box; }
+  body { font-family: var(--sig-font); margin:0; padding:32px; background:#f5f5f5; color:#222; }
+  h1 { font-size:20px; margin:0 0 24px; }
+  .wrap { max-width:980px; margin:0 auto; display:grid; grid-template-columns:1fr 1fr; gap:32px; }
+  .card { background:#fff; border-radius:8px; padding:24px; box-shadow:0 1px 4px rgba(0,0,0,.06); }
+  label { display:block; font-size:12px; text-transform:uppercase; letter-spacing:.05em; color:#666; margin:12px 0 4px; }
+  input { width:100%; padding:10px 12px; border:1px solid #ddd; border-radius:6px; font:inherit; }
+  button { background:var(--green); color:#fff; border:0; padding:10px 16px; border-radius:6px; font:inherit; cursor:pointer; margin:8px 8px 0 0; }
+  button.alt { background:#fff; color:var(--green); border:1px solid var(--green); }
+  .preview { display:flex; align-items:center; justify-content:center; min-height:220px; background:#fff; border:1px dashed #ddd; border-radius:6px; padding:20px; }
+  /* Signature block — width drives everything */
+  .sig { display:inline-block; font-family: var(--sig-font); color:#41693A; }
+  .sig .logo-row { display:flex; align-items:center; }
+  .sig .logo-row svg { display:block; }
+  .sig hr { border:0; border-top:1px solid #41693A; margin:6px 0 8px; }
+  .sig .name { font-weight:700; line-height:1; white-space:nowrap; color:#41693A; }
+  .sig .title { font-weight:300; line-height:1.15; color:#41693A; }
+  small { color:#888; display:block; margin-top:8px; font-size:12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <label>Nom complet</label>
+    <input id="name" value="Antoine JACQUARD">
+    <label>Intitulé</label>
+    <input id="title" value="Président">
+    <label>Email</label>
+    <input id="email" value="ajacquard@jacquardespacesverts.fr" type="email">
+    <label>Téléphone</label>
+    <input id="phone" value="06 19 36 15 58">
+    <div style="margin-top:16px;">
+      <button onclick="copyAppleMail()">Copier la signature</button>
+      <button class="alt" onclick="downloadPNG()">Exporter en PNG</button>
     </div>
+    <small id="status" style="min-height:14px"></small>
 
-    <script>
-      const LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="WIDTH" viewBox="0 0 99 19" fill="none"><path d="M1.86902 11.6584C1.86902 12.7 2.52867 13.3374 3.42392 13.3374C4.33486 13.3374 4.97882 12.7 4.97882 11.6584V4.88032H3.07838V3.23242H8.54408V4.88032H6.87924V11.7206C6.87924 13.8194 5.40287 15.1719 3.42392 15.1719C1.46067 15.1719 0 13.8194 0 11.7206V9.96391H1.86902L1.86902 11.6584Z" fill="#41693A"/><path d="M18.9344 6.68367V8.33156H17.4266V13.2752H18.9344V14.9232H15.6518V13.7416H15.6204C15.1335 14.55 14.1754 15.1253 12.9346 15.1253C10.7829 15.1253 8.94531 13.3374 8.94531 10.8034C8.94531 8.26938 10.7829 6.48157 12.9346 6.48157C14.1754 6.48157 15.1649 7.08787 15.6204 7.83408H15.6518V6.68367L18.9344 6.68367ZM13.2331 13.4307C14.6152 13.4307 15.6675 12.3114 15.6675 10.8034C15.6675 9.29543 14.6309 8.1761 13.2331 8.1761C11.8509 8.1761 10.7986 9.29542 10.7986 10.8034C10.7986 12.3114 11.8353 13.4307 13.2331 13.4307Z" fill="#41693A"/><path d="M19.9297 10.8034C19.9297 8.34712 21.7988 6.43494 24.1704 6.43494C26.2435 6.43494 27.9084 7.89628 28.3011 9.90173H26.4163C26.1022 8.86013 25.2541 8.1761 24.1704 8.1761C22.8197 8.1761 21.783 9.26434 21.783 10.8034C21.783 12.3425 22.8197 13.4307 24.1704 13.4307C25.2541 13.4307 26.1022 12.7467 26.4163 11.7051H28.3011C27.9084 13.695 26.2435 15.1719 24.1704 15.1719C21.7988 15.1719 19.9297 13.2597 19.9297 10.8034Z" fill="#41693A"/><path d="M39.45 6.68367V8.33156H37.9423V16.6021H39.45V18.25H34.534V16.6021H36.1517V13.7572H36.1203C35.6806 14.5345 34.6911 15.1253 33.4817 15.1253C31.3299 15.1253 29.4609 13.3374 29.4609 10.8034C29.4609 8.26938 31.3299 6.48157 33.4817 6.48157C34.7067 6.48157 35.6806 7.05678 36.1361 7.84963H36.1675V6.68367H39.45ZM33.7488 13.4307C35.1308 13.4307 36.1831 12.3114 36.1831 10.8034C36.1831 9.29543 35.1466 8.16056 33.7488 8.16056C32.3666 8.16056 31.3143 9.29542 31.3143 10.8034C31.3143 12.3114 32.3666 13.4307 33.7488 13.4307Z" fill="#41693A"/><path d="M47.0263 14.9231V13.9126H46.9949C46.6651 14.5655 45.9897 15.1252 44.7646 15.1252C42.9428 15.1252 41.9061 13.8504 41.9061 11.9382V8.33149H40.3984V6.68359H43.6967V11.5651C43.6967 12.7932 44.2306 13.4928 45.2515 13.4928C46.3352 13.4928 46.9635 12.6689 46.9635 11.4718V8.33149H45.4557V6.68359H48.7539V13.2752H50.2775V14.9231H47.0263Z" fill="#41693A"/><path d="M61.114 6.68367V8.33156H59.6062V13.2752H61.114V14.9232H57.8314V13.7416H57.8C57.3132 14.55 56.3552 15.1253 55.1143 15.1253C52.9626 15.1253 51.125 13.3374 51.125 10.8034C51.125 8.26938 52.9626 6.48157 55.1143 6.48157C56.3552 6.48157 57.3446 7.08787 57.8 7.83408H57.8314V6.68367L61.114 6.68367ZM55.4127 13.4307C56.7949 13.4307 57.8472 12.3114 57.8472 10.8034C57.8472 9.29543 56.8106 8.1761 55.4127 8.1761C54.0306 8.1761 52.9784 9.29542 52.9784 10.8034C52.9784 12.3114 54.0149 13.4307 55.4127 13.4307Z" fill="#41693A"/><path d="M65.2515 6.67335V13.2649H66.9791V14.9129H61.9375V13.2649H63.4611V8.32125H61.9375V6.67335H65.2515ZM68.6441 7.94814C68.6441 8.72544 68.0315 9.30066 67.2933 9.30066C66.5708 9.30066 65.9426 8.72545 65.9426 7.94814C65.9426 7.15529 66.5708 6.58008 67.2933 6.58008C68.0315 6.58008 68.6441 7.15529 68.6441 7.94814Z" fill="#41693A"/><path d="M77.9186 3.23242V13.2752H79.442V14.9232H76.1752V13.7416H76.1438C75.704 14.55 74.6988 15.1253 73.4737 15.1253C71.322 15.1253 69.4688 13.3374 69.4688 10.8034C69.4688 8.26938 71.322 6.48157 73.4581 6.48157C74.6517 6.48157 75.6412 7.02569 76.0966 7.7719H76.128V4.88032H74.5104V3.23242H77.9186ZM73.7565 13.4152C75.1385 13.4152 76.191 12.3114 76.191 10.8034C76.191 9.29543 75.1543 8.19165 73.7565 8.19165C72.3744 8.19165 71.322 9.29542 71.322 10.8034C71.322 12.3114 72.3744 13.4152 73.7565 13.4152Z" fill="#41693A"/><path d="M96.9141 3.53157C95.3463 5.37295 93.0099 6.54294 90.4072 6.54294C87.8026 6.54294 85.4662 5.37295 83.8984 3.53157C84.2206 3.00418 84.6058 2.51998 85.0432 2.08618C86.278 3.70077 88.2238 4.74295 90.4072 4.74295C92.5906 4.74295 94.5363 3.70077 95.7693 2.08618C96.2067 2.51818 96.5919 3.00418 96.9141 3.53157Z" fill="#41693A"/><path d="M93.5559 0.559879C92.9908 0.302515 92.3879 0.113509 91.7597 0.000131405V0.68299H91.759C91.759 0.685825 91.7596 0.688439 91.7596 0.691274C91.7596 1.46886 91.1476 2.04306 90.4096 2.04306C89.686 2.04306 89.0578 1.46886 89.0578 0.691274C89.0578 0.688439 89.0583 0.685825 89.0584 0.68299L89.0583 0C89.0581 4.31995e-05 89.0579 6.6601e-05 89.0578 8.82008e-05C88.4296 0.113487 87.8266 0.302472 87.2614 0.55988C87.2578 0.603078 87.2578 0.648078 87.2578 0.691275C87.2578 2.42826 88.6708 3.84304 90.4096 3.84304C92.1466 3.84304 93.5595 2.42826 93.5595 0.691275C93.5595 0.648078 93.5595 0.603076 93.5559 0.559879Z" fill="#41693A"/><path d="M98.0187 7.15501C95.8281 8.58959 93.2109 9.42298 90.4048 9.42298C87.5968 9.42298 84.9796 8.58959 82.7891 7.15501C82.8179 6.47642 82.9385 5.82302 83.1347 5.20203C85.1632 6.72301 87.6796 7.623 90.4048 7.623C93.1281 7.623 95.6463 6.72121 97.6749 5.20203C97.8693 5.82302 97.9899 6.47642 98.0187 7.15501Z" fill="#41693A"/><path d="M89.4637 14.913H87.3811C88.0327 13.9716 88.2883 13.0788 88.0741 12.438C87.8995 11.9142 87.4585 11.718 87.1201 11.646C86.3731 11.4876 85.3561 11.6082 84.2329 11.9772C83.8765 11.4858 83.5759 10.9512 83.3438 10.3806C84.5101 9.96304 86.0869 9.58684 87.4945 9.88564C88.6051 10.1214 89.4403 10.8432 89.7823 11.8674C89.9803 12.4632 90.1243 13.5198 89.4637 14.913Z" fill="#41693A"/><path d="M97.4637 10.3806C97.2315 10.9512 96.9309 11.4858 96.5745 11.9772C95.4513 11.6082 94.4343 11.4876 93.6874 11.646C93.349 11.718 92.908 11.9142 92.7334 12.438C92.5192 13.0788 92.7748 13.9716 93.4282 14.913H91.3438C90.6832 13.5198 90.8272 12.4632 91.027 11.8674C91.369 10.8432 92.2024 10.1214 93.313 9.88564C94.7205 9.58684 96.2973 9.96304 97.4637 10.3806Z" fill="#41693A"/></svg>`
+    <details style="margin-top:18px;border-top:1px solid #eee;padding-top:14px">
+      <summary style="cursor:pointer;font-weight:bold;color:#41693A">📧 Apple Mail (macOS)</summary>
+      <ol style="font-size:12px;color:#555;line-height:1.5;padding-left:20px">
+        <li>Clique <b>Copier la signature</b></li>
+        <li>Mail → <b>Réglages</b> → <b>Signatures</b></li>
+        <li>Sélectionne ton compte, clique <b>+</b> pour créer une nouvelle signature</li>
+        <li><b>Décoche</b> « Toujours utiliser la police par défaut »</li>
+        <li>Clique dans la zone d'édition à droite et fais <b>Cmd+V</b></li>
+        <li>Renomme la signature, ferme les Réglages</li>
+      </ol>
+    </details>
 
-      // Measure text width at given font (Inter — same que le rendu)
-      const meas = document.createElement('canvas').getContext('2d')
-      function textWidth(t, weight, size) {
-        meas.font = `${weight} ${size}px Inter, Helvetica, Arial, sans-serif`
-        return meas.measureText(t).width
-      }
-      // Find largest font size so text fits exactly width W
-      function fitSize(t, weight, W, max = 200) {
-        let lo = 4,
-          hi = max
-        for (let i = 0; i < 30; i++) {
-          const m = (lo + hi) / 2
-          if (textWidth(t, weight, m) <= W) lo = m
-          else hi = m
-        }
-        return lo
-      }
+    <details style="margin-top:8px">
+      <summary style="cursor:pointer;font-weight:bold;color:#41693A">📨 Gmail (web)</summary>
+      <ol style="font-size:12px;color:#555;line-height:1.5;padding-left:20px">
+        <li>Clique <b>Copier la signature</b></li>
+        <li>Gmail → <b>⚙️ Paramètres</b> → <b>Voir tous les paramètres</b></li>
+        <li>Onglet <b>Général</b>, descend jusqu'à <b>Signature</b></li>
+        <li>Clique <b>+ Créer</b>, donne un nom</li>
+        <li>Clique dans la zone et fais <b>Cmd+V</b> (ou Ctrl+V)</li>
+        <li>Sélectionne la signature comme défaut, sauvegarde en bas</li>
+      </ol>
+    </details>
 
-      // Largeur optimale d'une signature email : ~320px.
-      // Suffisamment lisible sur retina, ne déborde pas sur mobile (320px = plus petit
-      // viewport courant), compatible Gmail / Outlook / Apple Mail sans scroll horizontal.
-      const W = 320
+    <details style="margin-top:8px">
+      <summary style="cursor:pointer;font-weight:bold;color:#41693A">📩 Outlook (web / desktop)</summary>
+      <ol style="font-size:12px;color:#555;line-height:1.5;padding-left:20px">
+        <li>Clique <b>Copier la signature</b></li>
+        <li><b>Web :</b> ⚙️ → Voir tous les paramètres → Courrier → <b>Composer et répondre</b></li>
+        <li><b>Desktop :</b> Outlook → Réglages → <b>Signatures</b></li>
+        <li>Crée une nouvelle signature, clique dans la zone et <b>Cmd+V</b> / Ctrl+V</li>
+        <li>Sauvegarde, puis dans « Sélectionner les signatures par défaut » choisis-la</li>
+      </ol>
+    </details>
+  </div>
+  <div class="card">
+    <div class="preview">
+      <div id="sig" class="sig"></div>
+    </div>
+  </div>
+</div>
 
-      function getFields() {
-        return {
-          name: document.getElementById('name').value || ' ',
-          title: document.getElementById('title').value || ' ',
-          email: document.getElementById('email').value,
-          phone: document.getElementById('phone').value,
-          g1: 9,
-          g2: 16,
-          g3: 10,
-        }
-      }
+<script>
+const LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="WIDTH" viewBox="0 0 99 19" fill="none"><path d="M1.86902 11.6584C1.86902 12.7 2.52867 13.3374 3.42392 13.3374C4.33486 13.3374 4.97882 12.7 4.97882 11.6584V4.88032H3.07838V3.23242H8.54408V4.88032H6.87924V11.7206C6.87924 13.8194 5.40287 15.1719 3.42392 15.1719C1.46067 15.1719 0 13.8194 0 11.7206V9.96391H1.86902L1.86902 11.6584Z" fill="#41693A"/><path d="M18.9344 6.68367V8.33156H17.4266V13.2752H18.9344V14.9232H15.6518V13.7416H15.6204C15.1335 14.55 14.1754 15.1253 12.9346 15.1253C10.7829 15.1253 8.94531 13.3374 8.94531 10.8034C8.94531 8.26938 10.7829 6.48157 12.9346 6.48157C14.1754 6.48157 15.1649 7.08787 15.6204 7.83408H15.6518V6.68367L18.9344 6.68367ZM13.2331 13.4307C14.6152 13.4307 15.6675 12.3114 15.6675 10.8034C15.6675 9.29543 14.6309 8.1761 13.2331 8.1761C11.8509 8.1761 10.7986 9.29542 10.7986 10.8034C10.7986 12.3114 11.8353 13.4307 13.2331 13.4307Z" fill="#41693A"/><path d="M19.9297 10.8034C19.9297 8.34712 21.7988 6.43494 24.1704 6.43494C26.2435 6.43494 27.9084 7.89628 28.3011 9.90173H26.4163C26.1022 8.86013 25.2541 8.1761 24.1704 8.1761C22.8197 8.1761 21.783 9.26434 21.783 10.8034C21.783 12.3425 22.8197 13.4307 24.1704 13.4307C25.2541 13.4307 26.1022 12.7467 26.4163 11.7051H28.3011C27.9084 13.695 26.2435 15.1719 24.1704 15.1719C21.7988 15.1719 19.9297 13.2597 19.9297 10.8034Z" fill="#41693A"/><path d="M39.45 6.68367V8.33156H37.9423V16.6021H39.45V18.25H34.534V16.6021H36.1517V13.7572H36.1203C35.6806 14.5345 34.6911 15.1253 33.4817 15.1253C31.3299 15.1253 29.4609 13.3374 29.4609 10.8034C29.4609 8.26938 31.3299 6.48157 33.4817 6.48157C34.7067 6.48157 35.6806 7.05678 36.1361 7.84963H36.1675V6.68367H39.45ZM33.7488 13.4307C35.1308 13.4307 36.1831 12.3114 36.1831 10.8034C36.1831 9.29543 35.1466 8.16056 33.7488 8.16056C32.3666 8.16056 31.3143 9.29542 31.3143 10.8034C31.3143 12.3114 32.3666 13.4307 33.7488 13.4307Z" fill="#41693A"/><path d="M47.0263 14.9231V13.9126H46.9949C46.6651 14.5655 45.9897 15.1252 44.7646 15.1252C42.9428 15.1252 41.9061 13.8504 41.9061 11.9382V8.33149H40.3984V6.68359H43.6967V11.5651C43.6967 12.7932 44.2306 13.4928 45.2515 13.4928C46.3352 13.4928 46.9635 12.6689 46.9635 11.4718V8.33149H45.4557V6.68359H48.7539V13.2752H50.2775V14.9231H47.0263Z" fill="#41693A"/><path d="M61.114 6.68367V8.33156H59.6062V13.2752H61.114V14.9232H57.8314V13.7416H57.8C57.3132 14.55 56.3552 15.1253 55.1143 15.1253C52.9626 15.1253 51.125 13.3374 51.125 10.8034C51.125 8.26938 52.9626 6.48157 55.1143 6.48157C56.3552 6.48157 57.3446 7.08787 57.8 7.83408H57.8314V6.68367L61.114 6.68367ZM55.4127 13.4307C56.7949 13.4307 57.8472 12.3114 57.8472 10.8034C57.8472 9.29543 56.8106 8.1761 55.4127 8.1761C54.0306 8.1761 52.9784 9.29542 52.9784 10.8034C52.9784 12.3114 54.0149 13.4307 55.4127 13.4307Z" fill="#41693A"/><path d="M65.2515 6.67335V13.2649H66.9791V14.9129H61.9375V13.2649H63.4611V8.32125H61.9375V6.67335H65.2515ZM68.6441 7.94814C68.6441 8.72544 68.0315 9.30066 67.2933 9.30066C66.5708 9.30066 65.9426 8.72545 65.9426 7.94814C65.9426 7.15529 66.5708 6.58008 67.2933 6.58008C68.0315 6.58008 68.6441 7.15529 68.6441 7.94814Z" fill="#41693A"/><path d="M77.9186 3.23242V13.2752H79.442V14.9232H76.1752V13.7416H76.1438C75.704 14.55 74.6988 15.1253 73.4737 15.1253C71.322 15.1253 69.4688 13.3374 69.4688 10.8034C69.4688 8.26938 71.322 6.48157 73.4581 6.48157C74.6517 6.48157 75.6412 7.02569 76.0966 7.7719H76.128V4.88032H74.5104V3.23242H77.9186ZM73.7565 13.4152C75.1385 13.4152 76.191 12.3114 76.191 10.8034C76.191 9.29543 75.1543 8.19165 73.7565 8.19165C72.3744 8.19165 71.322 9.29542 71.322 10.8034C71.322 12.3114 72.3744 13.4152 73.7565 13.4152Z" fill="#41693A"/><path d="M96.9141 3.53157C95.3463 5.37295 93.0099 6.54294 90.4072 6.54294C87.8026 6.54294 85.4662 5.37295 83.8984 3.53157C84.2206 3.00418 84.6058 2.51998 85.0432 2.08618C86.278 3.70077 88.2238 4.74295 90.4072 4.74295C92.5906 4.74295 94.5363 3.70077 95.7693 2.08618C96.2067 2.51818 96.5919 3.00418 96.9141 3.53157Z" fill="#41693A"/><path d="M93.5559 0.559879C92.9908 0.302515 92.3879 0.113509 91.7597 0.000131405V0.68299H91.759C91.759 0.685825 91.7596 0.688439 91.7596 0.691274C91.7596 1.46886 91.1476 2.04306 90.4096 2.04306C89.686 2.04306 89.0578 1.46886 89.0578 0.691274C89.0578 0.688439 89.0583 0.685825 89.0584 0.68299L89.0583 0C89.0581 4.31995e-05 89.0579 6.6601e-05 89.0578 8.82008e-05C88.4296 0.113487 87.8266 0.302472 87.2614 0.55988C87.2578 0.603078 87.2578 0.648078 87.2578 0.691275C87.2578 2.42826 88.6708 3.84304 90.4096 3.84304C92.1466 3.84304 93.5595 2.42826 93.5595 0.691275C93.5595 0.648078 93.5595 0.603076 93.5559 0.559879Z" fill="#41693A"/><path d="M98.0187 7.15501C95.8281 8.58959 93.2109 9.42298 90.4048 9.42298C87.5968 9.42298 84.9796 8.58959 82.7891 7.15501C82.8179 6.47642 82.9385 5.82302 83.1347 5.20203C85.1632 6.72301 87.6796 7.623 90.4048 7.623C93.1281 7.623 95.6463 6.72121 97.6749 5.20203C97.8693 5.82302 97.9899 6.47642 98.0187 7.15501Z" fill="#41693A"/><path d="M89.4637 14.913H87.3811C88.0327 13.9716 88.2883 13.0788 88.0741 12.438C87.8995 11.9142 87.4585 11.718 87.1201 11.646C86.3731 11.4876 85.3561 11.6082 84.2329 11.9772C83.8765 11.4858 83.5759 10.9512 83.3438 10.3806C84.5101 9.96304 86.0869 9.58684 87.4945 9.88564C88.6051 10.1214 89.4403 10.8432 89.7823 11.8674C89.9803 12.4632 90.1243 13.5198 89.4637 14.913Z" fill="#41693A"/><path d="M97.4637 10.3806C97.2315 10.9512 96.9309 11.4858 96.5745 11.9772C95.4513 11.6082 94.4343 11.4876 93.6874 11.646C93.349 11.718 92.908 11.9142 92.7334 12.438C92.5192 13.0788 92.7748 13.9716 93.4282 14.913H91.3438C90.6832 13.5198 90.8272 12.4632 91.027 11.8674C91.369 10.8432 92.2024 10.1214 93.313 9.88564C94.7205 9.58684 96.2973 9.96304 97.4637 10.3806Z" fill="#41693A"/></svg>`;
 
-      // Taille calculée pour que la ligne la plus longue (email ou téléphone) tienne dans W,
-      // en tenant compte du label "M:"/"T:" en inline-block width:1.6em (= 1.6 * fontSize)
-      function contactFontSize(f) {
-        const candidates = [f.email, f.phone].filter(Boolean)
-        if (!candidates.length) return 12
-        const longest = candidates.reduce((a, b) =>
-          textWidth(b, '300', 1) > textWidth(a, '300', 1) ? b : a
-        )
-        const unit = textWidth(longest, '300', 1)
-        return Math.floor(W / (1.6 + unit))
-      }
+// Measure text width at given font (Inter — same que le rendu)
+const meas = document.createElement('canvas').getContext('2d');
+function textWidth(t, weight, size) {
+  meas.font = `${weight} ${size}px Helvetica, Arial, sans-serif`;
+  return meas.measureText(t).width;
+}
+// Find largest font size so text fits exactly width W
+function fitSize(t, weight, W, max=200) {
+  let lo=4, hi=max;
+  for (let i=0;i<30;i++){
+    const m=(lo+hi)/2;
+    if (textWidth(t, weight, m) <= W) lo=m; else hi=m;
+  }
+  return lo;
+}
 
-      function render() {
-        const f = getFields()
-        // Nom : auto-shrink pour tenir sur une ligne, plafonné à 28px
-        const nameSize = Math.min(fitSize(f.name, 'bold', W), 28)
-        const nameW = textWidth(f.name, 'bold', nameSize) // px à la taille calculée
-        const emailUnit = f.email ? textWidth(f.email, '300', 1) : 0
-        // Intitulé : 60% du nom par défaut, MAIS au moins assez grand pour que la
-        // ligne email "M: xxx" soit plus large que le nom (sinon le nom dépasse).
-        const minTitleForEmail = f.email ? nameW / (1.6 + emailUnit) : 0
-        const titleSize = Math.max(12, Math.round(nameSize * 0.6), Math.ceil(minTitleForEmail))
-        const cSize = titleSize
-        const emailLineW = f.email
-          ? Math.ceil(1.6 * cSize + textWidth(f.email, '300', cSize))
-          : Math.ceil(nameW)
+// Largeur optimale d'une signature email : ~320px.
+// Suffisamment lisible sur retina, ne déborde pas sur mobile (320px = plus petit
+// viewport courant), compatible Gmail / Outlook / Apple Mail sans scroll horizontal.
+const W = 320;
 
-        const sig = document.getElementById('sig')
-        sig.style.width = emailLineW + 'px'
-        sig.innerHTML = `
+// Met automatiquement le nom de famille en majuscules
+function formatName(n) {
+  const parts = (n||'').trim().split(/\s+/);
+  if (parts.length < 2) return n;
+  return parts[0] + ' ' + parts.slice(1).join(' ').toUpperCase();
+}
+
+function getFields() {
+  return {
+    name:  formatName(document.getElementById('name').value) || ' ',
+    title: document.getElementById('title').value || ' ',
+    email: document.getElementById('email').value,
+    phone: document.getElementById('phone').value,
+    g1: 9, g2: 16, g3: 10,
+  };
+}
+
+// Taille calculée pour que la ligne la plus longue (email ou téléphone) tienne dans W,
+// en tenant compte du label "M:"/"T:" en inline-block width:1.6em (= 1.6 * fontSize)
+function contactFontSize(f) {
+  const candidates = [f.email, f.phone].filter(Boolean);
+  if (!candidates.length) return 12;
+  const longest = candidates.reduce((a,b)=> textWidth(b,'300',1) > textWidth(a,'300',1) ? b : a);
+  const unit = textWidth(longest, '300', 1);
+  return Math.floor(W / (1.6 + unit));
+}
+
+function render() {
+  const f = getFields();
+  // Nom : auto-shrink pour tenir sur une ligne, plafonné à 28px
+  const nameSize  = Math.min(fitSize(f.name, 'bold', W), 28);
+  const nameW = textWidth(f.name, 'bold', nameSize); // px à la taille calculée
+  const emailUnit = f.email ? textWidth(f.email, '300', 1) : 0;
+  // Intitulé : 60% du nom par défaut, MAIS au moins assez grand pour que la
+  // ligne email "M: xxx" soit plus large que le nom (sinon le nom dépasse).
+  const minTitleForEmail = f.email ? nameW / (1.6 + emailUnit) : 0;
+  const titleSize = Math.max(12, Math.round(nameSize * 0.6), Math.ceil(minTitleForEmail));
+  const cSize = titleSize;
+  const emailLineW = f.email
+    ? Math.ceil(1.6 * cSize + textWidth(f.email, '300', cSize))
+    : Math.ceil(nameW);
+
+  const sig = document.getElementById('sig');
+  sig.style.width = emailLineW + 'px';
+  sig.innerHTML = `
     <div class="logo-row">${LOGO_SVG.replace('WIDTH', emailLineW)}</div>
     <hr style="margin:${f.g1}px 0 ${f.g2}px;width:${emailLineW}px;margin-left:0;border:0;border-top:1px solid #41693A">
     <div class="name" style="font-size:${nameSize}px">${escapeHTML(f.name)}</div>
     <div class="title" style="font-size:${titleSize}px">${escapeHTML(f.title)}</div>
     <div style="margin-top:${f.g3}px;font-size:${cSize}px;color:#41693A;font-family:Helvetica,Arial,sans-serif;line-height:1.2">
-      ${f.phone ? `<div style="white-space:nowrap;font-weight:300"><a href="tel:${f.phone.replace(/\s/g, '')}" style="color:#41693A;text-decoration:none;font-weight:300"><span style="display:inline-block;width:1.6em">T:</span>${escapeHTML(f.phone)}</a></div>` : ''}
+      ${f.phone ? `<div style="white-space:nowrap;font-weight:300"><a href="tel:${f.phone.replace(/\s/g,'')}" style="color:#41693A;text-decoration:none;font-weight:300"><span style="display:inline-block;width:1.6em">T:</span>${escapeHTML(f.phone)}</a></div>` : ''}
       ${f.email ? `<div style="white-space:nowrap;font-weight:300"><a href="mailto:${f.email}" style="color:#41693A;text-decoration:none;font-weight:300"><span style="display:inline-block;width:1.6em">M:</span>${escapeHTML(f.email)}</a></div>` : ''}
     </div>
-  `
-      }
-      function escapeHTML(s) {
-        return (s || '').replace(
-          /[&<>"']/g,
-          (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]
-        )
-      }
+  `;
+}
+function escapeHTML(s){return (s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 
-      ;['name', 'title', 'email', 'phone'].forEach((id) =>
-        document.getElementById(id).addEventListener('input', render)
-      )
-      if (document.fonts && document.fonts.ready) document.fonts.ready.then(render)
-      render()
+['name','title','email','phone'].forEach(id=>document.getElementById(id).addEventListener('input',render));
+render();
 
-      async function copyAppleMail() {
-        const f = getFields()
-        // Tailles de texte calibrées sur une largeur cible compacte
-        const sigW = 120
-        const nameSize = Math.min(fitSize(f.name, 'bold', sigW), 14)
-        const nameW = textWidth(f.name, 'bold', nameSize)
-        const emailUnit = f.email ? textWidth(f.email, '300', 1) : 0
-        // Intitulé : 70% du nom MAIS au moins assez grand pour que la ligne email
-        // soit aussi large que le nom (sinon le nom déborde)
-        const minTitleForEmail = f.email ? nameW / (1.6 + emailUnit) : 0
-        const titleSize = Math.max(9, Math.round(nameSize * 0.7), Math.ceil(minTitleForEmail))
-        const cSize = titleSize
-        const emailLineW = f.email
-          ? Math.ceil(1.6 * cSize + textWidth(f.email, '300', cSize))
-          : Math.ceil(nameW)
-        // Cap mobile : signature jamais > 300px (le viewport mobile le + petit fait 320px)
-        const finalW = Math.min(emailLineW, 300)
-        const logoDisplayW = finalW
-        const logoDisplayH = Math.round((logoDisplayW * 19) / 99)
-        const logoUrl = 'https://jacquard-espaces-verts.parc.studio/logo.png'
-        // Layout table-based = max compatibilité mobile / Outlook
-        // color-scheme + bgcolor + couleurs en hex 6 chars empêchent l'auto-invert dark mode
-        const html = `<table cellpadding="0" cellspacing="0" border="0" role="presentation" bgcolor="#ffffff" style="border-collapse:collapse;font-family:Helvetica,Arial,sans-serif;color:#41693A;background-color:#ffffff;color-scheme:light only;-webkit-color-scheme:light only">
+async function copyAppleMail() {
+  const f = getFields();
+  // Tailles de texte calibrées sur une largeur cible compacte
+  const sigW = 120;
+  const nameSize  = Math.min(fitSize(f.name, 'bold', sigW), 14);
+  const nameW = textWidth(f.name, 'bold', nameSize);
+  const emailUnit = f.email ? textWidth(f.email, '300', 1) : 0;
+  // Intitulé : 70% du nom MAIS au moins assez grand pour que la ligne email
+  // soit aussi large que le nom (sinon le nom déborde)
+  const minTitleForEmail = f.email ? nameW / (1.6 + emailUnit) : 0;
+  const titleSize = Math.max(9, Math.round(nameSize * 0.7), Math.ceil(minTitleForEmail));
+  const cSize = titleSize;
+  const emailLineW = f.email ? Math.ceil(1.6 * cSize + textWidth(f.email,'300',cSize)) : Math.ceil(nameW);
+  // Cap mobile : signature jamais > 300px (le viewport mobile le + petit fait 320px)
+  const finalW = Math.min(emailLineW, 300);
+  const logoDisplayW = finalW;
+  const logoDisplayH = Math.round(logoDisplayW * 19 / 99);
+  const logoUrl = 'https://jacquard-espaces-verts.parc.studio/logo.png';
+  // Layout table-based = max compatibilité mobile / Outlook
+  // color-scheme + bgcolor + couleurs en hex 6 chars empêchent l'auto-invert dark mode
+  const html = `<table cellpadding="0" cellspacing="0" border="0" role="presentation" bgcolor="#ffffff" style="border-collapse:collapse;font-family:Helvetica,Arial,sans-serif;color:#41693A;background-color:#ffffff;color-scheme:light only;-webkit-color-scheme:light only">
     <tr><td bgcolor="#ffffff" style="padding:8px;width:${finalW}px;max-width:100%;background-color:#ffffff">
       <a href="mailto:${f.email}" style="text-decoration:none;display:block;line-height:0">
         <img src="${logoUrl}" alt="Jacquard" width="${logoDisplayW}" height="${logoDisplayH}" style="display:block;border:0;width:${logoDisplayW}px;height:${logoDisplayH}px;max-width:100%">
@@ -308,80 +200,67 @@
       <div style="font-weight:bold;font-size:${nameSize}px;line-height:1.15;color:#41693A">${escapeHTML(f.name)}</div>
       <div style="font-weight:normal;font-size:${titleSize}px;line-height:1.2;color:#41693A;word-wrap:break-word">${escapeHTML(f.title)}</div>
       <div style="margin-top:6px;font-size:${cSize}px;line-height:1.4;color:#41693A">
-        ${f.phone ? `<div style="margin:0"><a href="tel:${f.phone.replace(/\s/g, '')}" style="color:#41693A;text-decoration:none"><span style="display:inline-block;width:1.6em">T:</span>${escapeHTML(f.phone)}</a></div>` : ''}
+        ${f.phone ? `<div style="margin:0"><a href="tel:${f.phone.replace(/\s/g,'')}" style="color:#41693A;text-decoration:none"><span style="display:inline-block;width:1.6em">T:</span>${escapeHTML(f.phone)}</a></div>` : ''}
         ${f.email ? `<div style="margin:0"><a href="mailto:${f.email}" style="color:#41693A;text-decoration:none"><span style="display:inline-block;width:1.6em">M:</span>${escapeHTML(f.email)}</a></div>` : ''}
       </div>
     </td></tr>
-  </table>`
+  </table>`;
 
-        // Copie via execCommand sur un contenteditable (format que Mail accepte)
-        const holder = document.createElement('div')
-        holder.setAttribute('contenteditable', 'true')
-        holder.style.cssText = 'position:fixed;left:-10000px;top:0;background:#ffffff;'
-        holder.innerHTML = html
-        document.body.appendChild(holder)
-        const range = document.createRange()
-        range.selectNodeContents(holder)
-        const sel = window.getSelection()
-        sel.removeAllRanges()
-        sel.addRange(range)
-        let ok = false
-        try {
-          ok = document.execCommand('copy')
-        } catch (e) {}
-        sel.removeAllRanges()
-        document.body.removeChild(holder)
-        setStatus(ok ? 'Copié ✓ — colle dans la signature Mail (Cmd+V).' : 'Erreur copie.')
-      }
+  // Copie via execCommand sur un contenteditable (format que Mail accepte)
+  const holder = document.createElement('div');
+  holder.setAttribute('contenteditable','true');
+  holder.style.cssText = 'position:fixed;left:-10000px;top:0;background:#ffffff;';
+  holder.innerHTML = html;
+  document.body.appendChild(holder);
+  const range = document.createRange();
+  range.selectNodeContents(holder);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+  let ok = false;
+  try { ok = document.execCommand('copy'); } catch(e) {}
+  sel.removeAllRanges();
+  document.body.removeChild(holder);
+  setStatus(ok ? 'Copié ✓ — colle dans la signature Mail (Cmd+V).' : 'Erreur copie.');
+}
 
-      function setStatus(s) {
-        document.getElementById('status').textContent = s
-      }
+function setStatus(s){document.getElementById('status').textContent=s;}
 
-      // Export PNG du #sig via SVG foreignObject → canvas, rendu @4x retina
-      async function downloadPNG() {
-        const node = document.getElementById('sig')
-        const padX = 16,
-          padY = 18
-        const w = Math.ceil(Math.max(node.scrollWidth, node.offsetWidth))
-        const h = Math.ceil(Math.max(node.scrollHeight, node.offsetHeight))
-        const totalW = w + padX * 2,
-          totalH = h + padY * 2
-        const clone = node.cloneNode(true)
-        const styleBlock = `<style>
-    .sig,.sig *{font-family:'Inter',Helvetica,Arial,sans-serif;color:#41693A;-webkit-font-smoothing:antialiased}
+// Export PNG du #sig via SVG foreignObject → canvas, rendu @4x retina
+async function downloadPNG() {
+  const node = document.getElementById('sig');
+  const padX = 16, padY = 18;
+  const w = Math.ceil(Math.max(node.scrollWidth, node.offsetWidth));
+  const h = Math.ceil(Math.max(node.scrollHeight, node.offsetHeight));
+  const totalW = w + padX*2, totalH = h + padY*2;
+  const clone = node.cloneNode(true);
+  const styleBlock = `<style>
+    .sig,.sig *{font-family:Helvetica,Arial,sans-serif;color:#41693A;-webkit-font-smoothing:antialiased;text-rendering:geometricPrecision}
     .sig .name{font-weight:700;line-height:1.15;white-space:nowrap}
     .sig .title{font-weight:300;line-height:1.2}
     .sig hr{border:0;border-top:1px solid #41693A}
     a{color:#41693A;text-decoration:none}
-  </style>`
-        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${totalW}" height="${totalH}">
+  </style>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${totalW}" height="${totalH}">
     <rect width="100%" height="100%" fill="#ffffff"/>
-    <foreignObject x="${padX}" y="${padY}" width="${w}" height="${h + padY}">
+    <foreignObject x="${padX}" y="${padY}" width="${w}" height="${h+padY}">
       <div xmlns="http://www.w3.org/1999/xhtml">${styleBlock}${new XMLSerializer().serializeToString(clone)}</div>
-    </foreignObject></svg>`
-        const img = new Image()
-        img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg)
-        await new Promise((res, rej) => {
-          img.onload = res
-          img.onerror = rej
-        })
-        const scale = 4
-        const c = document.createElement('canvas')
-        c.width = totalW * scale
-        c.height = totalH * scale
-        const ctx = c.getContext('2d')
-        ctx.imageSmoothingQuality = 'high'
-        ctx.fillStyle = '#ffffff'
-        ctx.fillRect(0, 0, c.width, c.height)
-        ctx.scale(scale, scale)
-        ctx.drawImage(img, 0, 0)
-        const a = document.createElement('a')
-        a.href = c.toDataURL('image/png')
-        a.download = 'signature.png'
-        a.click()
-        setStatus('PNG téléchargé.')
-      }
-    </script>
-  </body>
+    </foreignObject></svg>`;
+  const img = new Image();
+  img.src = 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
+  await new Promise((res,rej)=>{img.onload=res;img.onerror=rej;});
+  const scale = 4;
+  const c = document.createElement('canvas');
+  c.width = totalW*scale; c.height = totalH*scale;
+  const ctx = c.getContext('2d');
+  ctx.imageSmoothingQuality = 'high';
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,c.width,c.height);
+  ctx.scale(scale,scale);
+  ctx.drawImage(img,0,0);
+  const a = document.createElement('a');
+  a.href = c.toDataURL('image/png'); a.download = 'signature.png'; a.click();
+  setStatus('PNG téléchargé.');
+}
+</script>
+</body>
 </html>
