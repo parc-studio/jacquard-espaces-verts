@@ -1,13 +1,9 @@
----
-
----
-
 <!doctype html>
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
     <title>Générateur de signature — Jacquard</title>
-    <style is:inline>
+    <style>
       :root {
         --green: #41693a;
         --sig-font: Helvetica, Arial, sans-serif;
@@ -126,20 +122,20 @@
         <input id="email" value="ajacquard@jacquardespacesverts.fr" type="email" />
         <label>Téléphone</label>
         <input id="phone" value="06 19 36 15 58" />
-        <div style="margin-top:16px;display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-          <button style="margin:0" onclick="copyAppleMail()">Copier la signature</button>
-          <button class="alt" style="margin:0" onclick="downloadPNG()">Exporter en PNG</button>
-          <button class="alt" style="margin:0;grid-column:1 / -1" onclick="runBatch()"
-            >Batch — toutes les signatures</button
-          >
+        <div style="margin-top: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px">
+          <button style="margin: 0" onclick="copyAppleMail()">Copier la signature</button>
+          <button class="alt" style="margin: 0" onclick="downloadPNG()">Exporter en PNG</button>
+          <button class="alt" style="margin: 0; grid-column: 1 / -1" onclick="runBatch()">
+            Batch — toutes les signatures
+          </button>
         </div>
-        <small id="status" style="min-height:14px"></small>
+        <small id="status" style="min-height: 14px"></small>
 
-        <details style="margin-top:18px;border-top:1px solid #eee;padding-top:14px">
-          <summary style="cursor:pointer;font-weight:bold;color:#41693A"
-            >📧 Apple Mail (macOS)</summary
-          >
-          <ol style="font-size:12px;color:#555;line-height:1.5;padding-left:20px">
+        <details style="margin-top: 18px; border-top: 1px solid #eee; padding-top: 14px">
+          <summary style="cursor: pointer; font-weight: bold; color: #41693a">
+            📧 Apple Mail (macOS)
+          </summary>
+          <ol style="font-size: 12px; color: #555; line-height: 1.5; padding-left: 20px">
             <li>Clique <b>Copier la signature</b></li>
             <li>Mail → <b>Réglages</b> → <b>Signatures</b></li>
             <li>Sélectionne ton compte, clique <b>+</b> pour créer une nouvelle signature</li>
@@ -149,9 +145,11 @@
           </ol>
         </details>
 
-        <details style="margin-top:8px">
-          <summary style="cursor:pointer;font-weight:bold;color:#41693A">📨 Gmail (web)</summary>
-          <ol style="font-size:12px;color:#555;line-height:1.5;padding-left:20px">
+        <details style="margin-top: 8px">
+          <summary style="cursor: pointer; font-weight: bold; color: #41693a">
+            📨 Gmail (web)
+          </summary>
+          <ol style="font-size: 12px; color: #555; line-height: 1.5; padding-left: 20px">
             <li>Clique <b>Copier la signature</b></li>
             <li>Gmail → <b>⚙️ Paramètres</b> → <b>Voir tous les paramètres</b></li>
             <li>Onglet <b>Général</b>, descend jusqu'à <b>Signature</b></li>
@@ -161,11 +159,11 @@
           </ol>
         </details>
 
-        <details style="margin-top:8px">
-          <summary style="cursor:pointer;font-weight:bold;color:#41693A"
-            >📩 Outlook (web / desktop)</summary
-          >
-          <ol style="font-size:12px;color:#555;line-height:1.5;padding-left:20px">
+        <details style="margin-top: 8px">
+          <summary style="cursor: pointer; font-weight: bold; color: #41693a">
+            📩 Outlook (web / desktop)
+          </summary>
+          <ol style="font-size: 12px; color: #555; line-height: 1.5; padding-left: 20px">
             <li>Clique <b>Copier la signature</b></li>
             <li>
               <b>Web :</b> ⚙️ → Voir tous les paramètres → Courrier → <b>Composer et répondre</b>
@@ -183,7 +181,7 @@
       </div>
     </div>
 
-    <script is:inline>
+    <script>
       const LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="WIDTH" viewBox="0 0 99 19" fill="none"><path d="M1.86902 11.6584C1.86902 12.7 2.52867 13.3374 3.42392 13.3374C4.33486 13.3374 4.97882 12.7 4.97882 11.6584V4.88032H3.07838V3.23242H8.54408V4.88032H6.87924V11.7206C6.87924 13.8194 5.40287 15.1719 3.42392 15.1719C1.46067 15.1719 0 13.8194 0 11.7206V9.96391H1.86902L1.86902 11.6584Z" fill="#41693A"/><path d="M18.9344 6.68367V8.33156H17.4266V13.2752H18.9344V14.9232H15.6518V13.7416H15.6204C15.1335 14.55 14.1754 15.1253 12.9346 15.1253C10.7829 15.1253 8.94531 13.3374 8.94531 10.8034C8.94531 8.26938 10.7829 6.48157 12.9346 6.48157C14.1754 6.48157 15.1649 7.08787 15.6204 7.83408H15.6518V6.68367L18.9344 6.68367ZM13.2331 13.4307C14.6152 13.4307 15.6675 12.3114 15.6675 10.8034C15.6675 9.29543 14.6309 8.1761 13.2331 8.1761C11.8509 8.1761 10.7986 9.29542 10.7986 10.8034C10.7986 12.3114 11.8353 13.4307 13.2331 13.4307Z" fill="#41693A"/><path d="M19.9297 10.8034C19.9297 8.34712 21.7988 6.43494 24.1704 6.43494C26.2435 6.43494 27.9084 7.89628 28.3011 9.90173H26.4163C26.1022 8.86013 25.2541 8.1761 24.1704 8.1761C22.8197 8.1761 21.783 9.26434 21.783 10.8034C21.783 12.3425 22.8197 13.4307 24.1704 13.4307C25.2541 13.4307 26.1022 12.7467 26.4163 11.7051H28.3011C27.9084 13.695 26.2435 15.1719 24.1704 15.1719C21.7988 15.1719 19.9297 13.2597 19.9297 10.8034Z" fill="#41693A"/><path d="M39.45 6.68367V8.33156H37.9423V16.6021H39.45V18.25H34.534V16.6021H36.1517V13.7572H36.1203C35.6806 14.5345 34.6911 15.1253 33.4817 15.1253C31.3299 15.1253 29.4609 13.3374 29.4609 10.8034C29.4609 8.26938 31.3299 6.48157 33.4817 6.48157C34.7067 6.48157 35.6806 7.05678 36.1361 7.84963H36.1675V6.68367H39.45ZM33.7488 13.4307C35.1308 13.4307 36.1831 12.3114 36.1831 10.8034C36.1831 9.29543 35.1466 8.16056 33.7488 8.16056C32.3666 8.16056 31.3143 9.29542 31.3143 10.8034C31.3143 12.3114 32.3666 13.4307 33.7488 13.4307Z" fill="#41693A"/><path d="M47.0263 14.9231V13.9126H46.9949C46.6651 14.5655 45.9897 15.1252 44.7646 15.1252C42.9428 15.1252 41.9061 13.8504 41.9061 11.9382V8.33149H40.3984V6.68359H43.6967V11.5651C43.6967 12.7932 44.2306 13.4928 45.2515 13.4928C46.3352 13.4928 46.9635 12.6689 46.9635 11.4718V8.33149H45.4557V6.68359H48.7539V13.2752H50.2775V14.9231H47.0263Z" fill="#41693A"/><path d="M61.114 6.68367V8.33156H59.6062V13.2752H61.114V14.9232H57.8314V13.7416H57.8C57.3132 14.55 56.3552 15.1253 55.1143 15.1253C52.9626 15.1253 51.125 13.3374 51.125 10.8034C51.125 8.26938 52.9626 6.48157 55.1143 6.48157C56.3552 6.48157 57.3446 7.08787 57.8 7.83408H57.8314V6.68367L61.114 6.68367ZM55.4127 13.4307C56.7949 13.4307 57.8472 12.3114 57.8472 10.8034C57.8472 9.29543 56.8106 8.1761 55.4127 8.1761C54.0306 8.1761 52.9784 9.29542 52.9784 10.8034C52.9784 12.3114 54.0149 13.4307 55.4127 13.4307Z" fill="#41693A"/><path d="M65.2515 6.67335V13.2649H66.9791V14.9129H61.9375V13.2649H63.4611V8.32125H61.9375V6.67335H65.2515ZM68.6441 7.94814C68.6441 8.72544 68.0315 9.30066 67.2933 9.30066C66.5708 9.30066 65.9426 8.72545 65.9426 7.94814C65.9426 7.15529 66.5708 6.58008 67.2933 6.58008C68.0315 6.58008 68.6441 7.15529 68.6441 7.94814Z" fill="#41693A"/><path d="M77.9186 3.23242V13.2752H79.442V14.9232H76.1752V13.7416H76.1438C75.704 14.55 74.6988 15.1253 73.4737 15.1253C71.322 15.1253 69.4688 13.3374 69.4688 10.8034C69.4688 8.26938 71.322 6.48157 73.4581 6.48157C74.6517 6.48157 75.6412 7.02569 76.0966 7.7719H76.128V4.88032H74.5104V3.23242H77.9186ZM73.7565 13.4152C75.1385 13.4152 76.191 12.3114 76.191 10.8034C76.191 9.29543 75.1543 8.19165 73.7565 8.19165C72.3744 8.19165 71.322 9.29542 71.322 10.8034C71.322 12.3114 72.3744 13.4152 73.7565 13.4152Z" fill="#41693A"/><path d="M96.9141 3.53157C95.3463 5.37295 93.0099 6.54294 90.4072 6.54294C87.8026 6.54294 85.4662 5.37295 83.8984 3.53157C84.2206 3.00418 84.6058 2.51998 85.0432 2.08618C86.278 3.70077 88.2238 4.74295 90.4072 4.74295C92.5906 4.74295 94.5363 3.70077 95.7693 2.08618C96.2067 2.51818 96.5919 3.00418 96.9141 3.53157Z" fill="#41693A"/><path d="M93.5559 0.559879C92.9908 0.302515 92.3879 0.113509 91.7597 0.000131405V0.68299H91.759C91.759 0.685825 91.7596 0.688439 91.7596 0.691274C91.7596 1.46886 91.1476 2.04306 90.4096 2.04306C89.686 2.04306 89.0578 1.46886 89.0578 0.691274C89.0578 0.688439 89.0583 0.685825 89.0584 0.68299L89.0583 0C89.0581 4.31995e-05 89.0579 6.6601e-05 89.0578 8.82008e-05C88.4296 0.113487 87.8266 0.302472 87.2614 0.55988C87.2578 0.603078 87.2578 0.648078 87.2578 0.691275C87.2578 2.42826 88.6708 3.84304 90.4096 3.84304C92.1466 3.84304 93.5595 2.42826 93.5595 0.691275C93.5595 0.648078 93.5595 0.603076 93.5559 0.559879Z" fill="#41693A"/><path d="M98.0187 7.15501C95.8281 8.58959 93.2109 9.42298 90.4048 9.42298C87.5968 9.42298 84.9796 8.58959 82.7891 7.15501C82.8179 6.47642 82.9385 5.82302 83.1347 5.20203C85.1632 6.72301 87.6796 7.623 90.4048 7.623C93.1281 7.623 95.6463 6.72121 97.6749 5.20203C97.8693 5.82302 97.9899 6.47642 98.0187 7.15501Z" fill="#41693A"/><path d="M89.4637 14.913H87.3811C88.0327 13.9716 88.2883 13.0788 88.0741 12.438C87.8995 11.9142 87.4585 11.718 87.1201 11.646C86.3731 11.4876 85.3561 11.6082 84.2329 11.9772C83.8765 11.4858 83.5759 10.9512 83.3438 10.3806C84.5101 9.96304 86.0869 9.58684 87.4945 9.88564C88.6051 10.1214 89.4403 10.8432 89.7823 11.8674C89.9803 12.4632 90.1243 13.5198 89.4637 14.913Z" fill="#41693A"/><path d="M97.4637 10.3806C97.2315 10.9512 96.9309 11.4858 96.5745 11.9772C95.4513 11.6082 94.4343 11.4876 93.6874 11.646C93.349 11.718 92.908 11.9142 92.7334 12.438C92.5192 13.0788 92.7748 13.9716 93.4282 14.913H91.3438C90.6832 13.5198 90.8272 12.4632 91.027 11.8674C91.369 10.8432 92.2024 10.1214 93.313 9.88564C94.7205 9.58684 96.2973 9.96304 97.4637 10.3806Z" fill="#41693A"/></svg>`
 
       const FONT = 'Helvetica, Arial, sans-serif'
