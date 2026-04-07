@@ -42,6 +42,7 @@ const COLOR_PRESETS = [
   { value: '#FFFFFF', label: 'Blanc' },
   { value: '#000000', label: 'Noir' },
 ]
+const BG_PRESETS = [...COLOR_PRESETS, { value: 'transparent', label: 'Transparent' }]
 
 const FONT = 'Helvetica, Arial, sans-serif'
 
@@ -341,7 +342,8 @@ async function downloadLogo(
   const padY = Math.round(H * 0.18)
   const totalW = W + padX * 2
   const totalH = H + padY * 2
-  const wrapped = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${totalW} ${totalH}" width="${totalW}" height="${totalH}"><rect width="100%" height="100%" fill="${bg}"/><g transform="translate(${padX - vbX} ${padY - vbY})">${new XMLSerializer().serializeToString(inSvg)}</g></svg>`
+  const bgRect = bg === 'transparent' ? '' : `<rect width="100%" height="100%" fill="${bg}"/>`
+  const wrapped = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${totalW} ${totalH}" width="${totalW}" height="${totalH}">${bgRect}<g transform="translate(${padX - vbX} ${padY - vbY})">${new XMLSerializer().serializeToString(inSvg)}</g></svg>`
   const baseName = `jacquard-${def.id}${def.baseline ? (withBaseline ? '-baseline' : '-no-baseline') : ''}`
 
   if (format === 'svg') {
@@ -364,8 +366,10 @@ async function downloadLogo(
   c.width = totalW * scale
   c.height = totalH * scale
   const ctx = c.getContext('2d')!
-  ctx.fillStyle = bg
-  ctx.fillRect(0, 0, c.width, c.height)
+  if (bg !== 'transparent') {
+    ctx.fillStyle = bg
+    ctx.fillRect(0, 0, c.width, c.height)
+  }
   ctx.drawImage(img, 0, 0, c.width, c.height)
   const a = document.createElement('a')
   a.href = c.toDataURL('image/png')
@@ -409,22 +413,24 @@ function ColorRadio({
   label,
   value,
   onChange,
+  presets = COLOR_PRESETS,
 }: {
   label: string
   value: string
   onChange: (v: string) => void
+  presets?: { value: string; label: string }[]
 }) {
   return (
     <div>
       <div className="ctl-label">{label}</div>
       <RadioGroup value={value} onChange={onChange} className="swatch-row">
-        {COLOR_PRESETS.map((p) => (
+        {presets.map((p) => (
           <RadioGroup.Option key={p.value} value={p.value} title={p.label}>
             {({ checked }) => (
               <button
                 type="button"
-                className={`color-pill ${checked ? 'checked' : ''}`}
-                style={{ background: p.value }}
+                className={`color-pill ${checked ? 'checked' : ''} ${p.value === 'transparent' ? 'transparent' : ''}`}
+                style={p.value === 'transparent' ? undefined : { background: p.value }}
                 aria-label={p.label}
               />
             )}
@@ -573,7 +579,7 @@ export default function IdentiteVisuelle() {
               style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}
             >
               <ColorRadio label="Logo" value={fg} onChange={setFg} />
-              <ColorRadio label="Fond" value={bg} onChange={setBg} />
+              <ColorRadio label="Fond" value={bg} onChange={setBg} presets={BG_PRESETS} />
               <ToggleSwitch
                 label="Monogramme"
                 help="Le <b>monogramme</b> est le pictogramme (l'arbre) à côté du nom."
