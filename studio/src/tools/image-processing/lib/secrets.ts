@@ -20,9 +20,9 @@ const GCP_REGION = 'us-central1'
 // Secret: private key only
 // ---------------------------------------------------------------------------
 
-export const SECRETS_NAMESPACE = 'imageProcessing'
+export const GCP_SECRETS_NAMESPACE = 'imageProcessing'
 
-export const SECRET_KEYS: SettingsKey[] = [
+export const GCP_SECRET_KEYS: SettingsKey[] = [
   {
     key: 'gcpPrivateKey',
     title: 'GCP Private Key (PEM)',
@@ -53,7 +53,7 @@ export function useGcpSecrets(): {
   loading: boolean
   config: GcpConfig | null
 } {
-  const { loading, secrets } = useSecrets<GcpSecrets>(SECRETS_NAMESPACE)
+  const { loading, secrets } = useSecrets<GcpSecrets>(GCP_SECRETS_NAMESPACE)
 
   const config: GcpConfig | null = secrets?.gcpPrivateKey
     ? {
@@ -66,5 +66,8 @@ export function useGcpSecrets(): {
 
   return { loading, config }
 }
+
+export const SECRETS_NAMESPACE = GCP_SECRETS_NAMESPACE
+export const SECRET_KEYS = GCP_SECRET_KEYS
 
 export { SettingsView }

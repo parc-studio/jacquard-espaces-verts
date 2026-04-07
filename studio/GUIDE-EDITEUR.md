@@ -96,6 +96,7 @@ L'onglet **Traitement d'image** sert à améliorer une photo déjà présente da
 - Commencer par les photos les plus importantes du projet.
 - Vérifier qu'un visage, une plante ou un détail important n'a pas été mal modifié.
 - Pour la vidéo, choisir de préférence une image nette avec des feuillages, graminées ou branches bien visibles.
+- La génération vidéo dépend d'une configuration serveur du frontend ; si elle échoue immédiatement, vérifier les variables `KLING_ACCESS_KEY` et `KLING_SECRET_KEY` côté frontend.
 - Utiliser **Restaurer l'original** si le résultat est moins bon que la photo de départ.
 - Prévisualiser le site avant de publier.
 

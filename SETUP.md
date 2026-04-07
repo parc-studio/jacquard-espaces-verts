@@ -48,6 +48,8 @@ SANITY_STUDIO_DATASET=production
 PUBLIC_SANITY_PROJECT_ID=your-project-id
 PUBLIC_SANITY_DATASET=production
 SITE_URL=http://localhost:4321
+KLING_ACCESS_KEY=your-kling-access-key
+KLING_SECRET_KEY=your-kling-secret-key
 ```
 
 ### 3. Enable French Locale (Optional)

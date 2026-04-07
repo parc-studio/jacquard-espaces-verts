@@ -59,6 +59,8 @@ export default defineConfig({
       SITE_URL: envField.string({ context: 'client', access: 'public', optional: true }),
       SANITY_READ_TOKEN: envField.string({ context: 'server', access: 'secret' }),
       SANITY_WRITE_TOKEN: envField.string({ context: 'server', access: 'secret' }),
+      KLING_ACCESS_KEY: envField.string({ context: 'server', access: 'secret', optional: true }),
+      KLING_SECRET_KEY: envField.string({ context: 'server', access: 'secret', optional: true }),
       FEEDBACK_PASSWORD: envField.string({ context: 'server', access: 'secret', optional: true }),
       PUBLIC_ENABLE_FEEDBACK: envField.string({
         context: 'client',

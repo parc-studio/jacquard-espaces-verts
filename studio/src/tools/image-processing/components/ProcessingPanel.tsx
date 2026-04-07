@@ -30,11 +30,11 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useClient } from 'sanity'
 
 import { cleanupSceneImage } from '../lib/imagen-cleanup'
+import { generateVideoFromImage } from '../lib/kling'
 import { fetchVideoForImageAsset, resolveOriginalAssetUrl } from '../lib/sanity-assets'
-import { SECRET_KEYS, SECRETS_NAMESPACE, SettingsView, useGcpSecrets } from '../lib/secrets'
+import { GCP_SECRET_KEYS, GCP_SECRETS_NAMESPACE, SettingsView, useGcpSecrets } from '../lib/secrets'
 import type { ProcessingMode, ProcessingResult, SanityImageAsset, VideoInfo } from '../lib/types'
 import { MODE_DESCRIPTIONS, MODE_LABELS } from '../lib/types'
-import { generateVideoFromImage } from '../lib/veo'
 import { processImage } from '../lib/vertex'
 import { ComparisonSlider } from './ReviewPanel'
 
@@ -88,8 +88,10 @@ export function ProcessingPanel({
   const abortRef = useRef<AbortController | null>(null)
   const client = useClient({ apiVersion: '2025-01-12' })
 
-  const { loading: secretsLoading, config: gcpConfig } = useGcpSecrets()
-  const configured = gcpConfig !== null
+  const { loading: gcpSecretsLoading, config: gcpConfig } = useGcpSecrets()
+  const isVideoMode = mode === 'video_generate'
+  const configured = isVideoMode ? true : gcpConfig !== null
+  const secretsLoading = isVideoMode ? false : gcpSecretsLoading
 
   // Abort any in-flight processing if the component unmounts
   useEffect(() => {
@@ -126,7 +128,7 @@ export function ProcessingPanel({
       let result: ProcessingResult
       if (mode === 'video_generate') {
         // For video, use the current asset (which may be the processed/corrected version)
-        result = await generateVideoFromImage(asset.url, gcpConfig!, {
+        result = await generateVideoFromImage(asset.url, {
           signal: controller.signal,
           onProgress: setProgressText,
         })
@@ -449,8 +451,8 @@ export function ProcessingPanel({
 
           {showSecrets && (
             <SettingsView
-              namespace={SECRETS_NAMESPACE}
-              keys={SECRET_KEYS}
+              namespace={GCP_SECRETS_NAMESPACE}
+              keys={GCP_SECRET_KEYS}
               onClose={() => setShowSecrets(false)}
               title="Clé privée GCP"
             />
@@ -520,9 +522,16 @@ export function ProcessingPanel({
           {/* Video mode warning */}
           {mode === 'video_generate' && !isProcessing && (
             <Card padding={3} tone="caution" radius={2}>
-              <Text size={1}>
-                La génération vidéo peut prendre 1 à 3 minutes. Vous pourrez annuler à tout moment.
-              </Text>
+              <Stack space={2}>
+                <Text size={1}>
+                  La génération vidéo peut prendre 1 à 3 minutes. Vous pourrez annuler à tout
+                  moment.
+                </Text>
+                <Text size={0} muted>
+                  Le modèle, la durée, la qualité et le prompt sont fixés côté serveur pour garantir
+                  un rendu cohérent.
+                </Text>
+              </Stack>
             </Card>
           )}
 

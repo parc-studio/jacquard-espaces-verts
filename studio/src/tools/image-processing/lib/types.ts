@@ -33,9 +33,9 @@ export interface ProjectWithImages {
 
 /** Result of a processing operation */
 export interface ProcessingResult {
-  /** Base64-encoded image data */
+  /** Base64-encoded asset data */
   base64Data: string
-  /** MIME type of the result image */
+  /** MIME type of the result asset */
   mimeType: string
   /** Text feedback about what was changed */
   feedback?: string
