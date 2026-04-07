@@ -292,22 +292,27 @@
         const emailLineW = f.email
           ? Math.ceil(1.6 * cSize + textWidth(f.email, '300', cSize))
           : Math.ceil(nameW)
-        // Logo : largeur = celle de la ligne email
-        const logoDisplayW = emailLineW
+        // Cap mobile : signature jamais > 300px (le viewport mobile le + petit fait 320px)
+        const finalW = Math.min(emailLineW, 300)
+        const logoDisplayW = finalW
         const logoDisplayH = Math.round((logoDisplayW * 19) / 99)
         const logoUrl = 'https://jacquard-espaces-verts.parc.studio/logo.png'
-        const logoMarkup = `<img src="${logoUrl}" alt="Jacquard" width="${logoDisplayW}" height="${logoDisplayH}" style="display:block;border:0;width:${logoDisplayW}px;height:${logoDisplayH}px">`
-
-        const html = `<div style="font-family:Helvetica,Arial,sans-serif;color:#41693A;background:#ffffff;width:${emailLineW}px;line-height:1.2;padding:8px">
-    <div><a href="mailto:${f.email}" style="text-decoration:none">${logoMarkup}</a></div>
-    <div style="border-top:1px solid #41693A;margin:6px 0 8px;width:${emailLineW}px"></div>
-    <div style="font-weight:bold;font-size:${nameSize}px;line-height:1.1;color:#41693A">${escapeHTML(f.name)}</div>
-    <div style="font-weight:normal;font-size:${titleSize}px;line-height:1.2;color:#41693A;word-wrap:break-word">${escapeHTML(f.title)}</div>
-    <div style="margin-top:6px;font-size:${cSize}px;line-height:1.35;color:#41693A">
-      ${f.phone ? `<div><a href="tel:${f.phone.replace(/\s/g, '')}" style="color:#41693A;text-decoration:none"><span style="display:inline-block;width:1.6em">T:</span>${escapeHTML(f.phone)}</a></div>` : ''}
-      ${f.email ? `<div><a href="mailto:${f.email}" style="color:#41693A;text-decoration:none"><span style="display:inline-block;width:1.6em">M:</span>${escapeHTML(f.email)}</a></div>` : ''}
-    </div>
-  </div>`
+        // Layout table-based = max compatibilité mobile / Outlook
+        // color-scheme + bgcolor + couleurs en hex 6 chars empêchent l'auto-invert dark mode
+        const html = `<table cellpadding="0" cellspacing="0" border="0" role="presentation" bgcolor="#ffffff" style="border-collapse:collapse;font-family:Helvetica,Arial,sans-serif;color:#41693A;background-color:#ffffff;color-scheme:light only;-webkit-color-scheme:light only">
+    <tr><td bgcolor="#ffffff" style="padding:8px;width:${finalW}px;max-width:100%;background-color:#ffffff">
+      <a href="mailto:${f.email}" style="text-decoration:none;display:block;line-height:0">
+        <img src="${logoUrl}" alt="Jacquard" width="${logoDisplayW}" height="${logoDisplayH}" style="display:block;border:0;width:${logoDisplayW}px;height:${logoDisplayH}px;max-width:100%">
+      </a>
+      <div style="border-top:1px solid #41693A;margin:6px 0 8px;width:${finalW}px;max-width:100%;font-size:0;line-height:0">&nbsp;</div>
+      <div style="font-weight:bold;font-size:${nameSize}px;line-height:1.15;color:#41693A">${escapeHTML(f.name)}</div>
+      <div style="font-weight:normal;font-size:${titleSize}px;line-height:1.2;color:#41693A;word-wrap:break-word">${escapeHTML(f.title)}</div>
+      <div style="margin-top:6px;font-size:${cSize}px;line-height:1.4;color:#41693A">
+        ${f.phone ? `<div style="margin:0"><a href="tel:${f.phone.replace(/\s/g, '')}" style="color:#41693A;text-decoration:none"><span style="display:inline-block;width:1.6em">T:</span>${escapeHTML(f.phone)}</a></div>` : ''}
+        ${f.email ? `<div style="margin:0"><a href="mailto:${f.email}" style="color:#41693A;text-decoration:none"><span style="display:inline-block;width:1.6em">M:</span>${escapeHTML(f.email)}</a></div>` : ''}
+      </div>
+    </td></tr>
+  </table>`
 
         // Copie via execCommand sur un contenteditable (format que Mail accepte)
         const holder = document.createElement('div')
