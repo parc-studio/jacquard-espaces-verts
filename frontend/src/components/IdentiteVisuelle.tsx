@@ -444,7 +444,94 @@ function ColorRadio({
 // ============================================================
 //  Main component
 // ============================================================
-export default function IdentiteVisuelle() {
+const ACCESS_CODE = 'Jacquard2026!*'
+const ACCESS_KEY = 'iv-access'
+
+function AccessGate({ onUnlock }: { onUnlock: () => void }) {
+  const [val, setVal] = useState('')
+  const [err, setErr] = useState(false)
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (val === ACCESS_CODE) {
+      try {
+        sessionStorage.setItem(ACCESS_KEY, '1')
+      } catch {
+        // ignore
+      }
+      onUnlock()
+    } else {
+      setErr(true)
+    }
+  }
+  return (
+    <div className="iv-root">
+      <div
+        style={{
+          minHeight: '70vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <form
+          onSubmit={submit}
+          style={{
+            background: '#fff',
+            borderRadius: 10,
+            padding: 28,
+            width: '100%',
+            maxWidth: 360,
+            boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+          }}
+        >
+          <h2 style={{ marginBottom: 16 }}>Accès protégé</h2>
+          <p style={{ fontSize: 13, color: '#666', margin: '0 0 16px' }}>
+            Entre le code pour accéder à la page identité visuelle.
+          </p>
+          <input
+            type="password"
+            value={val}
+            autoFocus
+            onChange={(e) => {
+              setVal(e.target.value)
+              setErr(false)
+            }}
+            placeholder="Code d'accès"
+            style={{
+              width: '100%',
+              padding: '12px 14px',
+              border: `1px solid ${err ? '#c33' : '#ddd'}`,
+              borderRadius: 6,
+              font: 'inherit',
+              marginBottom: 12,
+            }}
+          />
+          {err && (
+            <div style={{ fontSize: 12, color: '#c33', marginBottom: 12 }}>Code incorrect.</div>
+          )}
+          <button type="submit" style={{ width: '100%' }}>
+            Entrer
+          </button>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+export default function IdentiteVisuelleGate() {
+  const [unlocked, setUnlocked] = useState(false)
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem(ACCESS_KEY) === '1') setUnlocked(true)
+    } catch {
+      // ignore
+    }
+  }, [])
+  if (!unlocked) return <AccessGate onUnlock={() => setUnlocked(true)} />
+  return <IdentiteVisuelleApp />
+}
+
+function IdentiteVisuelleApp() {
   const [fg, setFg] = useState('#325928')
   const [bg, setBg] = useState('#F2F1E2')
   const [withBaseline, setWithBaseline] = useState(true)
