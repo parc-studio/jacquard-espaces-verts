@@ -20,6 +20,7 @@
     "@astrojs/react": "^4.4.2",
     "@astrojs/sitemap": "^3.7.0",
     "@astrojs/svelte": "^7.2.5",
+    "@headlessui/react": "^2.2.9",
     "@portabletext/svelte": "^3.0.1",
     "@sanity/astro": "^3.2.11",
     "@sanity/client": "^7.16.0",
