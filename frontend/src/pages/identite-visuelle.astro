@@ -199,6 +199,19 @@ import IdentiteVisuelleApp from '../components/IdentiteVisuelle'
         display: flex;
         gap: 6px;
       }
+      .iv-root .swatch-row input[type='radio'],
+      .iv-root [role='radiogroup'] input[type='radio'] {
+        position: absolute !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+        width: 1px !important;
+        height: 1px !important;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        border: 0;
+        padding: 0;
+        margin: 0;
+      }
       .iv-root .color-pill {
         margin: 0;
         width: 26px;
@@ -400,6 +413,13 @@ import IdentiteVisuelleApp from '../components/IdentiteVisuelle'
         display: inline-block;
         font-family: Helvetica, Arial, sans-serif;
         color: #41693a;
+        line-height: 1;
+      }
+      .iv-root .sig div {
+        line-height: 1.2;
+      }
+      .iv-root .sig .logo-row {
+        line-height: 0;
       }
       .iv-root .sig .logo-row {
         display: flex;
@@ -425,14 +445,49 @@ import IdentiteVisuelleApp from '../components/IdentiteVisuelle'
         color: #41693a;
       }
 
+      /* Sidenav: external links visibility per breakpoint */
+      .iv-root .external-mobile {
+        display: none;
+      }
+
       /* Responsive */
       @media (max-width: 900px) {
         .iv-root .layout {
           grid-template-columns: 1fr;
         }
         .iv-root .sidenav {
-          position: static;
           display: none;
+        }
+
+        /* Liens externes en bas, pills scrollables horizontalement,
+           même UI que les boutons (vert plein) */
+        .iv-root .external-mobile {
+          display: flex;
+          gap: 8px;
+          overflow-x: auto;
+          scrollbar-width: none;
+          position: sticky;
+          bottom: 0;
+          z-index: 10;
+          background: #f5f5f5;
+          margin: 16px -16px -16px;
+          padding: 12px 16px;
+          border-top: 1px solid #e5e5e5;
+        }
+        .iv-root .external-mobile::-webkit-scrollbar {
+          display: none;
+        }
+        .iv-root .external-mobile a {
+          flex-shrink: 0;
+          background: var(--green);
+          color: #fff;
+          border: 0;
+          padding: 10px 16px;
+          border-radius: 6px;
+          font-size: 13px;
+          font-weight: 600;
+          white-space: nowrap;
+          text-decoration: none;
         }
       }
       @media (max-width: 720px) {

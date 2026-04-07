@@ -646,7 +646,7 @@ function IdentiteVisuelleApp() {
           <div className="sidenav__title" style={{ marginTop: 22 }}>
             Liens externes
           </div>
-          <ul>
+          <ul className="external-desktop">
             {EXTERNAL.map((l) => (
               <li key={l.href}>
                 <a href={l.href} target="_blank" rel="noopener noreferrer">
@@ -656,6 +656,13 @@ function IdentiteVisuelleApp() {
             ))}
           </ul>
         </aside>
+        <nav className="external-mobile" aria-label="Liens externes">
+          {EXTERNAL.map((l) => (
+            <a key={l.href} href={l.href} target="_blank" rel="noopener noreferrer">
+              {l.label} ↗
+            </a>
+          ))}
+        </nav>
         <div className="page">
           <section id="logos">
             <h2>Logos</h2>
