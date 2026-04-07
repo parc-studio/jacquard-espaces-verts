@@ -1,10 +1,10 @@
 import eslint from '@eslint/js'
-import tseslint from 'typescript-eslint'
+import * as tsParser from '@typescript-eslint/parser'
 import eslintPluginAstro from 'eslint-plugin-astro'
 import eslintPluginSvelte from 'eslint-plugin-svelte'
-import * as svelteParser from 'svelte-eslint-parser'
-import * as tsParser from '@typescript-eslint/parser'
 import globals from 'globals'
+import * as svelteParser from 'svelte-eslint-parser'
+import tseslint from 'typescript-eslint'
 
 export default [
   eslint.configs.recommended,
@@ -44,6 +44,7 @@ export default [
       '**/*.config.js',
       '**/*.config.cjs',
       '**/*.config.mjs',
+      'frontend/src/pages/signature-de-mail.astro',
     ],
   },
 ]

@@ -24,6 +24,7 @@ interface Props {
   image?: string
   isPreview?: boolean
   pagePath?: string
+  robots?: string
   hideFooter?: boolean
   hideHeader?: boolean
   contentBackground?: string
@@ -35,6 +36,7 @@ const {
   image = '/og-image.png',
   isPreview = false,
   pagePath = '',
+  robots,
   hideFooter = false,
   hideHeader = false,
   contentBackground,
@@ -64,6 +66,8 @@ const agentationMode = isDevMode ? 'dev' : 'review'
     <link rel="sitemap" href="/sitemap-index.xml" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="generator" content={Astro.generator} />
+    {robots && <meta name="robots" content={robots} />}
+    {robots && <meta name="googlebot" content={robots} />}
 
     <!-- TODO: Uncomment for custom fonts with preload -->
     <Font cssVariable="--font-sans" preload />

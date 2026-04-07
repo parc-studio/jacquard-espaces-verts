@@ -20,5 +20,5 @@
     "verbatimModuleSyntax": true
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", ".astro"]
+  "exclude": ["node_modules", "dist", ".astro", "src/pages/signature-de-mail.astro"]
 }

@@ -26,7 +26,15 @@ export default defineConfig({
       },
     }),
     svelte(),
-    sitemap(),
+    sitemap({
+      serialize(item) {
+        if (/\/signature-de-mail\/?$/.test(item.url)) {
+          return undefined
+        }
+
+        return item
+      },
+    }),
     react(),
   ],
   output: 'static',
