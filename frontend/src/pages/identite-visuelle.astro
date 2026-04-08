@@ -28,6 +28,17 @@ import IdentiteVisuelleApp from '../components/IdentiteVisuelle'
         letter-spacing: normal;
         color: #222;
         text-transform: none;
+        /* Le layout global utilise `text-box: trim-both` qui décale verticalement les textes;
+           on annule pour notre arbre. */
+        text-box: normal;
+        font-feature-settings: normal;
+      }
+      .iv-root,
+      .iv-root *,
+      .iv-root *::before,
+      .iv-root *::after {
+        text-box: normal;
+        font-feature-settings: normal;
       }
       /* Reset agressif pour bloquer toute fuite des styles globaux d'autres pages
          (le bundle CSS est partagé : cssCodeSplit:false). */
