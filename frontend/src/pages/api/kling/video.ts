@@ -7,6 +7,7 @@ import { siteUrl, studioUrl } from '@/utils/sanity/client'
 
 const KLING_API_BASE_URL = 'https://api-singapore.klingai.com'
 const MAX_SUBMIT_RETRIES = 3
+const MAX_VIDEO_DOWNLOAD_BYTES = 100 * 1024 * 1024 // 100 MB hard ceiling
 const RETRYABLE_ERROR_CODES = new Set([1302, 1303])
 const JSON_HEADERS = {
   'Content-Type': 'application/json',
@@ -26,9 +27,7 @@ const FIXED_VIDEO_OPTIONS = {
   durationSeconds: 6,
   mode: 'pro',
   prompt:
-    'Gentle breeze animates all vegetation throughout the scene. Leaves rustle softly, branches sway back and forth, grass ripples in waves. Wind affects every plant equally across all depths - foreground, midground, and background. Everything else remains perfectly still. Seamless cinemagraph loop.',
-  negativePrompt:
-    'camera movement, pan, tilt, zoom, shake, dolly, tracking shot, people, human, pedestrian, crowd, moving objects, moving vehicles, moving cars, moving animals, birds, moving clouds, changing lights, shifting shadows, artifacts, distortion, text',
+    'Gentle wind is blowing, making the grass, the plants and the trees sway naturally. The camera is fixed and not moving, with no cuts and the same framing throughout.',
 } as const
 
 interface KlingApiResponse<T> {
@@ -249,9 +248,7 @@ async function submitVideoGeneration(
   const payload = {
     model_name: FIXED_VIDEO_OPTIONS.modelName,
     image: sourceImage,
-    image_tail: sourceImage,
     prompt: FIXED_VIDEO_OPTIONS.prompt,
-    negative_prompt: FIXED_VIDEO_OPTIONS.negativePrompt,
     duration: String(FIXED_VIDEO_OPTIONS.durationSeconds),
     mode: FIXED_VIDEO_OPTIONS.mode,
     sound: 'off',
@@ -329,7 +326,20 @@ async function downloadVideoResult(
     )
   }
 
+  const contentLength = Number(response.headers.get('content-length') || '0')
+  if (contentLength > MAX_VIDEO_DOWNLOAD_BYTES) {
+    throw new Error(
+      `La vidéo générée est trop volumineuse (${Math.round(contentLength / 1024 / 1024)} Mo, max ${Math.round(MAX_VIDEO_DOWNLOAD_BYTES / 1024 / 1024)} Mo).`
+    )
+  }
+
   const arrayBuffer = await response.arrayBuffer()
+  if (arrayBuffer.byteLength > MAX_VIDEO_DOWNLOAD_BYTES) {
+    throw new Error(
+      `La vidéo générée est trop volumineuse (${Math.round(arrayBuffer.byteLength / 1024 / 1024)} Mo, max ${Math.round(MAX_VIDEO_DOWNLOAD_BYTES / 1024 / 1024)} Mo).`
+    )
+  }
+
   const bytes = new Uint8Array(arrayBuffer)
   return {
     base64: bytesToBase64(bytes),
