@@ -252,71 +252,144 @@ async function loadReferenceImageBase64(): Promise<{ base64: string; mimeType: s
 }
 
 // ---------------------------------------------------------------------------
-// Histogram analysis & matching (per-channel CDF)
+// OKLab perceptual color space utilities (Float32 precision)
 // ---------------------------------------------------------------------------
 
-interface ChannelStats {
-  histogram: Uint32Array
-  cdf: Float64Array
+/** Statistics of an image's color distribution in OKLab space. */
+export interface OklabStats {
+  meanL: number
+  meanA: number
+  meanB: number
+  stdL: number
+  stdA: number
+  stdB: number
+  lHist: Uint32Array
 }
 
-function computeChannelStats(
-  data: Uint8Array,
-  channelOffset: number,
-  stride: number
-): ChannelStats {
-  const histogram = new Uint32Array(256)
-  for (let i = channelOffset; i < data.length; i += stride) {
-    histogram[data[i]]++
-  }
-  const total = data.length / stride
-  const cdf = new Float64Array(256)
-  cdf[0] = histogram[0] / total
-  for (let i = 1; i < 256; i++) {
-    cdf[i] = cdf[i - 1] + histogram[i] / total
-  }
-  return { histogram, cdf }
+/** Parameters for colour transfer: CDF matching on L, Reinhard on a/b. */
+export interface ColorTransferParams {
+  ref: OklabStats
+  blend: number // 0 = no transfer, 1 = full transfer
 }
 
-function buildHistogramMatchLut(
-  sourceCdf: Float64Array,
-  refCdf: Float64Array,
-  blend: number
-): Uint8Array {
-  const lut = new Uint8Array(256)
-  for (let i = 0; i < 256; i++) {
-    const srcVal = sourceCdf[i]
-    // Find closest match in reference CDF
-    let j = 0
-    while (j < 255 && refCdf[j] < srcVal) j++
-    // Blend between original and matched value
-    lut[i] = clamp(Math.round(i * (1 - blend) + j * blend))
+function srgbToLinear(c: number): number {
+  return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)
+}
+
+function linearToSrgb(c: number): number {
+  c = Math.max(0, Math.min(1, c))
+  return c <= 0.0031308 ? c * 12.92 : 1.055 * Math.pow(c, 1 / 2.4) - 0.055
+}
+
+function linearToOklab(r: number, g: number, b: number): [number, number, number] {
+  let l = 0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b
+  let m = 0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b
+  let s = 0.0883024619 * r + 0.2220049874 * g + 0.6396926208 * b
+
+  l = Math.cbrt(Math.max(0, l))
+  m = Math.cbrt(Math.max(0, m))
+  s = Math.cbrt(Math.max(0, s))
+
+  return [
+    0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s,
+    1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s,
+    0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s,
+  ]
+}
+
+function oklabToLinear(L: number, a: number, bv: number): [number, number, number] {
+  const l = L + 0.3963377774 * a + 0.2158037573 * bv
+  const m = L - 0.1055613458 * a - 0.0638541728 * bv
+  const s = L - 0.0894841775 * a - 1.291485548 * bv
+
+  return [
+    4.0767416621 * l * l * l - 3.3077115913 * m * m * m + 0.2309699292 * s * s * s,
+    -1.2684380046 * l * l * l + 2.6097574011 * m * m * m - 0.3413193965 * s * s * s,
+    -0.0041960863 * l * l * l - 0.7034186147 * m * m * m + 1.707614701 * s * s * s,
+  ]
+}
+
+const OKLAB_L_BINS = 1024
+
+/**
+ * Compute OKLab color statistics for an image.
+ * Uses every 4th pixel for performance — statistically equivalent.
+ */
+export function computeOklabStats(data: Uint8ClampedArray): OklabStats {
+  const stride = 4 // sample every 4th pixel
+  const pixelStride = stride * 4
+  const lHist = new Uint32Array(OKLAB_L_BINS)
+  let count = 0
+  let sumL = 0,
+    sumA = 0,
+    sumB = 0
+  let sumL2 = 0,
+    sumA2 = 0,
+    sumB2 = 0
+
+  for (let i = 0; i < data.length; i += pixelStride) {
+    const lr = srgbToLinear(data[i] / 255)
+    const lg = srgbToLinear(data[i + 1] / 255)
+    const lb = srgbToLinear(data[i + 2] / 255)
+    const [L, a, b] = linearToOklab(lr, lg, lb)
+    sumL += L
+    sumA += a
+    sumB += b
+    sumL2 += L * L
+    sumA2 += a * a
+    sumB2 += b * b
+    lHist[Math.min(OKLAB_L_BINS - 1, Math.max(0, Math.round(L * (OKLAB_L_BINS - 1))))]++
+    count++
   }
-  return lut
+
+  const meanL = sumL / count
+  const meanA = sumA / count
+  const meanB = sumB / count
+  return {
+    meanL,
+    meanA,
+    meanB,
+    stdL: Math.sqrt(Math.max(0, sumL2 / count - meanL * meanL)),
+    stdA: Math.sqrt(Math.max(0, sumA2 / count - meanA * meanA)),
+    stdB: Math.sqrt(Math.max(0, sumB2 / count - meanB * meanB)),
+    lHist,
+  }
 }
 
 /**
- * Build per-channel histogram matching LUTs from source ImageData
- * to a reference ImageData. Returns [rLut, gLut, bLut].
- * `blend` controls how aggressively the match is applied (0 = none, 1 = full).
+ * Build a CDF-based luminance transfer LUT.
+ * Maps each source L bin to the reference L value at the same CDF percentile.
+ * This is the Polarr-style "refer to an image" approach for luminance.
  */
-function buildHistogramMatchLuts(
-  sourceData: Uint8ClampedArray,
-  refData: Uint8ClampedArray,
-  blend: number
-): [Uint8Array, Uint8Array, Uint8Array] {
-  const srcR = computeChannelStats(sourceData as unknown as Uint8Array, 0, 4)
-  const srcG = computeChannelStats(sourceData as unknown as Uint8Array, 1, 4)
-  const srcB = computeChannelStats(sourceData as unknown as Uint8Array, 2, 4)
-  const refR = computeChannelStats(refData as unknown as Uint8Array, 0, 4)
-  const refG = computeChannelStats(refData as unknown as Uint8Array, 1, 4)
-  const refB = computeChannelStats(refData as unknown as Uint8Array, 2, 4)
+function buildLCdfLut(srcHist: Uint32Array, refHist: Uint32Array, bins: number): Float32Array {
+  const srcCdf = new Float32Array(bins)
+  const refCdf = new Float32Array(bins)
+  let srcTotal = 0,
+    refTotal = 0
+  for (let i = 0; i < bins; i++) {
+    srcTotal += srcHist[i]
+    refTotal += refHist[i]
+  }
 
-  return [
-    buildHistogramMatchLut(srcR.cdf, refR.cdf, blend),
-    buildHistogramMatchLut(srcG.cdf, refG.cdf, blend),
-    buildHistogramMatchLut(srcB.cdf, refB.cdf, blend),
-  ]
+  let acc = 0
+  for (let i = 0; i < bins; i++) {
+    acc += srcHist[i]
+    srcCdf[i] = acc / srcTotal
+  }
+  acc = 0
+  for (let i = 0; i < bins; i++) {
+    acc += refHist[i]
+    refCdf[i] = acc / refTotal
+  }
+
+  // For each source bin, find the reference bin at the same CDF percentile
+  const lut = new Float32Array(bins)
+  let j = 0
+  for (let i = 0; i < bins; i++) {
+    while (j < bins - 1 && refCdf[j] < srcCdf[i]) j++
+    lut[i] = j / (bins - 1)
+  }
+  return lut
 }
 
 async function analyzeImage(imageUrl: string, config: GcpConfig): Promise<AnalysisResult> {
@@ -422,137 +495,213 @@ function clamp(v: number): number {
 }
 
 // ---------------------------------------------------------------------------
-// Parameterised pixel corrections
+// Parameterised pixel corrections — OKLab Float32 pipeline
 // ---------------------------------------------------------------------------
 
-function percentile(channel: Uint32Array, pct: number, totalPixels: number): number {
-  const target = Math.floor(totalPixels * pct)
-  let sum = 0
-  for (let i = 0; i < 256; i++) {
-    sum += channel[i]
-    if (sum >= target) return i
-  }
-  return 255
-}
-
-function buildLevelsLut(low: number, high: number): Uint8Array {
-  const lut = new Uint8Array(256)
-  const range = Math.max(high - low, 1)
-  for (let i = 0; i < 256; i++) {
-    lut[i] = clamp(Math.round(((i - low) / range) * 255))
-  }
-  return lut
-}
-
 /**
- * Apply AI-prescribed corrections to ImageData.
+ * Apply AI-prescribed corrections to ImageData using perceptually uniform
+ * OKLab colour space and Float32 precision throughout.
  *
- * Pipeline (all composed into 3 per-channel LUTs where possible, then a single pixel pass):
- *  1. Histogram match — CDF-based per-channel match to reference (optional)
- *  2. Auto-levels    — luminance histogram stretch (same LUT for R/G/B → no colour shift)
- *  3. Whites/Blacks  — top/bottom 15% luminance compression/expansion
- *  4. Exposure       — gamma curve
- *  5. White balance  — proportional R/G/B scaling (temperature + tint)
- *  6. Tone curve     — shadow lift + highlight recovery + S-curve contrast
- *  7. Clarity        — midtone local contrast via unsharp mask on luminance
- *  8. Saturation     — luma-preserving with green taming
- *  9. Vibrance       — selective saturation (inverse-weighted by current saturation)
+ * Pipeline:
+ *  1. sRGB → Linear light (proper gamma decode)
+ *  2. White balance — proportional R/G/B scaling in linear light
+ *  3. Linear → OKLab (perceptually uniform)
+ *  4. CDF histogram matching on L + Reinhard on a/b (Polarr-style reference transfer)
+ *  5. Auto-levels — OKLab L histogram stretch (perceptually uniform)
+ *  6. Whites/Blacks — top/bottom 15% L compression/expansion
+ *  7. Exposure — gamma curve on OKLab L
+ *  8. Tone curve — shadow lift + highlight recovery + S-curve contrast on L
+ *  9. Saturation — OKLab chroma scaling with green hue taming
+ * 10. Vibrance — selective chroma boost (inverse-weighted by current chroma)
+ * 11. OKLab → Linear → sRGB (gamma encode, single quantisation to 8-bit)
+ * 12. Clarity — midtone local contrast via unsharp mask (post-pipeline, 8-bit)
  */
 export function applyCorrections(
   imageData: ImageData,
   params: CorrectionParams,
-  histogramMatchLuts?: [Uint8Array, Uint8Array, Uint8Array]
+  colorTransfer?: ColorTransferParams
 ): void {
-  const { data } = imageData
-  const totalPixels = data.length / 4
+  const { data, width: w, height: h } = imageData
+  const n = data.length / 4
 
-  // --- 1. Optional histogram matching (pre-applied in-place) ---
-  if (histogramMatchLuts) {
-    const [hmR, hmG, hmB] = histogramMatchLuts
-    for (let i = 0; i < data.length; i += 4) {
-      data[i] = hmR[data[i]]
-      data[i + 1] = hmG[data[i + 1]]
-      data[i + 2] = hmB[data[i + 2]]
-    }
-  }
-
-  // --- 2. Luminance histogram for auto-levels ---
-  const lumHist = new Uint32Array(256)
-  for (let i = 0; i < data.length; i += 4) {
-    const l = Math.round(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2])
-    lumHist[l]++
-  }
-  const lowVal = percentile(lumHist, params.levelsClipLow, totalPixels)
-  const highVal = percentile(lumHist, 1 - params.levelsClipHigh, totalPixels)
-  const levelsLut = buildLevelsLut(lowVal, highVal)
-
-  // --- 3. Whites/Blacks (top/bottom 15% luminance adjustment) ---
-  const whitesBlacksLut = new Uint8Array(256)
-  for (let i = 0; i < 256; i++) {
-    let v = i / 255
-    if (v < 0.15) {
-      const t = v / 0.15
-      v = v + params.blacks * 0.15 * (1 - t) * (1 - t)
-    }
-    if (v > 0.85) {
-      const t = (v - 0.85) / 0.15
-      v = v + params.whites * 0.15 * t * t
-    }
-    whitesBlacksLut[i] = clamp(Math.round(v * 255))
-  }
-
-  // --- 4. Exposure (gamma) ---
-  const gamma = 1.0 - params.exposure * 0.4
-  const gammaLut = new Uint8Array(256)
-  for (let i = 0; i < 256; i++) {
-    gammaLut[i] = clamp(Math.round(255 * Math.pow(i / 255, gamma)))
-  }
-
-  // --- 5. White balance (proportional R/G/B scaling with temperature + tint) ---
+  // Pre-compute white balance multipliers (applied in linear light)
   const rScale = 1.0 + params.temperature * 0.06
   const gScale = 1.0 - params.tint * 0.04
   const bScale = 1.0 - params.temperature * 0.08
 
-  // --- 6. Tone curve (shadow lift + highlight recovery + contrast S-curve) ---
-  const toneLut = new Uint8Array(256)
-  for (let i = 0; i < 256; i++) {
-    let v = i / 255
-    v = v + params.shadows * 0.3 * (1 - v) * (1 - v)
-    v = v + params.highlights * 0.3 * v * v
-    v = v + params.contrast * 0.1 * Math.sin(Math.PI * v) * (0.5 - Math.abs(v - 0.5))
-    toneLut[i] = clamp(Math.round(v * 255))
+  // ---------------------------------------------------------------
+  // Pass 1: Convert to OKLab, compute stats for auto-levels
+  // ---------------------------------------------------------------
+  const lHist = new Uint32Array(OKLAB_L_BINS)
+
+  // Accumulate source OKLab chrominance stats for Reinhard a/b transfer
+  let sMeanA = 0,
+    sMeanBv = 0
+  let sVarA = 0,
+    sVarBv = 0
+
+  for (let px = 0; px < n; px++) {
+    const i = px * 4
+    // sRGB → Linear
+    const lr = srgbToLinear(data[i] / 255) * rScale
+    const lg = srgbToLinear(data[i + 1] / 255) * gScale
+    const lb = srgbToLinear(data[i + 2] / 255) * bScale
+    // Linear → OKLab
+    const [L, a, bv] = linearToOklab(lr, lg, lb)
+    sMeanA += a
+    sMeanBv += bv
+    sVarA += a * a
+    sVarBv += bv * bv
+    // OKLab L histogram
+    lHist[Math.min(OKLAB_L_BINS - 1, Math.max(0, Math.round(L * (OKLAB_L_BINS - 1))))]++
   }
 
-  // --- Compose into per-channel LUTs: levels → whites/blacks → gamma → WB → tone ---
-  const rLut = new Uint8Array(256)
-  const gLut = new Uint8Array(256)
-  const bLut = new Uint8Array(256)
+  sMeanA /= n
+  sMeanBv /= n
+  const sStdA = Math.sqrt(Math.max(0, sVarA / n - sMeanA * sMeanA))
+  const sStdBv = Math.sqrt(Math.max(0, sVarBv / n - sMeanBv * sMeanBv))
 
-  for (let i = 0; i < 256; i++) {
-    const afterWB = whitesBlacksLut[levelsLut[i]]
-    const afterGamma = gammaLut[afterWB]
-    rLut[i] = toneLut[clamp(Math.round(afterGamma * rScale))]
-    gLut[i] = toneLut[clamp(Math.round(afterGamma * gScale))]
-    bLut[i] = toneLut[clamp(Math.round(afterGamma * bScale))]
+  // Compute auto-levels percentiles from OKLab L histogram
+  const lowTarget = Math.floor(n * params.levelsClipLow)
+  const highTarget = Math.floor(n * (1 - params.levelsClipHigh))
+  let lowBin = 0,
+    highBin = OKLAB_L_BINS - 1
+  let cumSum = 0
+  for (let i = 0; i < OKLAB_L_BINS; i++) {
+    cumSum += lHist[i]
+    if (cumSum >= lowTarget) {
+      lowBin = i
+      break
+    }
+  }
+  cumSum = 0
+  for (let i = 0; i < OKLAB_L_BINS; i++) {
+    cumSum += lHist[i]
+    if (cumSum >= highTarget) {
+      highBin = i
+      break
+    }
+  }
+  const lLow = lowBin / (OKLAB_L_BINS - 1)
+  const lHigh = highBin / (OKLAB_L_BINS - 1)
+  const lRange = Math.max(lHigh - lLow, 0.001)
+
+  // Pre-compute colour transfer: CDF matching for L, Reinhard for a/b
+  let ctBlend = 0,
+    ctScaleA = 1,
+    ctScaleBv = 1,
+    ctOffA = 0,
+    ctOffBv = 0
+  let lCdfLut: Float32Array | null = null
+  if (colorTransfer) {
+    const { ref, blend } = colorTransfer
+    ctBlend = blend
+    ctScaleA = ref.stdA / Math.max(sStdA, 0.001)
+    ctScaleBv = ref.stdB / Math.max(sStdBv, 0.001)
+    ctOffA = ref.meanA
+    ctOffBv = ref.meanB
+    lCdfLut = buildLCdfLut(lHist, ref.lHist, OKLAB_L_BINS)
   }
 
-  // --- 6. Clarity (local contrast via unsharp mask on luminance) ---
-  const w = imageData.width
-  const h = imageData.height
+  // Pre-compute correction constants
+  const gamma = 1.0 - params.exposure * 0.4
+  const satFactor = 1.0 + params.saturation * 0.8
+
+  // ---------------------------------------------------------------
+  // Pass 2: Apply all corrections per-pixel in Float32
+  // ---------------------------------------------------------------
+  for (let px = 0; px < n; px++) {
+    const i = px * 4
+    // --- sRGB → Linear ---
+    const lr = srgbToLinear(data[i] / 255) * rScale
+    const lg = srgbToLinear(data[i + 1] / 255) * gScale
+    const lb = srgbToLinear(data[i + 2] / 255) * bScale
+
+    // --- Linear → OKLab ---
+    let [L, a, bv] = linearToOklab(lr, lg, lb)
+
+    // --- CDF histogram matching on lightness (Polarr-style) ---
+    if (lCdfLut) {
+      const lutIdx = Math.min(OKLAB_L_BINS - 1, Math.max(0, Math.round(L * (OKLAB_L_BINS - 1))))
+      const targetL = lCdfLut[lutIdx]
+      L = L + (targetL - L) * ctBlend
+    }
+
+    // --- Reinhard transfer on chrominance (a, b) ---
+    if (ctBlend > 0) {
+      const tA = (a - sMeanA) * ctScaleA + ctOffA
+      const tBv = (bv - sMeanBv) * ctScaleBv + ctOffBv
+      a = a + (tA - a) * ctBlend
+      bv = bv + (tBv - bv) * ctBlend
+    }
+
+    // --- Auto-levels on OKLab L ---
+    L = (L - lLow) / lRange
+
+    // --- Whites/Blacks on OKLab L ---
+    if (L < 0.15) {
+      const t = L / 0.15
+      L += params.blacks * 0.15 * (1 - t) * (1 - t)
+    }
+    if (L > 0.85) {
+      const t = (L - 0.85) / 0.15
+      L += params.whites * 0.15 * t * t
+    }
+
+    // --- Exposure (gamma on L) ---
+    L = Math.pow(Math.max(0, L), gamma)
+
+    // --- Tone curve (shadow lift + highlight recovery + contrast S-curve) ---
+    L += params.shadows * 0.3 * (1 - L) * (1 - L)
+    L += params.highlights * 0.3 * L * L
+    L += params.contrast * 0.1 * Math.sin(Math.PI * L) * (0.5 - Math.abs(L - 0.5))
+
+    // --- Saturation + green desaturation in OKLab chroma ---
+    const chroma = Math.sqrt(a * a + bv * bv)
+    if (chroma > 0.0001) {
+      // Green hue in OKLab: atan2(b, a) ≈ 2.3 rad
+      const hue = Math.atan2(bv, a)
+      const greenness = Math.max(0, 1 - Math.abs(hue - 2.3) / 0.8)
+      const greenDamping = 1 - greenness * 0.15
+      const effectiveSat = satFactor * greenDamping
+
+      a *= effectiveSat
+      bv *= effectiveSat
+
+      // --- Vibrance: selective chroma boost (more on low-chroma pixels) ---
+      if (Math.abs(params.vibrance) > 0.005) {
+        const normChroma = Math.min(chroma * 5, 1)
+        const vibranceFactor = 1.0 + params.vibrance * 0.6 * (1 - normChroma)
+        a *= vibranceFactor
+        bv *= vibranceFactor
+      }
+    }
+
+    // --- OKLab → Linear ---
+    let [rOut, gOut, bOut] = oklabToLinear(L, a, bv)
+    rOut = Math.max(0, rOut)
+    gOut = Math.max(0, gOut)
+    bOut = Math.max(0, bOut)
+
+    // --- Linear → sRGB (single 8-bit quantisation) ---
+    data[i] = clamp(Math.round(linearToSrgb(rOut) * 255))
+    data[i + 1] = clamp(Math.round(linearToSrgb(gOut) * 255))
+    data[i + 2] = clamp(Math.round(linearToSrgb(bOut) * 255))
+  }
+
+  // ---------------------------------------------------------------
+  // Post-pass: Clarity (unsharp mask on luminance, 8-bit domain)
+  // ---------------------------------------------------------------
   const clarityStrength = params.clarity * 0.4
-  let blurredLum: Float32Array | null = null
-
   if (Math.abs(clarityStrength) > 0.005) {
-    const lumChannel = new Float32Array(w * h)
-    for (let idx = 0; idx < totalPixels; idx++) {
-      const off = idx * 4
-      // Use post-LUT values so blurredLum and lumC (in the pixel pass) share the same domain
-      lumChannel[idx] =
-        0.299 * rLut[data[off]] + 0.587 * gLut[data[off + 1]] + 0.114 * bLut[data[off + 2]]
+    const lumChannel = new Float32Array(n)
+    for (let px = 0; px < n; px++) {
+      const off = px * 4
+      lumChannel[px] = 0.299 * data[off] + 0.587 * data[off + 1] + 0.114 * data[off + 2]
     }
 
     const radius = Math.min(40, Math.max(10, Math.round(Math.min(w, h) * 0.02)))
-    const blurTemp = new Float32Array(w * h)
+    const blurTemp = new Float32Array(n)
 
     // Horizontal pass
     for (let y = 0; y < h; y++) {
@@ -578,7 +727,7 @@ export function applyCorrections(
     }
 
     // Vertical pass
-    blurredLum = new Float32Array(w * h)
+    const blurredLum = new Float32Array(n)
     for (let x = 0; x < w; x++) {
       let sum = 0
       let count = 0
@@ -600,55 +749,16 @@ export function applyCorrections(
         }
       }
     }
-  }
 
-  // --- 7. Combined pixel pass: LUT → clarity → saturation → vibrance ---
-  const satFactor = 1.0 + params.saturation * 0.8
-
-  for (let px = 0; px < totalPixels; px++) {
-    const i = px * 4
-    let r = rLut[data[i]]
-    let g = gLut[data[i + 1]]
-    let b = bLut[data[i + 2]]
-
-    // Clarity: unsharp-mask on luminance
-    if (blurredLum) {
-      const lumC = 0.299 * r + 0.587 * g + 0.114 * b
-      const detail = lumC - blurredLum[px]
+    // Apply unsharp mask
+    for (let px = 0; px < n; px++) {
+      const off = px * 4
+      const detail = lumChannel[px] - blurredLum[px]
       const boost = detail * clarityStrength
-      r = clamp(Math.round(r + boost))
-      g = clamp(Math.round(g + boost))
-      b = clamp(Math.round(b + boost))
+      data[off] = clamp(Math.round(data[off] + boost))
+      data[off + 1] = clamp(Math.round(data[off + 1] + boost))
+      data[off + 2] = clamp(Math.round(data[off + 2] + boost))
     }
-
-    // Luminance for saturation adjustments
-    const lum = 0.299 * r + 0.587 * g + 0.114 * b
-
-    // Green desaturation: tame overly vivid greens (15%)
-    const maxC = Math.max(r, g, b)
-    const greenDominance = maxC > 30 ? Math.max(0, (g - Math.max(r, b)) / maxC) : 0
-
-    // Base saturation (luma-preserving) with green taming
-    const effectiveSat = satFactor * (1 - greenDominance * 0.15)
-    r = clamp(Math.round(lum + (r - lum) * effectiveSat))
-    g = clamp(Math.round(lum + (g - lum) * effectiveSat))
-    b = clamp(Math.round(lum + (b - lum) * effectiveSat))
-
-    // Vibrance: selective saturation (boost under-saturated more than saturated)
-    if (Math.abs(params.vibrance) > 0.005) {
-      const maxRGB = Math.max(r, g, b)
-      const minRGB = Math.min(r, g, b)
-      const currentSat = maxRGB > 0 ? (maxRGB - minRGB) / maxRGB : 0
-      const vibranceFactor = 1.0 + params.vibrance * 0.6 * (1 - currentSat)
-      const vLum = 0.299 * r + 0.587 * g + 0.114 * b
-      r = clamp(Math.round(vLum + (r - vLum) * vibranceFactor))
-      g = clamp(Math.round(vLum + (g - vLum) * vibranceFactor))
-      b = clamp(Math.round(vLum + (b - vLum) * vibranceFactor))
-    }
-
-    data[i] = r
-    data[i + 1] = g
-    data[i + 2] = b
   }
 }
 
@@ -717,8 +827,8 @@ async function processImageHybrid(imageUrl: string, config: GcpConfig): Promise<
 
   const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
 
-  // Step 3: Build histogram-match LUTs from reference image
-  let histMatchLuts: [Uint8Array, Uint8Array, Uint8Array] | undefined
+  // Step 3: Compute OKLab colour transfer from reference image
+  let colorTransfer: ColorTransferParams | undefined
   try {
     const refBase64 = await loadReferenceImageBase64()
     if (refBase64) {
@@ -729,14 +839,15 @@ async function processImageHybrid(imageUrl: string, config: GcpConfig): Promise<
       const refCtx = refCanvas.getContext('2d')!
       refCtx.drawImage(refImg, 0, 0)
       const refData = refCtx.getImageData(0, 0, refCanvas.width, refCanvas.height)
-      histMatchLuts = buildHistogramMatchLuts(imageData.data, refData.data, 0.6)
+      const refStats = computeOklabStats(refData.data)
+      colorTransfer = { ref: refStats, blend: 0.6 }
     }
   } catch {
-    // Reference image unavailable — proceed without histogram matching
+    // Reference image unavailable — proceed without colour transfer
   }
 
   // Step 4: Apply AI-prescribed corrections
-  applyCorrections(imageData, params, histMatchLuts)
+  applyCorrections(imageData, params, colorTransfer)
   ctx.putImageData(imageData, 0, 0)
 
   // Step 4: Export as high-quality JPEG

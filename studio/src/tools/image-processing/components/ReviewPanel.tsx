@@ -76,7 +76,10 @@ export function ReviewPanel({
     [result]
   )
 
-  // Resolve the true original URL for the "before" preview
+  // Resolve the true original base URL (no query params) and preview URL.
+  // When re-processing an already-corrected image, originalAssetId points to the
+  // raw source so we always start from the untouched pixels.
+  const [originalBaseUrl, setOriginalBaseUrl] = useState(asset.url)
   const [originalUrl, setOriginalUrl] = useState(`${asset.url}?w=2400&auto=format&q=90`)
 
   useEffect(() => {
@@ -86,6 +89,7 @@ export function ReviewPanel({
       .fetch<{ url?: string }>(`*[_id == $id][0]{ url }`, { id: originalAssetId })
       .then((doc) => {
         if (!cancelled && doc?.url) {
+          setOriginalBaseUrl(doc.url)
           setOriginalUrl(`${doc.url}?w=2400&auto=format&q=90`)
         }
       })
@@ -114,19 +118,20 @@ export function ReviewPanel({
   const [tuning, setTuning] = useState(false)
   const sourceImageRef = useRef<HTMLImageElement | null>(null)
 
-  // Load original image once for Canvas re-renders
+  // Load original raw image once for Canvas re-renders (tuner).
+  // Always use the resolved original, not the corrected asset.
   useEffect(() => {
     if (!showTuner) return
     let cancelled = false
-    const separator = asset.url.includes('?') ? '&' : '?'
-    const pngUrl = `${asset.url}${separator}fm=png&w=2400`
+    const separator = originalBaseUrl.includes('?') ? '&' : '?'
+    const pngUrl = `${originalBaseUrl}${separator}fm=png&w=2400`
     loadImage(pngUrl).then((img) => {
       if (!cancelled) sourceImageRef.current = img
     })
     return () => {
       cancelled = true
     }
-  }, [asset.url, showTuner])
+  }, [originalBaseUrl, showTuner])
 
   // Re-render with tuned params (debounced)
   const renderTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
