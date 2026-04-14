@@ -1,7 +1,10 @@
 /**
- * BulkProcessingPanel — Process all images of a project sequentially.
+ * BulkProcessingPanel — Two-pass bulk processing for project images.
  *
- * For each image the pipeline runs:  analyse → correction → upload → replace in gallery.
+ * Pass 1: Analyse all images sequentially (AI analysis → CorrectionParams).
+ * Normalise: IQR-based outlier replacement across all params.
+ * Pass 2: Apply normalised corrections → upload → replace in gallery.
+ *
  * A progress indicator and per-image status badges keep the user informed.
  * The user can stop the job after the current image finishes.
  */
@@ -14,19 +17,7 @@ import {
   PlayIcon,
   ResetIcon,
 } from '@sanity/icons'
-import {
-  Badge,
-  Box,
-  Button,
-  Card,
-  Flex,
-  Grid,
-  Heading,
-  Spinner,
-  Stack,
-  Text,
-  Tooltip,
-} from '@sanity/ui'
+import { Badge, Box, Button, Card, Flex, Grid, Heading, Spinner, Stack, Text } from '@sanity/ui'
 import { useCallback, useRef, useState } from 'react'
 import { useClient } from 'sanity'
 
@@ -39,7 +30,12 @@ import {
 } from '../lib/sanity-assets'
 import { SECRET_KEYS, SECRETS_NAMESPACE, SettingsView, useGcpSecrets } from '../lib/secrets'
 import type { BulkItemStatus, BulkJobItem, ProjectWithImages } from '../lib/types'
-import { processImageChain } from '../lib/vertex'
+import {
+  analyzeImage,
+  applyImageCorrections,
+  DEFAULT_PARAMS,
+  normalizeParamsForProject,
+} from '../lib/vertex'
 
 // ---------------------------------------------------------------------------
 // Props
@@ -58,6 +54,7 @@ interface BulkProcessingPanelProps {
 const STATUS_LABEL: Record<BulkItemStatus, string> = {
   pending: 'En attente',
   analyzing: 'Analyse…',
+  analyzed: 'Analysé ✓',
   correcting: 'Correction…',
   'correction-done': 'Correction ✓',
   uploading: 'Envoi…',
@@ -72,6 +69,7 @@ function statusTone(
   if (s === 'done') return 'positive'
   if (s === 'error') return 'critical'
   if (s === 'pending') return 'default'
+  if (s === 'analyzed') return 'caution'
   return 'primary'
 }
 
@@ -91,13 +89,26 @@ export function BulkProcessingPanel({ project, onDone, onCancel }: BulkProcessin
   )
   const [isRunning, setIsRunning] = useState(false)
   const [currentIndex, setCurrentIndex] = useState(0)
+  const [phase, setPhase] = useState<'idle' | 'analyzing' | 'normalizing' | 'correcting' | 'done'>(
+    'idle'
+  )
   const stopRequestedRef = useRef(false)
   const itemsRef = useRef(items)
   itemsRef.current = items
 
   // Derived counts
   const doneCount = items.filter((i) => i.status === 'done').length
+  const analyzedCount = items.filter(
+    (i) =>
+      i.status === 'analyzed' ||
+      i.status === 'correcting' ||
+      i.status === 'correction-done' ||
+      i.status === 'uploading' ||
+      i.status === 'replacing' ||
+      i.status === 'done'
+  ).length
   const errorCount = items.filter((i) => i.status === 'error').length
+  const analysisFailedCount = items.filter((i) => i.analysisFailed).length
   const totalCount = items.length
   const isFinished = doneCount + errorCount === totalCount && !isRunning
 
@@ -106,37 +117,95 @@ export function BulkProcessingPanel({ project, onDone, onCancel }: BulkProcessin
     setItems((prev) => prev.map((item, i) => (i === index ? { ...item, ...patch } : item)))
   }, [])
 
+  // Store resolved source URLs to avoid resolving twice
+  const resolvedUrlsRef = useRef<Map<number, { url: string; originalAssetId: string }>>(new Map())
+
   // ------------------------------------------------------------------
-  // Core: process one image through the full pipeline
+  // Two-pass bulk processing
   // ------------------------------------------------------------------
-  const processOneImage = useCallback(
-    async (index: number, item: BulkJobItem) => {
-      if (!item || item.status === 'done') return
+  const runBulk = useCallback(async () => {
+    setIsRunning(true)
+    stopRequestedRef.current = false
+
+    // ---- Pass 1: Analyse all images ----
+    setPhase('analyzing')
+    for (let i = 0; i < totalCount; i++) {
+      if (stopRequestedRef.current) break
+      setCurrentIndex(i)
+      const current = itemsRef.current[i]
+      if (current.status === 'done' || current.status === 'analyzed') continue
 
       try {
-        // 0. Resolve original asset URL (avoids double-processing)
+        // Resolve original URL
         const { url: sourceUrl, originalAssetId } = await resolveOriginalAssetUrl(
           client,
-          item.asset
+          current.asset
         )
+        resolvedUrlsRef.current.set(i, { url: sourceUrl, originalAssetId })
 
-        // 1. Send source image URL directly to Vertex AI
-        updateItem(index, { status: 'analyzing' })
+        updateItem(i, { status: 'analyzing' })
 
-        // 2. AI auto_correct pipeline
-        const result = await processImageChain(sourceUrl, gcpConfig!, (step) => {
-          if (step === 'analysis-done') {
-            updateItem(index, { status: 'correcting' })
-          } else if (step === 'correction-done') {
-            updateItem(index, { status: 'correction-done' })
-          }
-        })
+        let params = { ...DEFAULT_PARAMS }
+        let failed = false
+        try {
+          params = await analyzeImage(sourceUrl, gcpConfig!)
+        } catch {
+          failed = true
+        }
 
-        updateItem(index, { status: 'uploading' })
+        updateItem(i, { status: 'analyzed', analysisParams: params, analysisFailed: failed })
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Erreur inconnue'
+        updateItem(i, { status: 'error', error: `Analyse: ${message}` })
+      }
+    }
 
-        // 3. Upload
+    if (stopRequestedRef.current) {
+      setIsRunning(false)
+      return
+    }
+
+    // ---- Normalise parameters across analysed images ----
+    setPhase('normalizing')
+    const latestItems = itemsRef.current
+    const analysedIndices: number[] = []
+    const analysedParams = latestItems
+      .map((item, idx) => {
+        if (item.analysisParams && item.status === 'analyzed') {
+          analysedIndices.push(idx)
+          return item.analysisParams
+        }
+        return null
+      })
+      .filter((p): p is NonNullable<typeof p> => p !== null)
+
+    if (analysedParams.length > 0) {
+      const normalised = normalizeParamsForProject(analysedParams)
+      for (let j = 0; j < analysedIndices.length; j++) {
+        updateItem(analysedIndices[j], { analysisParams: normalised[j] })
+      }
+    }
+
+    // ---- Pass 2: Apply corrections, upload, replace ----
+    setPhase('correcting')
+    for (let i = 0; i < totalCount; i++) {
+      if (stopRequestedRef.current) break
+      setCurrentIndex(i)
+      const current = itemsRef.current[i]
+      if (current.status !== 'analyzed' || !current.analysisParams) continue
+
+      const resolved = resolvedUrlsRef.current.get(i)
+      if (!resolved) continue
+
+      try {
+        updateItem(i, { status: 'correcting' })
+        const result = await applyImageCorrections(resolved.url, current.analysisParams)
+        updateItem(i, { status: 'correction-done' })
+
+        // Upload
+        updateItem(i, { status: 'uploading' })
         const filename = makeProcessedFilename(
-          item.asset.originalFilename,
+          current.asset.originalFilename,
           'auto_correct',
           result.mimeType
         )
@@ -145,50 +214,41 @@ export function BulkProcessingPanel({ project, onDone, onCancel }: BulkProcessin
           result.base64Data,
           result.mimeType,
           filename,
-          originalAssetId,
+          resolved.originalAssetId,
           'auto_correct'
         )
 
-        // 4. Replace in project gallery
-        updateItem(index, { status: 'replacing' })
-        await replaceImageInProject(client, project._id, item.asset._id, newAssetId)
+        // Replace in project gallery
+        updateItem(i, { status: 'replacing' })
+        await replaceImageInProject(client, project._id, current.asset._id, newAssetId)
 
-        // 5. Delete the old processed asset if we're re-processing
-        if (item.asset.label === 'ai-processed' && item.asset._id !== originalAssetId) {
-          await client.delete(item.asset._id).catch(() => {
-            // Non-critical — old processed asset cleanup failed
+        // Delete old processed asset if re-processing (with reference check)
+        if (
+          current.asset.label === 'ai-processed' &&
+          current.asset._id !== resolved.originalAssetId
+        ) {
+          const refCount = await client.fetch<number>(`count(*[references($id)])`, {
+            id: current.asset._id,
           })
+          if (refCount === 0) {
+            await client.delete(current.asset._id).catch(() => {})
+          }
         }
 
-        updateItem(index, { status: 'done', newAssetId })
+        updateItem(i, {
+          status: 'done',
+          newAssetId,
+          analysisFailed: current.analysisFailed,
+        })
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Erreur inconnue'
-        updateItem(index, { status: 'error', error: message })
+        updateItem(i, { status: 'error', error: message })
       }
-    },
-    [client, project._id, updateItem, gcpConfig]
-  )
-
-  // ------------------------------------------------------------------
-  // Run loop — processes images sequentially
-  // ------------------------------------------------------------------
-  const runBulk = useCallback(async () => {
-    setIsRunning(true)
-    stopRequestedRef.current = false
-
-    for (let i = 0; i < totalCount; i++) {
-      if (stopRequestedRef.current) break
-
-      // Read latest state via ref to avoid stale closure
-      setCurrentIndex(i)
-      const current = itemsRef.current[i]
-      if (current.status === 'done') continue
-
-      await processOneImage(i, current)
     }
 
+    setPhase('done')
     setIsRunning(false)
-  }, [totalCount, processOneImage])
+  }, [totalCount, client, project._id, updateItem, gcpConfig])
 
   const handleStop = useCallback(() => {
     stopRequestedRef.current = true
@@ -198,42 +258,42 @@ export function BulkProcessingPanel({ project, onDone, onCancel }: BulkProcessin
     onDone(doneCount, errorCount)
   }, [onDone, doneCount, errorCount])
 
-  // Retry a single failed image
-  const handleRetryItem = useCallback(
-    async (index: number) => {
-      const item = itemsRef.current[index]
-      if (!item || item.status !== 'error') return
-      updateItem(index, { status: 'pending', error: undefined })
-      setIsRunning(true)
-      setCurrentIndex(index)
-      await processOneImage(index, { ...item, status: 'pending' })
-      setIsRunning(false)
-    },
-    [processOneImage, updateItem]
-  )
-
-  // Retry all failed images
+  // Retry all failed images (full two-pass on error items only)
   const handleRetryAllErrors = useCallback(async () => {
-    setIsRunning(true)
-    stopRequestedRef.current = false
-
+    // Reset error items to pending
     for (let i = 0; i < totalCount; i++) {
-      if (stopRequestedRef.current) break
-      const current = itemsRef.current[i]
-      if (current.status !== 'error') continue
-
-      updateItem(i, { status: 'pending', error: undefined })
-      setCurrentIndex(i)
-      await processOneImage(i, { ...current, status: 'pending' })
+      if (itemsRef.current[i].status === 'error') {
+        updateItem(i, {
+          status: 'pending',
+          error: undefined,
+          analysisParams: undefined,
+          analysisFailed: undefined,
+        })
+      }
     }
-
-    setIsRunning(false)
-  }, [totalCount, processOneImage, updateItem])
+    // Re-run the full pipeline (it skips done/analyzed items)
+    await runBulk()
+  }, [totalCount, updateItem, runBulk])
 
   // ------------------------------------------------------------------
-  // Render
+  // Progress calculations
   // ------------------------------------------------------------------
-  const progressPct = totalCount > 0 ? Math.round(((doneCount + errorCount) / totalCount) * 100) : 0
+  const analysisPct =
+    totalCount > 0 ? Math.round(((analyzedCount + errorCount) / totalCount) * 100) : 0
+  const correctionPct =
+    totalCount > 0 ? Math.round(((doneCount + errorCount) / totalCount) * 100) : 0
+  const overallPct = phase === 'analyzing' || phase === 'normalizing' ? analysisPct : correctionPct
+
+  const phaseLabel =
+    phase === 'analyzing'
+      ? `Analyse ${analyzedCount + errorCount}/${totalCount}`
+      : phase === 'normalizing'
+        ? 'Normalisation des paramètres…'
+        : phase === 'correcting'
+          ? `Correction ${doneCount + errorCount}/${totalCount}`
+          : phase === 'done'
+            ? 'Terminé'
+            : 'Prêt'
 
   return (
     <Stack space={4}>
@@ -278,14 +338,14 @@ export function BulkProcessingPanel({ project, onDone, onCancel }: BulkProcessin
         />
       )}
 
-      {/* Progress bar */}
+      {/* Progress */}
       <Stack space={2}>
         <Flex gap={2} align="center" justify="space-between">
           <Text size={1} weight="semibold">
-            {doneCount + errorCount} / {totalCount} images traitées
+            {phaseLabel}
           </Text>
           <Text size={0} muted>
-            {progressPct}%
+            {overallPct}%
           </Text>
         </Flex>
         <Box
@@ -299,7 +359,7 @@ export function BulkProcessingPanel({ project, onDone, onCancel }: BulkProcessin
           <Box
             style={{
               height: '100%',
-              width: `${progressPct}%`,
+              width: `${overallPct}%`,
               borderRadius: 3,
               background:
                 errorCount > 0
@@ -311,6 +371,16 @@ export function BulkProcessingPanel({ project, onDone, onCancel }: BulkProcessin
         </Box>
       </Stack>
 
+      {/* Analysis failed warning */}
+      {!isRunning && analysisFailedCount > 0 && phase === 'done' && (
+        <Card padding={3} tone="caution" radius={2}>
+          <Text size={1}>
+            ⚠ {analysisFailedCount} image{analysisFailedCount > 1 ? 's' : ''} corrigée
+            {analysisFailedCount > 1 ? 's' : ''} avec les valeurs par défaut (analyse IA échouée).
+          </Text>
+        </Card>
+      )}
+
       {/* Image grid with status badges */}
       <Grid columns={[2, 3, 4, 5]} gap={2}>
         {items.map((item, idx) => (
@@ -318,7 +388,6 @@ export function BulkProcessingPanel({ project, onDone, onCancel }: BulkProcessin
             key={item.asset._id}
             item={item}
             isCurrent={isRunning && idx === currentIndex}
-            onRetry={!isRunning && item.status === 'error' ? () => handleRetryItem(idx) : undefined}
           />
         ))}
       </Grid>
@@ -401,15 +470,7 @@ export function BulkProcessingPanel({ project, onDone, onCancel }: BulkProcessin
 // Bulk thumbnail sub-component
 // ---------------------------------------------------------------------------
 
-function BulkThumbnail({
-  item,
-  isCurrent,
-  onRetry,
-}: {
-  item: BulkJobItem
-  isCurrent: boolean
-  onRetry?: () => void
-}) {
+function BulkThumbnail({ item, isCurrent }: { item: BulkJobItem; isCurrent: boolean }) {
   const thumbUrl = `${item.asset.url}?w=600&h=400&fit=crop&auto=format&q=85`
   const displayName = humanizeFilename(item.asset.originalFilename)
 
@@ -439,8 +500,6 @@ function BulkThumbnail({
             height: '100%',
             objectFit: 'cover',
             display: 'block',
-            opacity: item.status === 'done' ? 0.6 : 1,
-            transition: 'opacity 200ms ease',
           }}
         />
 
@@ -464,11 +523,16 @@ function BulkThumbnail({
             justify="center"
             style={{
               position: 'absolute',
-              inset: 0,
-              color: 'var(--card-badge-positive-fg-color, #fff)',
+              bottom: 4,
+              left: 4,
+              width: 24,
+              height: 24,
+              borderRadius: '50%',
+              background: 'var(--card-badge-positive-bg-color, #3ab667)',
+              color: '#fff',
             }}
           >
-            <CheckmarkCircleIcon width={32} height={32} />
+            <CheckmarkCircleIcon width={18} height={18} />
           </Flex>
         )}
         {item.status === 'error' && (
@@ -504,31 +568,9 @@ function BulkThumbnail({
       {/* Info */}
       <Box padding={3}>
         <Stack space={2}>
-          <Flex gap={2} align="center">
-            <Badge tone={statusTone(item.status)} fontSize={0}>
-              {STATUS_LABEL[item.status]}
-            </Badge>
-            {onRetry && (
-              <Tooltip
-                content={
-                  <Box padding={2}>
-                    <Text size={1}>Réessayer cette image</Text>
-                  </Box>
-                }
-                placement="top"
-              >
-                <Button
-                  icon={ResetIcon}
-                  text="Réessayer"
-                  mode="ghost"
-                  tone="primary"
-                  fontSize={0}
-                  padding={1}
-                  onClick={onRetry}
-                />
-              </Tooltip>
-            )}
-          </Flex>
+          <Badge tone={statusTone(item.status)} fontSize={0}>
+            {STATUS_LABEL[item.status]}
+          </Badge>
         </Stack>
       </Box>
     </Card>

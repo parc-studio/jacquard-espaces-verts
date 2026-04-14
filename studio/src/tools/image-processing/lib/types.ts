@@ -5,6 +5,24 @@
 /** Available processing modes */
 export type ProcessingMode = 'auto_correct' | 'scene_cleanup' | 'video_generate'
 
+/** Correction parameters the AI prescribes per image. */
+export interface CorrectionParams {
+  exposure: number // [-1, 1]
+  contrast: number // [-1, 1]
+  highlights: number // [-1, 1]
+  shadows: number // [-1, 1]
+  temperature: number // [-1, 1] negative = cool, positive = warm
+  tint: number // [-1, 1] negative = green shift, positive = magenta shift
+  saturation: number // [-1, 1] negative = desaturate, positive = boost
+  whites: number // [-1, 1] highlight tone compression/expansion
+  blacks: number // [-1, 1] shadow tone compression/expansion
+  vibrance: number // [-1, 1] selective saturation (boosts muted colours more)
+  clarity: number // [-1, 1] midtone local contrast
+  levelsClipLow: number // [0, 0.05] — black point clip percentile
+  levelsClipHigh: number // [0, 0.05] — white point clip percentile
+  straightenAngle: number // [-10, 10] degrees — clockwise rotation to straighten
+}
+
 /** A Sanity image asset with metadata needed for processing */
 export interface SanityImageAsset {
   _id: string
@@ -54,6 +72,7 @@ export type WorkflowStep = 'select' | 'process' | 'review' | 'bulk'
 export type BulkItemStatus =
   | 'pending'
   | 'analyzing'
+  | 'analyzed'
   | 'correcting'
   | 'correction-done'
   | 'uploading'
@@ -67,8 +86,10 @@ export interface BulkJobItem {
   status: BulkItemStatus
   analysisResult?: ProcessingResult
   correctionResult?: ProcessingResult
+  analysisParams?: CorrectionParams
   newAssetId?: string
   error?: string
+  analysisFailed?: boolean
 }
 
 /** State for the overall tool */

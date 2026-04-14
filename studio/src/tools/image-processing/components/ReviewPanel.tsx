@@ -21,15 +21,14 @@ import {
   replaceImageInProject,
   uploadProcessedImage,
 } from '../lib/sanity-assets'
-import type { ProcessingMode, ProcessingResult, SanityImageAsset } from '../lib/types'
+import type {
+  CorrectionParams,
+  ProcessingMode,
+  ProcessingResult,
+  SanityImageAsset,
+} from '../lib/types'
 import { MODE_LABELS } from '../lib/types'
-import {
-  applyCorrections,
-  type CorrectionParams,
-  DEFAULT_PARAMS,
-  FIXED_AESTHETIC,
-  loadImage,
-} from '../lib/vertex'
+import { applyCorrections, DEFAULT_PARAMS, FIXED_AESTHETIC, loadImage } from '../lib/vertex'
 
 interface ReviewPanelProps {
   asset: SanityImageAsset
@@ -230,6 +229,16 @@ export function ReviewPanel({
         await replaceImageInProject(client, projectId, asset._id, newAssetId)
       }
 
+      // Clean up the old processed asset if it's now orphaned
+      if (asset.label === 'ai-processed' && asset._id !== originalAssetId) {
+        const refCount = await client.fetch<number>(`count(*[references($id)])`, {
+          id: asset._id,
+        })
+        if (refCount === 0) {
+          await client.delete(asset._id).catch(() => {})
+        }
+      }
+
       onAccepted(newAssetId)
     } catch (err) {
       setUploadError(
@@ -238,7 +247,7 @@ export function ReviewPanel({
     } finally {
       setIsUploading(false)
     }
-  }, [client, asset, result, mode, projectId, onAccepted])
+  }, [client, asset, result, mode, projectId, originalAssetId, onAccepted])
 
   return (
     <Stack space={4}>
