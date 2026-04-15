@@ -12,7 +12,9 @@
 
 import { fetchImageAsBase64 } from './sanity-assets'
 import type { GcpConfig } from './secrets'
-import type { ProcessingMode, ProcessingResult } from './types'
+import type { CorrectionParams, ProcessingMode, ProcessingResult } from './types'
+
+export type { CorrectionParams } from './types'
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -100,24 +102,6 @@ export async function getAccessToken(config: GcpConfig): Promise<string> {
 // ---------------------------------------------------------------------------
 // AI analysis — Gemini vision → structured correction parameters
 // ---------------------------------------------------------------------------
-
-/** Correction parameters the AI prescribes per image. */
-export interface CorrectionParams {
-  exposure: number // [-1, 1]
-  contrast: number // [-1, 1]
-  highlights: number // [-1, 1]
-  shadows: number // [-1, 1]
-  temperature: number // [-1, 1] negative = cool, positive = warm
-  tint: number // [-1, 1] negative = green shift, positive = magenta shift
-  saturation: number // [-1, 1] negative = desaturate, positive = boost
-  whites: number // [-1, 1] highlight tone compression/expansion
-  blacks: number // [-1, 1] shadow tone compression/expansion
-  vibrance: number // [-1, 1] selective saturation (boosts muted colours more)
-  clarity: number // [-1, 1] midtone local contrast
-  levelsClipLow: number // [0, 0.05] — black point clip percentile
-  levelsClipHigh: number // [0, 0.05] — white point clip percentile
-  straightenAngle: number // [-10, 10] degrees — clockwise rotation to straighten
-}
 
 export const DEFAULT_PARAMS: CorrectionParams = {
   exposure: -0.06,
@@ -226,7 +210,7 @@ type AnalysisResult = CorrectionParams
 // Reference image — loaded once and cached
 // ---------------------------------------------------------------------------
 
-const REFERENCE_IMAGE_PATH = '/image_ref.png'
+const REFERENCE_IMAGE_PATH = '/image-ref-ruedi-walti.jpg'
 
 let cachedRefImage: { base64: string; mimeType: string } | null = null
 
@@ -247,7 +231,7 @@ async function loadReferenceImageBase64(): Promise<{ base64: string; mimeType: s
   }
   const base64 = btoa(binary)
 
-  cachedRefImage = { base64, mimeType: blob.type || 'image/png' }
+  cachedRefImage = { base64, mimeType: blob.type || 'image/jpeg' }
   return cachedRefImage
 }
 
@@ -357,6 +341,32 @@ export function computeOklabStats(data: Uint8ClampedArray): OklabStats {
 }
 
 /**
+ * Lightweight OKLab means — skips histogram and stddev computation.
+ * Used when only meanL/meanA/meanB are needed (e.g. adaptive blend).
+ */
+function computeOklabMeans(data: Uint8ClampedArray): Pick<OklabStats, 'meanL' | 'meanA' | 'meanB'> {
+  const stride = 4
+  const pixelStride = stride * 4
+  let count = 0
+  let sumL = 0,
+    sumA = 0,
+    sumB = 0
+
+  for (let i = 0; i < data.length; i += pixelStride) {
+    const lr = srgbToLinear(data[i] / 255)
+    const lg = srgbToLinear(data[i + 1] / 255)
+    const lb = srgbToLinear(data[i + 2] / 255)
+    const [L, a, b] = linearToOklab(lr, lg, lb)
+    sumL += L
+    sumA += a
+    sumB += b
+    count++
+  }
+
+  return { meanL: sumL / count, meanA: sumA / count, meanB: sumB / count }
+}
+
+/**
  * Build a CDF-based luminance transfer LUT.
  * Maps each source L bin to the reference L value at the same CDF percentile.
  * This is the Polarr-style "refer to an image" approach for luminance.
@@ -418,27 +428,52 @@ async function analyzeImage(imageUrl: string, config: GcpConfig): Promise<Analys
     ],
     generationConfig: {
       responseMimeType: 'application/json',
-      temperature: 0.3,
+      temperature: 0,
     },
   }
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify(payload),
-  })
+  const body = JSON.stringify(payload)
+  const headers = {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${token}`,
+  }
 
-  if (!response.ok) {
-    const errBody = await response.text().catch(() => '')
-    console.warn('AI analysis failed:', response.status, response.statusText, errBody)
+  let response: Response | undefined
+  let lastError: string | undefined
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      response = await fetch(url, { method: 'POST', headers, body })
+    } catch (networkErr) {
+      lastError = networkErr instanceof Error ? networkErr.message : String(networkErr)
+      if (attempt === 0) {
+        console.warn('[image-processing] AI analysis network error, retrying in 2 s…', lastError)
+        await new Promise((r) => setTimeout(r, 2000))
+        continue
+      }
+      throw new Error(`Analyse IA échouée (erreur réseau): ${lastError}`, { cause: networkErr })
+    }
+
+    if (response.ok) break
+
+    lastError = await response.text().catch(() => '')
+    // Only retry on 5xx (server) errors, not 4xx (client)
+    if (response.status >= 500 && attempt === 0) {
+      console.warn('[image-processing] AI analysis 5xx, retrying in 2 s…', response.status)
+      await new Promise((r) => setTimeout(r, 2000))
+      continue
+    }
+
+    console.warn('AI analysis failed:', response.status, response.statusText, lastError)
     throw new Error(
       `Analyse IA échouée (${response.status} ${response.statusText}). ` +
         `Vérifiez que le modèle "${ANALYSIS_MODEL}" est disponible dans la région ${config.region}. ` +
-        `Détails: ${errBody.slice(0, 200)}`
+        `Détails: ${(lastError ?? '').slice(0, 200)}`
     )
+  }
+
+  if (!response?.ok) {
+    throw new Error(`Analyse IA échouée après 2 tentatives: ${lastError ?? 'Erreur inconnue'}`)
   }
 
   const result: {
@@ -766,109 +801,39 @@ export function applyCorrections(
 // Orchestrator: analyse → correct → export
 // ---------------------------------------------------------------------------
 
-async function processImageHybrid(imageUrl: string, config: GcpConfig): Promise<ProcessingResult> {
-  // Step 1: AI analysis — fallback to defaults on failure
-  let params: CorrectionParams
-  let analysisFailed = false
+/**
+ * Calibration distance d₀ for adaptive blend.
+ * OKLab Euclidean distance at which an image gets the base 0.6 blend factor.
+ * Images closer to the reference get proportionally less pull; distant images
+ * get up to 0.65. Tune empirically after processing 20+ images.
+ */
+const ADAPTIVE_BLEND_D0 = 0.15
+const ADAPTIVE_BLEND_BASE = 0.6
+const ADAPTIVE_BLEND_MIN = 0.15
+const ADAPTIVE_BLEND_MAX = 0.65
 
-  try {
-    params = await analyzeImage(imageUrl, config)
-  } catch {
-    analysisFailed = true
-    params = { ...DEFAULT_PARAMS }
-  }
+/**
+ * Compute an adaptive colour-transfer blend factor based on the OKLab
+ * distance between the source image and the reference.
+ *
+ * Images already close to the reference get a lighter pull; distant images
+ * get the full blend.
+ */
+function computeAdaptiveBlend(
+  srcStats: Pick<OklabStats, 'meanL' | 'meanA' | 'meanB'>,
+  refStats: Pick<OklabStats, 'meanL' | 'meanA' | 'meanB'>
+): number {
+  const dL = srcStats.meanL - refStats.meanL
+  const dA = srcStats.meanA - refStats.meanA
+  const dB = srcStats.meanB - refStats.meanB
+  const d = Math.sqrt(dL * dL + dA * dA + dB * dB)
+  return Math.max(
+    ADAPTIVE_BLEND_MIN,
+    Math.min(ADAPTIVE_BLEND_MAX, ADAPTIVE_BLEND_BASE * (d / ADAPTIVE_BLEND_D0))
+  )
+}
 
-  // Step 2: Load full-resolution image into Canvas (no downscaling)
-  const separator = imageUrl.includes('?') ? '&' : '?'
-  const srcUrl = `${imageUrl}${separator}fm=png`
-  const img = await loadImage(srcUrl)
-
-  const w = img.naturalWidth
-  const h = img.naturalHeight
-
-  const canvas = document.createElement('canvas')
-  const ctx = canvas.getContext('2d')
-  if (!ctx) throw new Error('Impossible de créer le contexte Canvas 2D.')
-
-  // Step 2b: Straighten if needed (rotate + crop to avoid black borders)
-  const angle = params.straightenAngle
-  if (Math.abs(angle) > 0.05) {
-    const rad = (angle * Math.PI) / 180
-    const cosA = Math.abs(Math.cos(rad))
-    const sinA = Math.abs(Math.sin(rad))
-
-    // Compute the largest axis-aligned rectangle that fits inside the rotated image
-    // (no black borders) using the standard inner-crop formula
-    const cropW = (w * cosA - h * sinA) / (cosA * cosA - sinA * sinA)
-    const cropH = (h * cosA - w * sinA) / (cosA * cosA - sinA * sinA)
-    const finalW = Math.max(1, Math.round(Math.min(cropW, w)))
-    const finalH = Math.max(1, Math.round(Math.min(cropH, h)))
-
-    // Draw rotated onto a temp canvas at original size, then crop center
-    const tmpCanvas = document.createElement('canvas')
-    tmpCanvas.width = w
-    tmpCanvas.height = h
-    const tmpCtx = tmpCanvas.getContext('2d')!
-    tmpCtx.translate(w / 2, h / 2)
-    tmpCtx.rotate(rad)
-    tmpCtx.drawImage(img, -w / 2, -h / 2)
-
-    // Crop to inner rect
-    canvas.width = finalW
-    canvas.height = finalH
-    const sx = Math.round((w - finalW) / 2)
-    const sy = Math.round((h - finalH) / 2)
-    ctx.drawImage(tmpCanvas, sx, sy, finalW, finalH, 0, 0, finalW, finalH)
-  } else {
-    canvas.width = w
-    canvas.height = h
-    ctx.drawImage(img, 0, 0)
-  }
-
-  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-
-  // Step 3: Compute OKLab colour transfer from reference image
-  let colorTransfer: ColorTransferParams | undefined
-  try {
-    const refBase64 = await loadReferenceImageBase64()
-    if (refBase64) {
-      const refImg = await loadImage(`data:${refBase64.mimeType};base64,${refBase64.base64}`)
-      const refCanvas = document.createElement('canvas')
-      refCanvas.width = refImg.naturalWidth
-      refCanvas.height = refImg.naturalHeight
-      const refCtx = refCanvas.getContext('2d')!
-      refCtx.drawImage(refImg, 0, 0)
-      const refData = refCtx.getImageData(0, 0, refCanvas.width, refCanvas.height)
-      const refStats = computeOklabStats(refData.data)
-      colorTransfer = { ref: refStats, blend: 0.6 }
-    }
-  } catch {
-    // Reference image unavailable — proceed without colour transfer
-  }
-
-  // Step 4: Apply AI-prescribed corrections
-  applyCorrections(imageData, params, colorTransfer)
-  ctx.putImageData(imageData, 0, 0)
-
-  // Step 4: Export as high-quality JPEG
-  const blob = await new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob(
-      (b) => (b ? resolve(b) : reject(new Error("Échec de l'export Canvas."))),
-      'image/jpeg',
-      0.97
-    )
-  })
-
-  const base64 = await new Promise<string>((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => {
-      const dataUrl = reader.result as string
-      resolve(dataUrl.slice(dataUrl.indexOf(',') + 1))
-    }
-    reader.onerror = () => reject(new Error('Échec de la conversion base64.'))
-    reader.readAsDataURL(blob)
-  })
-
+function formatParamSummary(params: CorrectionParams, blend?: number): string {
   const parts = [
     `expo=${params.exposure.toFixed(2)}`,
     `contraste=${params.contrast.toFixed(2)}`,
@@ -885,38 +850,280 @@ async function processImageHybrid(imageUrl: string, config: GcpConfig): Promise<
   if (Math.abs(params.straightenAngle) > 0.05) {
     parts.push(`redressé=${params.straightenAngle.toFixed(1)}°`)
   }
-  const paramSummary = parts.join(', ')
-
-  return {
-    base64Data: base64,
-    mimeType: 'image/jpeg',
-    feedback: analysisFailed
-      ? `⚠ Analyse IA échouée — correction appliquée avec les valeurs par défaut (${paramSummary})`
-      : `Correction IA adaptée (${paramSummary})`,
-    analysisFailed,
+  if (blend !== undefined) {
+    parts.push(`blend=${blend.toFixed(2)}`)
   }
+  return parts.join(', ')
 }
 
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
+/**
+ * AI analysis — sends the image + reference to Gemini and returns correction
+ * parameters. Falls back to DEFAULT_PARAMS on any failure.
+ */
+export { analyzeImage }
+
+/**
+ * Apply correction parameters to an image and return the result as base64 JPEG.
+ *
+ * This is the "apply" half of the split pipeline. It handles:
+ * - Canvas load at full resolution
+ * - Straightening (rotate + crop)
+ * - OKLab colour transfer from reference (adaptive blend)
+ * - AI-prescribed corrections
+ * - JPEG q=0.97 export
+ *
+ * @param blendOverride — If provided, overrides the adaptive blend factor.
+ */
+export async function applyImageCorrections(
+  imageUrl: string,
+  params: CorrectionParams,
+  options?: { blendOverride?: number }
+): Promise<ProcessingResult> {
+  // Load full-resolution image into Canvas
+  const separator = imageUrl.includes('?') ? '&' : '?'
+  const srcUrl = `${imageUrl}${separator}fm=png`
+  const img = await loadImage(srcUrl)
+
+  const w = img.naturalWidth
+  const h = img.naturalHeight
+
+  const canvas = document.createElement('canvas')
+  const ctx = canvas.getContext('2d')
+  if (!ctx) throw new Error('Impossible de créer le contexte Canvas 2D.')
+
+  // Straighten if needed (rotate + crop to avoid black borders)
+  let tmpCanvas: HTMLCanvasElement | undefined
+  const angle = params.straightenAngle
+  if (Math.abs(angle) > 0.05) {
+    const rad = (angle * Math.PI) / 180
+    const cosA = Math.abs(Math.cos(rad))
+    const sinA = Math.abs(Math.sin(rad))
+
+    const cropW = (w * cosA - h * sinA) / (cosA * cosA - sinA * sinA)
+    const cropH = (h * cosA - w * sinA) / (cosA * cosA - sinA * sinA)
+    const finalW = Math.max(1, Math.round(Math.min(cropW, w)))
+    const finalH = Math.max(1, Math.round(Math.min(cropH, h)))
+
+    tmpCanvas = document.createElement('canvas')
+    tmpCanvas.width = w
+    tmpCanvas.height = h
+    const tmpCtx = tmpCanvas.getContext('2d')!
+    tmpCtx.translate(w / 2, h / 2)
+    tmpCtx.rotate(rad)
+    tmpCtx.drawImage(img, -w / 2, -h / 2)
+
+    canvas.width = finalW
+    canvas.height = finalH
+    const sx = Math.round((w - finalW) / 2)
+    const sy = Math.round((h - finalH) / 2)
+    ctx.drawImage(tmpCanvas, sx, sy, finalW, finalH, 0, 0, finalW, finalH)
+  } else {
+    canvas.width = w
+    canvas.height = h
+    ctx.drawImage(img, 0, 0)
+  }
+
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+
+  // Compute OKLab colour transfer from reference image (adaptive blend)
+  let colorTransfer: ColorTransferParams | undefined
+  let blendUsed: number | undefined
+  try {
+    const refBase64 = await loadReferenceImageBase64()
+    if (refBase64) {
+      const refImg = await loadImage(`data:${refBase64.mimeType};base64,${refBase64.base64}`)
+      const refCanvas = document.createElement('canvas')
+      refCanvas.width = refImg.naturalWidth
+      refCanvas.height = refImg.naturalHeight
+      const refCtx = refCanvas.getContext('2d')!
+      refCtx.drawImage(refImg, 0, 0)
+      const refData = refCtx.getImageData(0, 0, refCanvas.width, refCanvas.height)
+      const refStats = computeOklabStats(refData.data)
+
+      // Compute source means for adaptive blend (lightweight — no histogram/stddev)
+      const srcMeans = computeOklabMeans(imageData.data)
+      const blend = options?.blendOverride ?? computeAdaptiveBlend(srcMeans, refStats)
+      blendUsed = blend
+
+      colorTransfer = { ref: refStats, blend }
+
+      // Release ref canvas
+      refCanvas.width = 0
+      refCanvas.height = 0
+    }
+  } catch (err) {
+    console.error('[image-processing] Failed to load reference image for colour transfer:', err)
+  }
+
+  // Apply AI-prescribed corrections
+  applyCorrections(imageData, params, colorTransfer)
+  ctx.putImageData(imageData, 0, 0)
+
+  // Release scratch canvases
+  if (tmpCanvas) {
+    tmpCanvas.width = 0
+    tmpCanvas.height = 0
+  }
+
+  // Export as high-quality JPEG
+  const blob = await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob(
+      (b) => (b ? resolve(b) : reject(new Error("Échec de l'export Canvas."))),
+      'image/jpeg',
+      0.97
+    )
+  })
+
+  // Release main canvas
+  canvas.width = 0
+  canvas.height = 0
+
+  const base64 = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const dataUrl = reader.result as string
+      resolve(dataUrl.slice(dataUrl.indexOf(',') + 1))
+    }
+    reader.onerror = () => reject(new Error('Échec de la conversion base64.'))
+    reader.readAsDataURL(blob)
+  })
+
+  const paramSummary = formatParamSummary(params, blendUsed)
+
+  return {
+    base64Data: base64,
+    mimeType: 'image/jpeg',
+    feedback: `Correction IA adaptée (${paramSummary})`,
+  }
+}
+
+/**
+ * Full single-image pipeline: analyse → apply → export.
+ * Used by the single-image workflow and as the fallback for legacy callers.
+ */
 export async function processImage(
   imageUrl: string,
   mode: ProcessingMode,
   config: GcpConfig
 ): Promise<ProcessingResult> {
-  if (mode === 'auto_correct') return processImageHybrid(imageUrl, config)
-  throw new Error(`Mode non supporté: ${mode as string}`)
+  if (mode !== 'auto_correct') {
+    throw new Error(`Mode non supporté: ${mode as string}`)
+  }
+
+  let params: CorrectionParams
+  let analysisFailed = false
+
+  try {
+    params = await analyzeImage(imageUrl, config)
+  } catch {
+    analysisFailed = true
+    params = { ...DEFAULT_PARAMS }
+  }
+
+  const result = await applyImageCorrections(imageUrl, params)
+
+  if (analysisFailed) {
+    const paramSummary = formatParamSummary(params)
+    return {
+      ...result,
+      feedback: `⚠ Analyse IA échouée — correction appliquée avec les valeurs par défaut (${paramSummary})`,
+      analysisFailed,
+    }
+  }
+
+  return result
 }
 
+/**
+ * Chained pipeline with real progress callbacks.
+ *
+ * Fires 'analysis-done' after AI analysis completes (before correction),
+ * then 'correction-done' after Canvas processing finishes.
+ */
 export async function processImageChain(
   imageUrl: string,
   config: GcpConfig,
   onProgress?: (step: 'analysis-done' | 'correction-done', intermediate?: ProcessingResult) => void
 ): Promise<ProcessingResult> {
-  const result = await processImage(imageUrl, 'auto_correct', config)
+  let params: CorrectionParams
+  let analysisFailed = false
+
+  try {
+    params = await analyzeImage(imageUrl, config)
+  } catch {
+    analysisFailed = true
+    params = { ...DEFAULT_PARAMS }
+  }
+
   onProgress?.('analysis-done')
+
+  const result = await applyImageCorrections(imageUrl, params)
   onProgress?.('correction-done')
+
+  if (analysisFailed) {
+    const paramSummary = formatParamSummary(params)
+    return {
+      ...result,
+      feedback: `⚠ Analyse IA échouée — correction appliquée avec les valeurs par défaut (${paramSummary})`,
+      analysisFailed,
+    }
+  }
+
   return result
+}
+
+/**
+ * IQR-based normalization of correction parameters across a project.
+ *
+ * For each tonal parameter, replaces outliers (> 1.5× IQR from median)
+ * with the median value. `straightenAngle` is always per-image and never
+ * normalized. Fixed aesthetic params are untouched.
+ */
+export function normalizeParamsForProject(paramsList: CorrectionParams[]): CorrectionParams[] {
+  if (paramsList.length <= 2) return paramsList.map((p) => ({ ...p }))
+
+  /** Keys that get normalized (AI-determined tonal params). */
+  const tonalKeys: (keyof CorrectionParams)[] = [
+    'exposure',
+    'shadows',
+    'highlights',
+    'whites',
+    'blacks',
+    'vibrance',
+    'clarity',
+    'tint',
+  ]
+
+  // Collect values per key and compute stats
+  const stats = new Map<
+    keyof CorrectionParams,
+    { median: number; q1: number; q3: number; iqr: number }
+  >()
+
+  for (const key of tonalKeys) {
+    const vals = paramsList.map((p) => p[key]).sort((a, b) => a - b)
+    const n = vals.length
+    const q1 = vals[Math.floor(n * 0.25)]
+    const q3 = vals[Math.floor(n * 0.75)]
+    const median = vals[Math.floor(n * 0.5)]
+    stats.set(key, { median, q1, q3, iqr: q3 - q1 })
+  }
+
+  // Replace outliers with median
+  return paramsList.map((p) => {
+    const out = { ...p }
+    for (const key of tonalKeys) {
+      const s = stats.get(key)!
+      const lo = s.q1 - 1.5 * s.iqr
+      const hi = s.q3 + 1.5 * s.iqr
+      if (out[key] < lo || out[key] > hi) {
+        out[key] = s.median
+      }
+    }
+    return out
+  })
 }

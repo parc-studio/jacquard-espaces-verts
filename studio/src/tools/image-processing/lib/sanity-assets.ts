@@ -288,8 +288,12 @@ async function patchPublishedAndDraft(
   if (draftExists) {
     try {
       await apply(draftId)
-    } catch {
-      // Non-fatal — the published doc was already patched
+    } catch (err) {
+      // Revision conflicts are expected — suppress. Log anything else.
+      const message = err instanceof Error ? err.message : String(err)
+      if (!message.includes('mutationError') && !message.includes('conflict')) {
+        console.warn('[image-processing] Draft patch failed (non-conflict):', message)
+      }
     }
   }
 }
@@ -391,19 +395,34 @@ export async function revertProcessedImage(
 
   // Swap references back to original in each project
   const revertedProjects: string[] = []
+  const failedProjects: string[] = []
   for (const project of projects) {
-    for (const item of project.mediaGallery) {
-      if (getGalleryItemAssetRef(item) === processedAssetId) {
-        const assetPath = getGalleryItemAssetPath(item)
-        await client
-          .patch(project._id)
-          .ifRevisionId(project._rev)
-          .set({ [`mediaGallery[_key=="${item._key}"].${assetPath}`]: originalAssetId })
-          .commit()
-        revertedProjects.push(project._id)
-        break
+    try {
+      for (const item of project.mediaGallery) {
+        if (getGalleryItemAssetRef(item) === processedAssetId) {
+          const assetPath = getGalleryItemAssetPath(item)
+          await client
+            .patch(project._id)
+            .ifRevisionId(project._rev)
+            .set({ [`mediaGallery[_key=="${item._key}"].${assetPath}`]: originalAssetId })
+            .commit()
+          revertedProjects.push(project._id)
+          break
+        }
       }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      console.warn(`[image-processing] Revert failed for project ${project._id}:`, msg)
+      failedProjects.push(project._id)
     }
+  }
+
+  // Only delete the processed asset if ALL project patches succeeded
+  if (failedProjects.length > 0) {
+    throw new Error(
+      `Revert partiel : ${revertedProjects.length} projet(s) mis à jour, ` +
+        `${failedProjects.length} en échec. L'image traitée n'a pas été supprimée.`
+    )
   }
 
   // Delete the processed asset
