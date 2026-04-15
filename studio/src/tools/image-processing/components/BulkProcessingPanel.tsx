@@ -246,7 +246,7 @@ export function BulkProcessingPanel({ project, onDone, onCancel }: BulkProcessin
       }
     }
 
-    setPhase('done')
+    setPhase(stopRequestedRef.current ? 'idle' : 'done')
     setIsRunning(false)
   }, [totalCount, client, project._id, updateItem, gcpConfig])
 

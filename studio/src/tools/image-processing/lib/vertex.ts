@@ -341,6 +341,32 @@ export function computeOklabStats(data: Uint8ClampedArray): OklabStats {
 }
 
 /**
+ * Lightweight OKLab means — skips histogram and stddev computation.
+ * Used when only meanL/meanA/meanB are needed (e.g. adaptive blend).
+ */
+function computeOklabMeans(data: Uint8ClampedArray): Pick<OklabStats, 'meanL' | 'meanA' | 'meanB'> {
+  const stride = 4
+  const pixelStride = stride * 4
+  let count = 0
+  let sumL = 0,
+    sumA = 0,
+    sumB = 0
+
+  for (let i = 0; i < data.length; i += pixelStride) {
+    const lr = srgbToLinear(data[i] / 255)
+    const lg = srgbToLinear(data[i + 1] / 255)
+    const lb = srgbToLinear(data[i + 2] / 255)
+    const [L, a, b] = linearToOklab(lr, lg, lb)
+    sumL += L
+    sumA += a
+    sumB += b
+    count++
+  }
+
+  return { meanL: sumL / count, meanA: sumA / count, meanB: sumB / count }
+}
+
+/**
  * Build a CDF-based luminance transfer LUT.
  * Maps each source L bin to the reference L value at the same CDF percentile.
  * This is the Polarr-style "refer to an image" approach for luminance.
@@ -793,7 +819,10 @@ const ADAPTIVE_BLEND_MAX = 0.65
  * Images already close to the reference get a lighter pull; distant images
  * get the full blend.
  */
-function computeAdaptiveBlend(srcStats: OklabStats, refStats: OklabStats): number {
+function computeAdaptiveBlend(
+  srcStats: Pick<OklabStats, 'meanL' | 'meanA' | 'meanB'>,
+  refStats: Pick<OklabStats, 'meanL' | 'meanA' | 'meanB'>
+): number {
   const dL = srcStats.meanL - refStats.meanL
   const dA = srcStats.meanA - refStats.meanA
   const dB = srcStats.meanB - refStats.meanB
@@ -915,9 +944,9 @@ export async function applyImageCorrections(
       const refData = refCtx.getImageData(0, 0, refCanvas.width, refCanvas.height)
       const refStats = computeOklabStats(refData.data)
 
-      // Compute source stats for adaptive blend
-      const srcStats = computeOklabStats(imageData.data)
-      const blend = options?.blendOverride ?? computeAdaptiveBlend(srcStats, refStats)
+      // Compute source means for adaptive blend (lightweight — no histogram/stddev)
+      const srcMeans = computeOklabMeans(imageData.data)
+      const blend = options?.blendOverride ?? computeAdaptiveBlend(srcMeans, refStats)
       blendUsed = blend
 
       colorTransfer = { ref: refStats, blend }
