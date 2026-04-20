@@ -106,22 +106,33 @@ export async function getAccessToken(config: GcpConfig): Promise<string> {
 // ---------------------------------------------------------------------------
 
 export const DEFAULT_PARAMS: CorrectionParams = {
-  exposure: -0.06,
-  contrast: -0.08,
-  highlights: 0.11,
-  shadows: 0.29,
+  exposure: -0.03,
+  contrast: -0.05,
+  highlights: 0.05,
+  shadows: 0.14,
   temperature: 0.0,
   tint: 0.0,
   saturation: -0.1,
   whites: 0.0,
   blacks: 0.0,
-  vibrance: 0.0,
+  vibrance: -0.06,
   clarity: 0.0,
-  levelsClipLow: 0.003,
-  levelsClipHigh: 0.015,
+  levelsClipLow: 0.002,
+  levelsClipHigh: 0.012,
   straightenAngle: 0,
   verticalPerspective: 0,
 }
+
+const AUTO_LEVELS_BLEND = 0.55
+const SHADOW_CURVE_STRENGTH = 0.18
+const HIGHLIGHT_CURVE_STRENGTH = 0.12
+const GEOMETRY_CROP_RELIEF = 0.22
+const GREEN_HUE_CENTER = 2.3
+const GREEN_HUE_FALLOFF = 0.9
+const GREEN_CHROMA_DAMPING = 0.42
+const GREEN_VIBRANCE_ROLLOFF = 0.72
+const GREEN_L_SUPPRESSION = 0.06
+const CHROMA_BLEND_BOOST = 1.35
 
 const ANALYSIS_PROMPT = `You are an image analysis model. You will receive two images:
 1. A **reference photo** showing the target colour grading and aesthetic (Swiss architectural photography style — neutral tones, slightly undersaturated vegetation, clean highlights).
@@ -130,16 +141,18 @@ const ANALYSIS_PROMPT = `You are an image analysis model. You will receive two i
 Compare the input to the reference and prescribe fifteen correction values that will bring the input closer to the reference aesthetic.
 
 ## Reference image
-The reference image shows a large modern residential building photographed frontally, with a strict grid of windows and balconies stretched across the frame. The facade is pale grey to off-white with clean, neutral highlights and a cool-to-neutral white balance. Small window panels introduce restrained accent colours such as blue, orange, teal, yellow, and green, but the overall palette remains controlled rather than vivid.
+The reference image shows a landscaped garden or nursery setting photographed in natural daylight. Young deciduous trees with slender trunks are staked along a path edged with grass, bark mulch, and low hedging. A polytunnel or greenhouse structure is visible in the background. The lighting is soft and slightly warm — overcast or late-morning — with gentle, even exposure across the scene.
 
-The vegetation is neat, urban, and slightly subdued. The lawn is trimmed and even, with a soft muted green rather than a bright saturated one. The trees and shrubs are healthy and fairly dense, but their greens stay controlled, cool-to-neutral, and not overly lush. Foliage should look natural and present, with preserved detail, but without vivid emerald tones or exaggerated contrast.
+The overall colour palette is muted and naturalistic. Greens are subdued sage-olive tones, never vivid emerald or neon. Grass, foliage, and hedging all share a restrained, slightly desaturated character with warm-cool balance leaning neutral. Earth tones (bark mulch, paths, soil) are soft brown-grey without heavy contrast. Highlights are clean but not blown; shadows hold detail without being lifted or crushed.
 
-The desired look is orderly, calm, architectural, evenly exposed, cool-neutral, and gently understated rather than dramatic or punchy. Use the actual visual relationship between the input and the reference image, not generic architectural-photo stereotypes.
+The desired look is calm, naturalistic, softly graded, and gently understated — not punchy, contrasty, or over-processed. Use the actual visual relationship between the input and the reference image, not assumptions about a particular photography style.
+
+Bias strongly toward subtle adjustments. If the input already feels balanced, return values close to zero instead of forcing it toward a stronger processed look. Do not brighten shadows, lift highlights, or correct perspective unless the need is visually obvious.
 
 ## 1. exposure (float, range −0.30 to +0.30)
 Brighten or darken to achieve correct exposure.
-- Severely underexposed → +0.15 to +0.25
-- Moderately underexposed → +0.05 to +0.12
+- Severely underexposed → +0.12 to +0.20
+- Moderately underexposed → +0.03 to +0.08
 - Correctly exposed → −0.02 to +0.02
 - Moderately overexposed → −0.05 to −0.10
 - Severely overexposed → −0.12 to −0.20
@@ -158,30 +171,33 @@ Clockwise rotation to level the image. Be precise — even 0.5° matters.
 - PRIORITY 3: If no strong horizontals, check verticals: building edges, columns, door frames, fence posts, lamp posts. If they lean consistently to one side, the image needs rotation.
 - For garden/vegetation scenes, look for vertical tree trunks, fence posts, or building edges in the background.
 - Positive = clockwise.
-- Be conservative: prefer a small correction over an incorrect one. Rotation causes cropping, so only prescribe a non-zero value when you clearly see tilt. Return 0 if the image appears level or if you are unsure.
+- Be conservative: prefer a small correction over an incorrect one. Rotation causes cropping, so only prescribe a non-zero value when you clearly see tilt.
+- Keep most corrections between −1.2 and +1.2 degrees. Use larger values only for clearly crooked images.
+- Return 0 if the image appears level or if you are unsure.
 
 ## 4. verticalPerspective (float, range −0.40 to +0.40)
 Correct converging or diverging vertical lines (keystone effect) caused by the camera tilting up or down.
 - If vertical building edges/walls/columns converge toward the top (camera tilted up, shot from below) → negative value.
 - If verticals diverge toward the top (camera tilted down, shot from above) → positive value.
 - If verticals are already parallel, or the scene has no strong vertical architectural references → 0.
-- Be conservative: most photos need only −0.03 to −0.15. Large values cause significant cropping.
+- Be conservative: most photos need only −0.02 to −0.10. Large values cause significant cropping and visible reframing.
+- Only correct obvious keystoning. Do not try to redesign the perspective or make the shot look more frontal than it really is.
 - Do NOT correct intentional dramatic perspective (e.g. looking straight up at a tall building).
 - Return 0 for garden/landscape scenes without clear vertical architectural lines.
 
 ## 5. shadows (float, range −1.0 to +1.0)
 Shadow recovery. Positive lifts shadows, negative deepens them.
-- Deep crushed shadows → +0.30 to +0.50
-- Moderate shadow loss → +0.15 to +0.30
-- Balanced → +0.05 to +0.15
+- Deep crushed shadows → +0.20 to +0.35
+- Moderate shadow loss → +0.08 to +0.18
+- Balanced → +0.02 to +0.10
 - Flat lighting / already bright shadows → −0.05 to +0.05
 
 ## 6. highlights (float, range −1.0 to +1.0)
 Highlight recovery. Negative recovers blown highlights, positive lifts dull highlights.
 - Severely blown → −0.15 to −0.30
 - Moderate clipping → −0.05 to −0.15
-- Well-preserved → +0.05 to +0.15
-- Dull / needs lift → +0.15 to +0.30
+- Well-preserved → +0.02 to +0.08
+- Dull / needs lift → +0.08 to +0.16
 
 ## 7. whites (float, range −1.0 to +1.0)
 Adjust the brightest tones. Positive expands whites (brighter), negative compresses (darker).
@@ -210,6 +226,8 @@ Green–magenta white-balance shift. Negative = green, positive = magenta.
 Global colour intensity. Negative desaturates, positive boosts.
 - The reference style is restrained and slightly subdued.
 - Keep greens natural and present, but avoid vivid emerald or neon vegetation.
+- If foliage is noticeably richer, brighter, or more saturated than the reference, prefer negative values.
+- For most exterior scenes with vegetation, stay between −0.18 and 0.00.
 - Use small negative values when the input feels too vivid.
 - Use small positive values only when the input is duller than the reference overall.
 
@@ -218,6 +236,7 @@ Selective saturation: boosts under-saturated colours more than already-vivid one
 - If the input has dull muted tones compared to reference → positive (0.05 to 0.25).
 - If the input is over-vivid → negative (−0.05 to −0.25).
 - The reference style is slightly undersaturated — prefer small negative values.
+- Avoid positive vibrance on scenes with healthy grass, shrubs, or tree canopies unless the vegetation is clearly flatter than the reference.
 
 ## 13. clarity (float, range −1.0 to +1.0)
 Midtone local contrast. Positive adds punch/texture, negative softens.
@@ -237,13 +256,71 @@ White-point clipping percentile used for auto-levels.
 - Lower values preserve more highlight detail.
 - Higher values create cleaner, brighter highlights but can become too crisp.
 - The reference has clean highlights without harsh clipping.
-- Most images should stay between 0.010 and 0.022.
+- Most images should stay between 0.008 and 0.018.
 
 ## Output format
 Return a single JSON object with no markdown fences, no extra keys:
 {"exposure": <float>, "contrast": <float>, "straightenAngle": <float>, "verticalPerspective": <float>, "shadows": <float>, "highlights": <float>, "whites": <float>, "blacks": <float>, "temperature": <float>, "tint": <float>, "saturation": <float>, "vibrance": <float>, "clarity": <float>, "levelsClipLow": <float>, "levelsClipHigh": <float>}`
 
 type AnalysisResult = CorrectionParams
+
+function compressMagnitude(value: number, softLimit: number, tailFactor: number): number {
+  const magnitude = Math.abs(value)
+  if (magnitude <= softLimit) return value
+  return Math.sign(value) * (softLimit + (magnitude - softLimit) * tailFactor)
+}
+
+/**
+ * How much the AI-prescribed values can deviate from DEFAULT_PARAMS.
+ * 0 = always use defaults, 1 = fully trust the AI.
+ * At 0.4 the AI can move each param only 40% of the way from the default.
+ */
+const AI_DEVIATION_FACTOR = 0.4
+
+function normalizeConservativeParams(params: CorrectionParams): CorrectionParams {
+  // First compress extreme outliers
+  const compressed: CorrectionParams = {
+    ...params,
+    exposure: compressMagnitude(params.exposure, 0.08, 0.6),
+    shadows: compressMagnitude(params.shadows, 0.12, 0.45),
+    highlights: compressMagnitude(params.highlights, 0.08, 0.5),
+    whites: compressMagnitude(params.whites, 0.1, 0.55),
+    blacks: compressMagnitude(params.blacks, 0.1, 0.55),
+    saturation:
+      params.saturation <= 0
+        ? compressMagnitude(params.saturation, 0.12, 0.8)
+        : compressMagnitude(params.saturation, 0.03, 0.3),
+    vibrance:
+      params.vibrance <= 0
+        ? compressMagnitude(params.vibrance, 0.16, 0.75)
+        : compressMagnitude(params.vibrance, 0.04, 0.25),
+    straightenAngle: compressMagnitude(params.straightenAngle, 0.35, 0.5),
+    verticalPerspective: compressMagnitude(params.verticalPerspective, 0.03, 0.4),
+  }
+
+  // Then blend toward DEFAULT_PARAMS so the output stays close to the labo look
+  const blend = (key: keyof CorrectionParams) =>
+    DEFAULT_PARAMS[key] + (compressed[key] - DEFAULT_PARAMS[key]) * AI_DEVIATION_FACTOR
+
+  return {
+    exposure: blend('exposure'),
+    contrast: blend('contrast'),
+    highlights: blend('highlights'),
+    shadows: blend('shadows'),
+    whites: blend('whites'),
+    blacks: blend('blacks'),
+    temperature: blend('temperature'),
+    tint: blend('tint'),
+    saturation: blend('saturation'),
+    vibrance: blend('vibrance'),
+    clarity: blend('clarity'),
+    levelsClipLow: blend('levelsClipLow'),
+    levelsClipHigh: blend('levelsClipHigh'),
+    // Geometry: keep full AI precision — straightening/perspective are binary-correct
+    straightenAngle: compressed.straightenAngle,
+    verticalPerspective: compressed.verticalPerspective,
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Reference image — loaded once and cached
@@ -253,7 +330,7 @@ const REFERENCE_IMAGE_PATH = '/image-ref.jpeg'
 
 let cachedRefImage: { base64: string; mimeType: string } | null = null
 
-async function loadReferenceImageBase64(): Promise<{ base64: string; mimeType: string }> {
+export async function loadReferenceImageBase64(): Promise<{ base64: string; mimeType: string }> {
   if (cachedRefImage) return cachedRefImage
 
   const response = await fetch(REFERENCE_IMAGE_PATH)
@@ -377,32 +454,6 @@ export function computeOklabStats(data: Uint8ClampedArray): OklabStats {
     stdB: Math.sqrt(Math.max(0, sumB2 / count - meanB * meanB)),
     lHist,
   }
-}
-
-/**
- * Lightweight OKLab means — skips histogram and stddev computation.
- * Used when only meanL/meanA/meanB are needed (e.g. adaptive blend).
- */
-function computeOklabMeans(data: Uint8ClampedArray): Pick<OklabStats, 'meanL' | 'meanA' | 'meanB'> {
-  const stride = 4
-  const pixelStride = stride * 4
-  let count = 0
-  let sumL = 0,
-    sumA = 0,
-    sumB = 0
-
-  for (let i = 0; i < data.length; i += pixelStride) {
-    const lr = srgbToLinear(data[i] / 255)
-    const lg = srgbToLinear(data[i + 1] / 255)
-    const lb = srgbToLinear(data[i + 2] / 255)
-    const [L, a, b] = linearToOklab(lr, lg, lb)
-    sumL += L
-    sumA += a
-    sumB += b
-    count++
-  }
-
-  return { meanL: sumL / count, meanA: sumA / count, meanB: sumB / count }
 }
 
 /**
@@ -571,7 +622,7 @@ async function analyzeImage(imageUrl: string, config: GcpConfig): Promise<Analys
       return Math.max(min, Math.min(max, v))
     }
 
-    return {
+    return normalizeConservativeParams({
       exposure: num('exposure', -0.3, 0.3, DEFAULT_PARAMS.exposure),
       contrast: num('contrast', -0.3, 0.3, DEFAULT_PARAMS.contrast),
       straightenAngle: num('straightenAngle', -10, 10, DEFAULT_PARAMS.straightenAngle),
@@ -592,7 +643,7 @@ async function analyzeImage(imageUrl: string, config: GcpConfig): Promise<Analys
       clarity: num('clarity', -1, 1, DEFAULT_PARAMS.clarity),
       levelsClipLow: num('levelsClipLow', 0, 0.02, DEFAULT_PARAMS.levelsClipLow),
       levelsClipHigh: num('levelsClipHigh', 0.005, 0.03, DEFAULT_PARAMS.levelsClipHigh),
-    }
+    })
   } catch {
     return { ...DEFAULT_PARAMS }
   }
@@ -726,8 +777,8 @@ export function applyCorrections(
   }
 
   // Pre-compute correction constants
-  const gamma = 1.0 - params.exposure * 0.4
-  const satFactor = 1.0 + params.saturation * 0.8
+  const gamma = 1.0 - params.exposure * 0.32
+  const satFactor = 1.0 + params.saturation * 1.0
 
   // ---------------------------------------------------------------
   // Pass 2: Apply all corrections per-pixel in Float32
@@ -750,15 +801,19 @@ export function applyCorrections(
     }
 
     // --- Reinhard transfer on chrominance (a, b) ---
+    // Chrominance blend is boosted relative to lightness so the reference's
+    // colour palette pulls harder without over-flattening tonality.
     if (ctBlend > 0) {
+      const chromaBlend = Math.min(ctBlend * CHROMA_BLEND_BOOST, 1)
       const tA = (a - sMeanA) * ctScaleA + ctOffA
       const tBv = (bv - sMeanBv) * ctScaleBv + ctOffBv
-      a = a + (tA - a) * ctBlend
-      bv = bv + (tBv - bv) * ctBlend
+      a = a + (tA - a) * chromaBlend
+      bv = bv + (tBv - bv) * chromaBlend
     }
 
     // --- Auto-levels on OKLab L ---
-    L = (L - lLow) / lRange
+    const autoLeveledL = (L - lLow) / lRange
+    L = L + (autoLeveledL - L) * AUTO_LEVELS_BLEND
 
     // --- Whites/Blacks on OKLab L ---
     if (L < 0.15) {
@@ -774,8 +829,8 @@ export function applyCorrections(
     L = Math.pow(Math.max(0, L), gamma)
 
     // --- Tone curve (shadow lift + highlight recovery + contrast S-curve) ---
-    L += params.shadows * 0.3 * (1 - L) * (1 - L)
-    L += params.highlights * 0.3 * L * L
+    L += params.shadows * SHADOW_CURVE_STRENGTH * (1 - L) * (1 - L)
+    L += params.highlights * HIGHLIGHT_CURVE_STRENGTH * L * L
     L += params.contrast * 0.1 * Math.sin(Math.PI * L) * (0.5 - Math.abs(L - 0.5))
 
     // --- Saturation + green desaturation in OKLab chroma ---
@@ -783,8 +838,12 @@ export function applyCorrections(
     if (chroma > 0.0001) {
       // Green hue in OKLab: atan2(b, a) ≈ 2.3 rad
       const hue = Math.atan2(bv, a)
-      const greenness = Math.max(0, 1 - Math.abs(hue - 2.3) / 0.8)
-      const greenDamping = 1 - greenness * 0.15
+      const greenness = Math.max(0, 1 - Math.abs(hue - GREEN_HUE_CENTER) / GREEN_HUE_FALLOFF)
+
+      // --- Green lightness suppression: mute overly bright vegetation ---
+      L -= greenness * GREEN_L_SUPPRESSION * L
+
+      const greenDamping = 1 - greenness * GREEN_CHROMA_DAMPING
       const effectiveSat = satFactor * greenDamping
 
       a *= effectiveSat
@@ -793,9 +852,14 @@ export function applyCorrections(
       // --- Vibrance: selective chroma boost (more on low-chroma pixels) ---
       if (Math.abs(params.vibrance) > 0.005) {
         const normChroma = Math.min(chroma * 5, 1)
+        const greenVibranceLimit = 1 - greenness * GREEN_VIBRANCE_ROLLOFF
         const vibranceFactor = 1.0 + params.vibrance * 0.6 * (1 - normChroma)
         a *= vibranceFactor
         bv *= vibranceFactor
+        if (params.vibrance > 0) {
+          a *= greenVibranceLimit
+          bv *= greenVibranceLimit
+        }
       }
     }
 
@@ -888,35 +952,10 @@ export function applyCorrections(
 // Orchestrator: analyse → correct → export
 // ---------------------------------------------------------------------------
 
-/**
- * Calibration distance d₀ for adaptive blend.
- * OKLab Euclidean distance at which an image gets the base 0.6 blend factor.
- * Images closer to the reference get proportionally less pull; distant images
- * get up to 0.65. Tune empirically after processing 20+ images.
- */
-const ADAPTIVE_BLEND_D0 = 0.15
-const ADAPTIVE_BLEND_BASE = 0.7
-const ADAPTIVE_BLEND_MIN = 0.2
-const ADAPTIVE_BLEND_MAX = 0.8
-
-/**
- * Compute an adaptive colour-transfer blend factor based on the OKLab
- * distance between the source image and the reference.
- *
- * Images already close to the reference get a lighter pull; distant images
- * get the full blend.
- */
-function computeAdaptiveBlend(
-  srcStats: Pick<OklabStats, 'meanL' | 'meanA' | 'meanB'>,
-  refStats: Pick<OklabStats, 'meanL' | 'meanA' | 'meanB'>
-): number {
-  const dL = srcStats.meanL - refStats.meanL
-  const dA = srcStats.meanA - refStats.meanA
-  const dB = srcStats.meanB - refStats.meanB
-  const d = Math.sqrt(dL * dL + dA * dA + dB * dB)
+function relaxCropDimension(inscribed: number, original: number): number {
   return Math.max(
-    ADAPTIVE_BLEND_MIN,
-    Math.min(ADAPTIVE_BLEND_MAX, ADAPTIVE_BLEND_BASE * (d / ADAPTIVE_BLEND_D0))
+    1,
+    Math.round(Math.min(inscribed + (original - inscribed) * GEOMETRY_CROP_RELIEF, original))
   )
 }
 
@@ -1002,13 +1041,13 @@ export async function applyImageCorrections(
     // Compute the inscribed crop rectangle — narrowest valid row width
     // At row y, the horizontal scale is s = 1 + k * (1 - 2*y/h)
     // The narrowest row determines the crop width.
-    // Blend between full inscribed crop (no black border) and no crop,
-    // keeping 90% of the inscribed-crop savings to preserve more image.
+    // Blend between the full inscribed crop (no black border) and the
+    // original frame to preserve more of the composition while staying borderless.
     const sTop = 1 + kVal // scale at y=0
     const sBot = 1 - kVal // scale at y=h
     const minScale = Math.min(Math.abs(sTop), Math.abs(sBot))
     const inscribedW = curW * minScale
-    const cropW = Math.max(1, Math.round(inscribedW + (curW - inscribedW) * 0.1))
+    const cropW = relaxCropDimension(inscribedW, curW)
     const cropH = curH
     const cx = curW / 2
 
@@ -1098,9 +1137,8 @@ export async function applyImageCorrections(
     // Inscribed rectangle that fits inside the rotated image without black borders
     const inscribedW = (curW * cosA - curH * sinA) / (cosA * cosA - sinA * sinA)
     const inscribedH = (curH * cosA - curW * sinA) / (cosA * cosA - sinA * sinA)
-    // Relax crop slightly: keep 90% of the inscribed-crop savings to preserve more image area
-    const finalW = Math.max(1, Math.round(Math.min(inscribedW + (curW - inscribedW) * 0.1, curW)))
-    const finalH = Math.max(1, Math.round(Math.min(inscribedH + (curH - inscribedH) * 0.1, curH)))
+    const finalW = relaxCropDimension(inscribedW, curW)
+    const finalH = relaxCropDimension(inscribedH, curH)
 
     tmpCanvas = document.createElement('canvas')
     tmpCanvas.width = curW
@@ -1138,9 +1176,10 @@ export async function applyImageCorrections(
       const refData = refCtx.getImageData(0, 0, refCanvas.width, refCanvas.height)
       const refStats = computeOklabStats(refData.data)
 
-      // Compute source means for adaptive blend (lightweight — no histogram/stddev)
-      const srcMeans = computeOklabMeans(imageData.data)
-      const blend = options?.blendOverride ?? computeAdaptiveBlend(srcMeans, refStats)
+      // Colour transfer is disabled by default (blend=0) — the adaptive blend
+      // was pulling images too far from natural appearance.  Pass a non-zero
+      // blendOverride to re-enable it from the labo couleur slider.
+      const blend = options?.blendOverride ?? 0
       blendUsed = blend
 
       colorTransfer = { ref: refStats, blend }

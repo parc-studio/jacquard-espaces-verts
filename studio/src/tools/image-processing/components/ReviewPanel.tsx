@@ -28,7 +28,15 @@ import type {
   SanityImageAsset,
 } from '../lib/types'
 import { MODE_LABELS } from '../lib/types'
-import { applyCorrections, DEFAULT_PARAMS, loadImage } from '../lib/vertex'
+import {
+  applyCorrections,
+  applyImageCorrections,
+  computeOklabStats,
+  DEFAULT_PARAMS,
+  loadImage,
+  loadReferenceImageBase64,
+  type ColorTransferParams,
+} from '../lib/vertex'
 
 interface ReviewPanelProps {
   asset: SanityImageAsset
@@ -102,12 +110,16 @@ export function ReviewPanel({
   // ------------------------------------------------------------------
   const [showTuner, setShowTuner] = useState(false)
   const [tuneParams, setTuneParams] = useState<CorrectionParams>({ ...DEFAULT_PARAMS })
+  const [tuneBlend, setTuneBlend] = useState(0)
   const [tunedDataUri, setTunedDataUri] = useState<string | null>(null)
   const [tuning, setTuning] = useState(false)
+  const [isSavingLabo, setIsSavingLabo] = useState(false)
   const sourceImageRef = useRef<HTMLImageElement | null>(null)
+  const refStatsRef = useRef<ColorTransferParams['ref'] | null>(null)
 
   // Load original raw image once for Canvas re-renders (tuner).
   // Always use the resolved original, not the corrected asset.
+  // Also preload reference image stats for optional colour transfer.
   useEffect(() => {
     if (!showTuner) return
     let cancelled = false
@@ -116,6 +128,24 @@ export function ReviewPanel({
     loadImage(pngUrl).then((img) => {
       if (!cancelled) sourceImageRef.current = img
     })
+    // Pre-compute reference stats for colour transfer blend
+    if (!refStatsRef.current) {
+      loadReferenceImageBase64()
+        .then(async (ref) => {
+          if (cancelled) return
+          const refImg = await loadImage(`data:${ref.mimeType};base64,${ref.base64}`)
+          const refCanvas = document.createElement('canvas')
+          refCanvas.width = refImg.naturalWidth
+          refCanvas.height = refImg.naturalHeight
+          const refCtx = refCanvas.getContext('2d')!
+          refCtx.drawImage(refImg, 0, 0)
+          const refData = refCtx.getImageData(0, 0, refCanvas.width, refCanvas.height)
+          refStatsRef.current = computeOklabStats(refData.data)
+          refCanvas.width = 0
+          refCanvas.height = 0
+        })
+        .catch((err) => console.error('[labo] Failed to load reference image:', err))
+    }
     return () => {
       cancelled = true
     }
@@ -136,7 +166,14 @@ export function ReviewPanel({
       const ctx = canvas.getContext('2d')!
       ctx.drawImage(img, 0, 0)
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-      applyCorrections(imageData, tuneParams)
+
+      // Apply optional colour transfer when blend > 0 and ref stats are ready
+      let colorTransfer: ColorTransferParams | undefined
+      if (tuneBlend > 0.01 && refStatsRef.current) {
+        colorTransfer = { ref: refStatsRef.current, blend: tuneBlend }
+      }
+
+      applyCorrections(imageData, tuneParams, colorTransfer)
       ctx.putImageData(imageData, 0, 0)
       const blob = await new Promise<Blob>((resolve, reject) => {
         canvas.toBlob(
@@ -157,7 +194,7 @@ export function ReviewPanel({
     return () => {
       if (renderTimerRef.current) clearTimeout(renderTimerRef.current)
     }
-  }, [showTuner, tuneParams])
+  }, [showTuner, tuneParams, tuneBlend])
 
   const updateParam = useCallback((key: keyof CorrectionParams, value: number) => {
     setTuneParams((prev) => ({ ...prev, [key]: value }))
@@ -171,6 +208,61 @@ export function ReviewPanel({
     const code = `const MANUAL_PARAMS = ${JSON.stringify(tuneParams, null, 2)}`
     navigator.clipboard.writeText(code)
   }, [tuneParams])
+
+  // Save the labo result at full resolution
+  const handleSaveLabo = useCallback(async () => {
+    setIsSavingLabo(true)
+    setUploadError(null)
+
+    try {
+      // Run full-resolution pipeline with labo params and blend override
+      const laboResult = await applyImageCorrections(originalBaseUrl, tuneParams, {
+        blendOverride: tuneBlend,
+      })
+
+      const filename = makeProcessedFilename(asset.originalFilename, mode, laboResult.mimeType)
+      const newAssetId = await uploadProcessedImage(
+        client,
+        laboResult.base64Data,
+        laboResult.mimeType,
+        filename,
+        originalAssetId,
+        mode
+      )
+
+      if (projectId) {
+        await replaceImageInProject(client, projectId, asset._id, newAssetId)
+      }
+
+      // Clean up orphaned processed asset
+      if (asset.label === 'ai-processed' && asset._id !== originalAssetId) {
+        const refCount = await client.fetch<number>(`count(*[references($id)])`, {
+          id: asset._id,
+        })
+        if (refCount === 0) {
+          await client.delete(asset._id).catch(() => {})
+        }
+      }
+
+      onAccepted(newAssetId)
+    } catch (err) {
+      setUploadError(
+        err instanceof Error ? err.message : 'Erreur lors de l\u2019envoi depuis le labo.'
+      )
+    } finally {
+      setIsSavingLabo(false)
+    }
+  }, [
+    client,
+    asset,
+    originalBaseUrl,
+    tuneParams,
+    tuneBlend,
+    mode,
+    projectId,
+    originalAssetId,
+    onAccepted,
+  ])
 
   // ------------------------------------------------------------------
   // Upload handler
@@ -387,8 +479,8 @@ export function ReviewPanel({
             </Flex>
 
             <Text size={0} muted>
-              Ajustez les curseurs et observez le rendu en temps réel. Une fois satisfait, copiez
-              les paramètres avec « Copier code » pour les intégrer dans vertex.ts.
+              Ajustez les curseurs et observez le rendu en temps réel. Vous pouvez sauvegarder le
+              résultat directement ou copier les paramètres avec « Copier code ».
             </Text>
 
             <Box style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -456,6 +548,14 @@ export function ReviewPanel({
                 step={0.001}
                 onChange={(v) => updateParam('levelsClipHigh', v)}
               />
+              <ParamSlider
+                label="Transfert couleur (réf.)"
+                value={tuneBlend}
+                min={0}
+                max={0.8}
+                step={0.01}
+                onChange={setTuneBlend}
+              />
             </Box>
 
             {/* Tuned preview with comparison slider */}
@@ -472,6 +572,17 @@ export function ReviewPanel({
                   )}
                 </Flex>
                 <ComparisonSlider beforeUrl={originalUrl} afterUrl={tunedDataUri} />
+
+                <Button
+                  icon={isSavingLabo ? Spinner : CheckmarkIcon}
+                  text={isSavingLabo ? 'Rendu pleine résolution…' : 'Sauvegarder le résultat labo'}
+                  tone="positive"
+                  onClick={handleSaveLabo}
+                  disabled={isSavingLabo || isUploading}
+                  fontSize={1}
+                  padding={3}
+                  style={{ width: '100%' }}
+                />
               </Stack>
             )}
           </Stack>
