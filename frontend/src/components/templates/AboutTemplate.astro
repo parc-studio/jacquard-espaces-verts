@@ -15,6 +15,7 @@ import { getAboutPage, getExpertises, getSettings } from '../../data/sanity'
 import Media from '../media/Media.svelte'
 import PortableText from '../portable-text/PortableText.svelte'
 import { slugify } from '../../utils'
+import { buildSchemaGraph } from '@/utils/schema'
 
 interface Props {
   isPreview?: boolean
@@ -30,6 +31,14 @@ const [aboutPage, expertises, settings] = await Promise.all([
 
 const title = aboutPage?.seo?.title || 'À propos'
 const description = aboutPage?.seo?.description || ''
+
+const siteUrl = import.meta.env.SITE_URL || 'http://localhost:4321'
+const graph = buildSchemaGraph({
+  pageType: 'about',
+  url: `${siteUrl}/about`,
+  title,
+  description,
+})
 ---
 
 <BaseLayout
@@ -38,6 +47,7 @@ const description = aboutPage?.seo?.description || ''
   isPreview={isPreview}
   pagePath="/about"
   hideFooter
+  graph={graph}
 >
   <main class="about main-grid">
     {/* Section 1 — Expertises */}

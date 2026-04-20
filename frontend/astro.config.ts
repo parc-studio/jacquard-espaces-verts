@@ -3,6 +3,7 @@ import react from '@astrojs/react'
 import sitemap from '@astrojs/sitemap'
 import svelte from '@astrojs/svelte'
 import sanity from '@sanity/astro'
+import seoGraph from '@jdevalk/astro-seo-graph/integration'
 
 import { defineConfig, envField, fontProviders } from 'astro/config'
 
@@ -36,6 +37,15 @@ export default defineConfig({
       },
     }),
     react(),
+    seoGraph({
+      validateOnBuild: true,
+      llmsTxt: {
+        siteUrl: siteUrl || 'http://localhost:4321',
+        title: 'Jacquard Espaces Verts',
+        description:
+          "Jacquard Espaces Verts est une entreprise de paysagisme spécialisée dans la conception et l'entretien d'espaces verts.",
+      },
+    }),
   ],
   output: 'static',
   image: { domains: ['cdn.sanity.io'] },

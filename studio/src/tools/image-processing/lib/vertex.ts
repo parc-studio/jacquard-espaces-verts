@@ -1013,7 +1013,9 @@ export async function applyImageCorrections(
   params: CorrectionParams,
   options?: { blendOverride?: number }
 ): Promise<ProcessingResult> {
-  // Load full-resolution image into Canvas
+  // Load full-resolution image into Canvas.
+  // Request PNG from the CDN to avoid double-JPEG compression — the only
+  // lossy encode should be the final q=0.97 export at the end of this fn.
   const separator = imageUrl.includes('?') ? '&' : '?'
   const srcUrl = `${imageUrl}${separator}fm=png`
   const img = await loadImage(srcUrl)
@@ -1176,10 +1178,12 @@ export async function applyImageCorrections(
       const refData = refCtx.getImageData(0, 0, refCanvas.width, refCanvas.height)
       const refStats = computeOklabStats(refData.data)
 
-      // Colour transfer is disabled by default (blend=0) — the adaptive blend
-      // was pulling images too far from natural appearance.  Pass a non-zero
-      // blendOverride to re-enable it from the labo couleur slider.
-      const blend = options?.blendOverride ?? 0
+      // Moderate colour transfer smooths histogram banding (especially in
+      // smooth gradients like overcast skies) without pulling the image too
+      // far from its natural appearance.  The old per-channel histogram match
+      // used blend=0.6 which was too strong; 0.25 in OKLab CDF space gives a
+      // gentler result.  The labo slider can still override via blendOverride.
+      const blend = options?.blendOverride ?? 0.25
       blendUsed = blend
 
       colorTransfer = { ref: refStats, blend }

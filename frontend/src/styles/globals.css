@@ -17,6 +17,10 @@ body {
   text-box: inherit;
 }
 
+::selection {
+  background-color: var(--color-surface);
+}
+
 /* Global Grid System */
 .main-grid {
   display: grid;

@@ -8,6 +8,7 @@ import { getHomePage } from '../../data/sanity'
 import HomeSectionExpertise from '../home/HomeSectionExpertise.astro'
 import HomeSectionProject from '../home/HomeSectionProject.astro'
 import HomeSectionProjectPair from '../home/HomeSectionProjectPair.astro'
+import { buildSchemaGraph } from '@/utils/schema'
 
 interface Props {
   isPreview?: boolean
@@ -20,9 +21,23 @@ const sections = homePage?.sections ?? []
 
 const title = homePage?.seo?.title || homePage?.title || 'Accueil'
 const description = homePage?.seo?.description || 'Jacquard Espaces Verts'
+
+const siteUrl = import.meta.env.SITE_URL || 'http://localhost:4321'
+const graph = buildSchemaGraph({
+  pageType: 'home',
+  url: `${siteUrl}/`,
+  title,
+  description,
+})
 ---
 
-<BaseLayout title={title} description={description} isPreview={isPreview} pagePath="/">
+<BaseLayout
+  title={title}
+  description={description}
+  isPreview={isPreview}
+  pagePath="/"
+  graph={graph}
+>
   <main class="home-page">
     {
       sections.length === 0 && (

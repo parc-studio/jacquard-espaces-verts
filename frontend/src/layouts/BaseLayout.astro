@@ -5,7 +5,7 @@ import '@/styles/globals.css'
 import '@/styles/utils.css'
 
 import { ClientRouter } from 'astro:transitions'
-import { SEO } from 'astro-seo'
+import Seo from '@jdevalk/astro-seo-graph/Seo.astro'
 import { Font } from 'astro:assets'
 
 import AgentationWrapper from '@/components/helpers/AgentationWrapper'
@@ -28,6 +28,8 @@ interface Props {
   hideFooter?: boolean
   hideHeader?: boolean
   contentBackground?: string
+  graph?: object | null
+  ogType?: 'website' | 'article'
 }
 
 const {
@@ -40,6 +42,8 @@ const {
   hideFooter = false,
   hideHeader = false,
   contentBackground,
+  graph = null,
+  ogType = 'website',
 } = Astro.props
 
 let settings = null
@@ -63,29 +67,27 @@ const agentationMode = isDevMode ? 'dev' : 'review'
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="sitemap" href="/sitemap-index.xml" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="generator" content={Astro.generator} />
-    {robots && <meta name="robots" content={robots} />}
-    {robots && <meta name="googlebot" content={robots} />}
 
     <!-- TODO: Uncomment for custom fonts with preload -->
     <Font cssVariable="--font-sans" preload />
     <!-- <Font cssVariable="--font-classic" preload /> -->
-    <SEO
+    <Seo
       title={resolvedTitle}
       description={resolvedDescription}
-      openGraph={{
-        basic: {
-          title: resolvedTitle,
-          type: 'website',
-          image: image,
-          url: siteUrl,
-        },
-        optional: {
-          description: resolvedDescription,
-        },
-      }}
+      ogType={ogType}
+      ogImage={new URL(image, siteUrl).toString()}
+      ogImageAlt={resolvedTitle}
+      ogImageWidth={1200}
+      ogImageHeight={630}
+      siteName="Jacquard Espaces Verts"
+      locale="fr_FR"
+      noindex={!!robots?.includes('noindex')}
+      graph={graph}
+      extraLinks={[
+        { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
+        { rel: 'sitemap', href: '/sitemap-index.xml' },
+      ]}
     />
     <ClientRouter />
   </head>

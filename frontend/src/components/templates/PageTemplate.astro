@@ -12,6 +12,7 @@
  */
 import BaseLayout from '../../layouts/BaseLayout.astro'
 import { getPage } from '../../data/sanity'
+import { buildSchemaGraph } from '@/utils/schema'
 
 interface Props {
   currentSlug: string
@@ -26,6 +27,14 @@ const page = await getPage(currentSlug, { preview: isPreview })
 // Extract SEO
 const title = page?.seo?.title || page?.title
 const description = page?.seo?.description || ''
+
+const siteUrl = import.meta.env.SITE_URL || 'http://localhost:4321'
+const graph = buildSchemaGraph({
+  pageType: 'page',
+  url: `${siteUrl}/${currentSlug}`,
+  title: title || currentSlug,
+  description,
+})
 ---
 
 <BaseLayout
@@ -33,6 +42,7 @@ const description = page?.seo?.description || ''
   description={description}
   isPreview={isPreview}
   pagePath={`/${currentSlug}`}
+  graph={graph}
 >
   <main class="page-template main-grid">
     <article class="page">

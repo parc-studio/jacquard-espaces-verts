@@ -1,13 +1,16 @@
 ---
+import FuzzyRedirect from '@jdevalk/astro-seo-graph/FuzzyRedirect.astro'
+
 import BaseLayout from '../layouts/BaseLayout.astro'
 ---
 
-<BaseLayout title="Page Not Found">
+<BaseLayout title="Page introuvable" robots="noindex, nofollow">
+  <FuzzyRedirect suggestionText="Vouliez-vous dire :" />
   <main class="container">
     <div class="not-found">
       <h1>404</h1>
-      <p>Page not found</p>
-      <a href="/">Go back home</a>
+      <p>Page introuvable</p>
+      <a href="/">Retour à l'accueil</a>
     </div>
   </main>
 </BaseLayout>

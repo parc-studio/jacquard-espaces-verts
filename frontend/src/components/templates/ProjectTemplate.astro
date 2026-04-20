@@ -12,6 +12,7 @@ import type { NextProjectData } from '../../data/sanity'
 import type { PROJECT_QUERY_RESULT } from '../../../sanity.types'
 import { urlFor } from '../../utils/sanity/image'
 import ProjectPage from './ProjectPage.svelte'
+import { buildSchemaGraph } from '@/utils/schema'
 
 interface Props {
   currentSlug: string
@@ -43,6 +44,15 @@ const rawImage = project?.seo?.image || mainImage
 if (rawImage) {
   image = urlFor(rawImage).width(1200).height(630).url()
 }
+
+const siteUrl = import.meta.env.SITE_URL || 'http://localhost:4321'
+const pageUrl = `${siteUrl}/projects/${currentSlug}`
+const graph = buildSchemaGraph({
+  pageType: 'project',
+  url: pageUrl,
+  title: title || currentSlug,
+  description,
+})
 ---
 
 <BaseLayout
@@ -53,6 +63,7 @@ if (rawImage) {
   pagePath={`/projects/${currentSlug}`}
   hideHeader={true}
   contentBackground="var(--color-white)"
+  graph={graph}
 >
   {
     project && (
