@@ -20,7 +20,9 @@ export type { CorrectionParams } from './types'
 // Configuration
 // ---------------------------------------------------------------------------
 
-const ANALYSIS_MODEL = 'gemini-2.5-flash'
+const PRIMARY_ANALYSIS_MODEL = 'gemini-2.5-pro'
+const FALLBACK_ANALYSIS_MODEL = 'gemini-2.5-flash'
+const ANALYSIS_MODELS = [PRIMARY_ANALYSIS_MODEL, FALLBACK_ANALYSIS_MODEL] as const
 
 // ---------------------------------------------------------------------------
 // Self-signed JWT auth (browser Web Crypto API)
@@ -121,30 +123,18 @@ export const DEFAULT_PARAMS: CorrectionParams = {
   verticalPerspective: 0,
 }
 
-/**
- * Fixed aesthetic parameters — identical for every image.
- * Swiss architectural photography style:
- * neutral colour temperature
- * gentle contrast with preserved highlights and natural tones.
- * exposure, straightenAngle, verticalPerspective, shadows, highlights, whites, blacks,
- * vibrance, clarity, and tint are determined per-image by the AI.
- */
-export const FIXED_AESTHETIC: Pick<
-  CorrectionParams,
-  'contrast' | 'temperature' | 'saturation' | 'levelsClipLow' | 'levelsClipHigh'
-> = {
-  contrast: -0.08,
-  temperature: 0.0,
-  saturation: -0.1,
-  levelsClipLow: 0.003,
-  levelsClipHigh: 0.015,
-}
-
 const ANALYSIS_PROMPT = `You are an image analysis model. You will receive two images:
 1. A **reference photo** showing the target colour grading and aesthetic (Swiss architectural photography style — neutral tones, slightly undersaturated vegetation, clean highlights).
 2. The **input photo** to analyse.
 
-Compare the input to the reference and prescribe ten correction values that will bring the input closer to the reference aesthetic.
+Compare the input to the reference and prescribe fifteen correction values that will bring the input closer to the reference aesthetic.
+
+## Reference image
+The reference image shows a large modern residential building photographed frontally, with a strict grid of windows and balconies stretched across the frame. The facade is pale grey to off-white with clean, neutral highlights and a cool-to-neutral white balance. Small window panels introduce restrained accent colours such as blue, orange, teal, yellow, and green, but the overall palette remains controlled rather than vivid.
+
+The vegetation is neat, urban, and slightly subdued. The lawn is trimmed and even, with a soft muted green rather than a bright saturated one. The trees and shrubs are healthy and fairly dense, but their greens stay controlled, cool-to-neutral, and not overly lush. Foliage should look natural and present, with preserved detail, but without vivid emerald tones or exaggerated contrast.
+
+The desired look is orderly, calm, architectural, evenly exposed, cool-neutral, and gently understated rather than dramatic or punchy. Use the actual visual relationship between the input and the reference image, not generic architectural-photo stereotypes.
 
 ## 1. exposure (float, range −0.30 to +0.30)
 Brighten or darken to achieve correct exposure.
@@ -154,57 +144,61 @@ Brighten or darken to achieve correct exposure.
 - Moderately overexposed → −0.05 to −0.10
 - Severely overexposed → −0.12 to −0.20
 
-## 2. straightenAngle (float, range −10.0 to +10.0, degrees)
-Clockwise rotation to level the image.
-- Look carefully for dominant horizontal references: rooflines, window sills, door lintels, horizon lines, water surfaces, terrace edges, path borders, fences.
-- Also check dominant vertical references: building edges, window/door frames, columns, fence posts, lamp posts, downpipes. If these lean consistently to one side, the image needs rotation.
-- For garden/landscape scenes without clear horizontal lines, rely on vertical references: tree trunks, fence posts, lamp posts, building edges in the background.
-- Positive = clockwise. Most images need −2.0 to +2.0°.
-- Only return 0 if you are highly confident the image is perfectly level. Most handheld photos have at least 0.3−0.5° of tilt.
+## 2. contrast (float, range −0.30 to +0.30)
+Global tone separation. Negative softens contrast, positive increases it.
+- The reference look is gentle and controlled, not punchy.
+- Use small negative values when the input feels harsh or too crisp.
+- Use small positive values only if the input is visibly flatter than the reference.
+- Most images should stay between −0.15 and +0.10.
 
-## 3. verticalPerspective (float, range −1.0 to +1.0)
+## 3. straightenAngle (float, range −10.0 to +10.0, degrees)
+Clockwise rotation to level the image. Be precise — even 0.5° matters.
+- PRIORITY 1: Find the true horizon line. If visible (sky–ground boundary, water surface, flat roofline), align to it.
+- PRIORITY 2: If no horizon is visible, use dominant horizontal lines: window sills, terrace edges, wall tops, path borders, fences.
+- PRIORITY 3: If no strong horizontals, check verticals: building edges, columns, door frames, fence posts, lamp posts. If they lean consistently to one side, the image needs rotation.
+- For garden/vegetation scenes, look for vertical tree trunks, fence posts, or building edges in the background.
+- Positive = clockwise.
+- Be conservative: prefer a small correction over an incorrect one. Rotation causes cropping, so only prescribe a non-zero value when you clearly see tilt. Return 0 if the image appears level or if you are unsure.
+
+## 4. verticalPerspective (float, range −0.40 to +0.40)
 Correct converging or diverging vertical lines (keystone effect) caused by the camera tilting up or down.
-- If vertical building edges/walls/columns converge toward the top of the image (camera tilted up, shot from below) → negative value (−0.05 to −0.5).
-- If verticals diverge toward the top (camera tilted down, shot from above) → positive value (0.05 to 0.5).
+- If vertical building edges/walls/columns converge toward the top (camera tilted up, shot from below) → negative value.
+- If verticals diverge toward the top (camera tilted down, shot from above) → positive value.
 - If verticals are already parallel, or the scene has no strong vertical architectural references → 0.
-- Most ground-level architectural photos shot with the camera tilted slightly up need −0.05 to −0.25.
+- Be conservative: most photos need only −0.03 to −0.15. Large values cause significant cropping.
 - Do NOT correct intentional dramatic perspective (e.g. looking straight up at a tall building).
+- Return 0 for garden/landscape scenes without clear vertical architectural lines.
 
-## 4. shadows (float, range −1.0 to +1.0)
+## 5. shadows (float, range −1.0 to +1.0)
 Shadow recovery. Positive lifts shadows, negative deepens them.
 - Deep crushed shadows → +0.30 to +0.50
 - Moderate shadow loss → +0.15 to +0.30
 - Balanced → +0.05 to +0.15
 - Flat lighting / already bright shadows → −0.05 to +0.05
 
-## 5. highlights (float, range −1.0 to +1.0)
+## 6. highlights (float, range −1.0 to +1.0)
 Highlight recovery. Negative recovers blown highlights, positive lifts dull highlights.
 - Severely blown → −0.15 to −0.30
 - Moderate clipping → −0.05 to −0.15
 - Well-preserved → +0.05 to +0.15
 - Dull / needs lift → +0.15 to +0.30
 
-## 6. whites (float, range −1.0 to +1.0)
+## 7. whites (float, range −1.0 to +1.0)
 Adjust the brightest tones. Positive expands whites (brighter), negative compresses (darker).
 - Compare the brightest tones in the input to the reference.
 - Most images need −0.20 to +0.20.
 
-## 7. blacks (float, range −1.0 to +1.0)
+## 8. blacks (float, range −1.0 to +1.0)
 Adjust the darkest tones. Positive lifts blacks (milky), negative deepens (richer).
 - Compare the darkest tones in the input to the reference.
 - Most images need −0.20 to +0.20.
 
-## 8. vibrance (float, range −1.0 to +1.0)
-Selective saturation: boosts under-saturated colours more than already-vivid ones.
-- If the input has dull muted tones compared to reference → positive (0.05 to 0.25).
-- If the input is over-vivid → negative (−0.05 to −0.25).
-- The reference style is slightly undersaturated — prefer small negative values.
-
-## 9. clarity (float, range −1.0 to +1.0)
-Midtone local contrast. Positive adds punch/texture, negative softens.
-- Architectural subjects with fine detail → +0.05 to +0.20.
-- Already harsh/contrasty midtones → −0.05 to −0.15.
-- Most images need 0.0 to +0.15.
+## 9. temperature (float, range −0.35 to +0.35)
+Blue-yellow white-balance shift. Negative = cooler, positive = warmer.
+- The reference image is cool-to-neutral, not cold and not warm.
+- Use small negative values if the input is too warm or yellow.
+- Use small positive values only if the input is noticeably too cool compared to the reference.
+- Most images should stay between −0.12 and +0.08.
 
 ## 10. tint (float, range −1.0 to +1.0)
 Green–magenta white-balance shift. Negative = green, positive = magenta.
@@ -212,9 +206,42 @@ Green–magenta white-balance shift. Negative = green, positive = magenta.
 - Magenta cast → −0.05 to −0.20.
 - Neutral → 0.0.
 
+## 11. saturation (float, range −0.35 to +0.25)
+Global colour intensity. Negative desaturates, positive boosts.
+- The reference style is restrained and slightly subdued.
+- Keep greens natural and present, but avoid vivid emerald or neon vegetation.
+- Use small negative values when the input feels too vivid.
+- Use small positive values only when the input is duller than the reference overall.
+
+## 12. vibrance (float, range −1.0 to +1.0)
+Selective saturation: boosts under-saturated colours more than already-vivid ones.
+- If the input has dull muted tones compared to reference → positive (0.05 to 0.25).
+- If the input is over-vivid → negative (−0.05 to −0.25).
+- The reference style is slightly undersaturated — prefer small negative values.
+
+## 13. clarity (float, range −1.0 to +1.0)
+Midtone local contrast. Positive adds punch/texture, negative softens.
+- Architectural subjects with fine detail → +0.05 to +0.20.
+- Already harsh/contrasty midtones → −0.05 to −0.15.
+- Most images need 0.0 to +0.15.
+
+## 14. levelsClipLow (float, range 0.000 to 0.020)
+Black-point clipping percentile used for auto-levels.
+- Lower values preserve more shadow detail.
+- Higher values create firmer blacks and a slightly cleaner tonal floor.
+- The reference keeps shadow detail, so stay modest.
+- Most images should stay between 0.001 and 0.008.
+
+## 15. levelsClipHigh (float, range 0.005 to 0.030)
+White-point clipping percentile used for auto-levels.
+- Lower values preserve more highlight detail.
+- Higher values create cleaner, brighter highlights but can become too crisp.
+- The reference has clean highlights without harsh clipping.
+- Most images should stay between 0.010 and 0.022.
+
 ## Output format
 Return a single JSON object with no markdown fences, no extra keys:
-{"exposure": <float>, "straightenAngle": <float>, "verticalPerspective": <float>, "shadows": <float>, "highlights": <float>, "whites": <float>, "blacks": <float>, "vibrance": <float>, "clarity": <float>, "tint": <float>}`
+{"exposure": <float>, "contrast": <float>, "straightenAngle": <float>, "verticalPerspective": <float>, "shadows": <float>, "highlights": <float>, "whites": <float>, "blacks": <float>, "temperature": <float>, "tint": <float>, "saturation": <float>, "vibrance": <float>, "clarity": <float>, "levelsClipLow": <float>, "levelsClipHigh": <float>}`
 
 type AnalysisResult = CorrectionParams
 
@@ -422,11 +449,6 @@ async function analyzeImage(imageUrl: string, config: GcpConfig): Promise<Analys
     loadReferenceImageBase64(),
   ])
 
-  const url =
-    `https://${config.region}-aiplatform.googleapis.com/v1beta1` +
-    `/projects/${config.projectId}/locations/${config.region}` +
-    `/publishers/google/models/${ANALYSIS_MODEL}:generateContent`
-
   const payload = {
     contents: [
       {
@@ -450,42 +472,85 @@ async function analyzeImage(imageUrl: string, config: GcpConfig): Promise<Analys
     Authorization: `Bearer ${token}`,
   }
 
-  let response: Response | undefined
-  let lastError: string | undefined
+  const requestAnalysis = async (model: (typeof ANALYSIS_MODELS)[number]): Promise<Response> => {
+    const url =
+      `https://${config.region}-aiplatform.googleapis.com/v1beta1` +
+      `/projects/${config.projectId}/locations/${config.region}` +
+      `/publishers/google/models/${model}:generateContent`
 
-  for (let attempt = 0; attempt < 2; attempt++) {
-    try {
-      response = await fetch(url, { method: 'POST', headers, body })
-    } catch (networkErr) {
-      lastError = networkErr instanceof Error ? networkErr.message : String(networkErr)
-      if (attempt === 0) {
-        console.warn('[image-processing] AI analysis network error, retrying in 2 s…', lastError)
+    let lastError: string | undefined
+
+    for (let attempt = 0; attempt < 2; attempt++) {
+      let response: Response
+
+      try {
+        response = await fetch(url, { method: 'POST', headers, body })
+      } catch (networkErr) {
+        lastError = networkErr instanceof Error ? networkErr.message : String(networkErr)
+        if (attempt === 0) {
+          console.warn(
+            '[image-processing] AI analysis network error, retrying in 2 s…',
+            model,
+            lastError
+          )
+          await new Promise((r) => setTimeout(r, 2000))
+          continue
+        }
+        throw new Error(`Analyse IA échouée avec ${model} (erreur réseau): ${lastError}`, {
+          cause: networkErr,
+        })
+      }
+
+      if (response.ok) return response
+
+      lastError = await response.text().catch(() => '')
+      if (response.status >= 500 && attempt === 0) {
+        console.warn('[image-processing] AI analysis 5xx, retrying in 2 s…', model, response.status)
         await new Promise((r) => setTimeout(r, 2000))
         continue
       }
-      throw new Error(`Analyse IA échouée (erreur réseau): ${lastError}`, { cause: networkErr })
+
+      console.warn('AI analysis failed:', model, response.status, response.statusText, lastError)
+      throw new Error(
+        `Analyse IA échouée avec ${model} (${response.status} ${response.statusText}). ` +
+          `Vérifiez que le modèle est disponible dans la région ${config.region}. ` +
+          `Détails: ${(lastError ?? '').slice(0, 200)}`
+      )
     }
 
-    if (response.ok) break
-
-    lastError = await response.text().catch(() => '')
-    // Only retry on 5xx (server) errors, not 4xx (client)
-    if (response.status >= 500 && attempt === 0) {
-      console.warn('[image-processing] AI analysis 5xx, retrying in 2 s…', response.status)
-      await new Promise((r) => setTimeout(r, 2000))
-      continue
-    }
-
-    console.warn('AI analysis failed:', response.status, response.statusText, lastError)
     throw new Error(
-      `Analyse IA échouée (${response.status} ${response.statusText}). ` +
-        `Vérifiez que le modèle "${ANALYSIS_MODEL}" est disponible dans la région ${config.region}. ` +
-        `Détails: ${(lastError ?? '').slice(0, 200)}`
+      `Analyse IA échouée avec ${model} après 2 tentatives: ${lastError ?? 'Erreur inconnue'}`
     )
   }
 
+  let response: Response | undefined
+  let lastFailure: Error | undefined
+
+  for (const model of ANALYSIS_MODELS) {
+    try {
+      response = await requestAnalysis(model)
+      if (model !== PRIMARY_ANALYSIS_MODEL) {
+        console.warn(
+          `[image-processing] Fallback model used for analysis: ${PRIMARY_ANALYSIS_MODEL} -> ${FALLBACK_ANALYSIS_MODEL}`
+        )
+      }
+      break
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error(String(err))
+      lastFailure = error
+      if (model === PRIMARY_ANALYSIS_MODEL) {
+        console.warn(
+          `[image-processing] Primary analysis model failed, falling back to ${FALLBACK_ANALYSIS_MODEL}:`,
+          error.message
+        )
+        continue
+      }
+      throw error
+    }
+  }
+
   if (!response?.ok) {
-    throw new Error(`Analyse IA échouée après 2 tentatives: ${lastError ?? 'Erreur inconnue'}`)
+    throw lastFailure ?? new Error('Analyse IA échouée sans réponse exploitable.')
   }
 
   const result: {
@@ -508,16 +573,25 @@ async function analyzeImage(imageUrl: string, config: GcpConfig): Promise<Analys
 
     return {
       exposure: num('exposure', -0.3, 0.3, DEFAULT_PARAMS.exposure),
+      contrast: num('contrast', -0.3, 0.3, DEFAULT_PARAMS.contrast),
       straightenAngle: num('straightenAngle', -10, 10, DEFAULT_PARAMS.straightenAngle),
-      verticalPerspective: num('verticalPerspective', -1, 1, DEFAULT_PARAMS.verticalPerspective),
+      verticalPerspective: num(
+        'verticalPerspective',
+        -0.4,
+        0.4,
+        DEFAULT_PARAMS.verticalPerspective
+      ),
       shadows: num('shadows', -1, 1, DEFAULT_PARAMS.shadows),
       highlights: num('highlights', -1, 1, DEFAULT_PARAMS.highlights),
+      temperature: num('temperature', -0.35, 0.35, DEFAULT_PARAMS.temperature),
+      tint: num('tint', -1, 1, DEFAULT_PARAMS.tint),
+      saturation: num('saturation', -0.35, 0.25, DEFAULT_PARAMS.saturation),
       whites: num('whites', -1, 1, DEFAULT_PARAMS.whites),
       blacks: num('blacks', -1, 1, DEFAULT_PARAMS.blacks),
       vibrance: num('vibrance', -1, 1, DEFAULT_PARAMS.vibrance),
       clarity: num('clarity', -1, 1, DEFAULT_PARAMS.clarity),
-      tint: num('tint', -1, 1, DEFAULT_PARAMS.tint),
-      ...FIXED_AESTHETIC,
+      levelsClipLow: num('levelsClipLow', 0, 0.02, DEFAULT_PARAMS.levelsClipLow),
+      levelsClipHigh: num('levelsClipHigh', 0.005, 0.03, DEFAULT_PARAMS.levelsClipHigh),
     }
   } catch {
     return { ...DEFAULT_PARAMS }
@@ -821,9 +895,9 @@ export function applyCorrections(
  * get up to 0.65. Tune empirically after processing 20+ images.
  */
 const ADAPTIVE_BLEND_D0 = 0.15
-const ADAPTIVE_BLEND_BASE = 0.6
-const ADAPTIVE_BLEND_MIN = 0.15
-const ADAPTIVE_BLEND_MAX = 0.65
+const ADAPTIVE_BLEND_BASE = 0.7
+const ADAPTIVE_BLEND_MIN = 0.2
+const ADAPTIVE_BLEND_MAX = 0.8
 
 /**
  * Compute an adaptive colour-transfer blend factor based on the OKLab
@@ -927,11 +1001,14 @@ export async function applyImageCorrections(
 
     // Compute the inscribed crop rectangle — narrowest valid row width
     // At row y, the horizontal scale is s = 1 + k * (1 - 2*y/h)
-    // The narrowest row determines the crop width
+    // The narrowest row determines the crop width.
+    // Blend between full inscribed crop (no black border) and no crop,
+    // keeping 90% of the inscribed-crop savings to preserve more image.
     const sTop = 1 + kVal // scale at y=0
     const sBot = 1 - kVal // scale at y=h
     const minScale = Math.min(Math.abs(sTop), Math.abs(sBot))
-    const cropW = Math.max(1, Math.round(curW * minScale))
+    const inscribedW = curW * minScale
+    const cropW = Math.max(1, Math.round(inscribedW + (curW - inscribedW) * 0.1))
     const cropH = curH
     const cx = curW / 2
 
@@ -1018,10 +1095,12 @@ export async function applyImageCorrections(
     const cosA = Math.abs(Math.cos(rad))
     const sinA = Math.abs(Math.sin(rad))
 
-    const rotCropW = (curW * cosA - curH * sinA) / (cosA * cosA - sinA * sinA)
-    const rotCropH = (curH * cosA - curW * sinA) / (cosA * cosA - sinA * sinA)
-    const finalW = Math.max(1, Math.round(Math.min(rotCropW, curW)))
-    const finalH = Math.max(1, Math.round(Math.min(rotCropH, curH)))
+    // Inscribed rectangle that fits inside the rotated image without black borders
+    const inscribedW = (curW * cosA - curH * sinA) / (cosA * cosA - sinA * sinA)
+    const inscribedH = (curH * cosA - curW * sinA) / (cosA * cosA - sinA * sinA)
+    // Relax crop slightly: keep 90% of the inscribed-crop savings to preserve more image area
+    const finalW = Math.max(1, Math.round(Math.min(inscribedW + (curW - inscribedW) * 0.1, curW)))
+    const finalH = Math.max(1, Math.round(Math.min(inscribedH + (curH - inscribedH) * 0.1, curH)))
 
     tmpCanvas = document.createElement('canvas')
     tmpCanvas.width = curW

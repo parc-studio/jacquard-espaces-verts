@@ -28,7 +28,7 @@ import type {
   SanityImageAsset,
 } from '../lib/types'
 import { MODE_LABELS } from '../lib/types'
-import { applyCorrections, DEFAULT_PARAMS, FIXED_AESTHETIC, loadImage } from '../lib/vertex'
+import { applyCorrections, DEFAULT_PARAMS, loadImage } from '../lib/vertex'
 
 interface ReviewPanelProps {
   asset: SanityImageAsset
@@ -101,19 +101,7 @@ export function ReviewPanel({
   // Parameter tuning state
   // ------------------------------------------------------------------
   const [showTuner, setShowTuner] = useState(false)
-  const [tuneParams, setTuneParams] = useState<CorrectionParams>({
-    ...FIXED_AESTHETIC,
-    exposure: DEFAULT_PARAMS.exposure,
-    straightenAngle: DEFAULT_PARAMS.straightenAngle,
-    verticalPerspective: DEFAULT_PARAMS.verticalPerspective,
-    shadows: DEFAULT_PARAMS.shadows,
-    highlights: DEFAULT_PARAMS.highlights,
-    whites: DEFAULT_PARAMS.whites,
-    blacks: DEFAULT_PARAMS.blacks,
-    tint: DEFAULT_PARAMS.tint,
-    vibrance: DEFAULT_PARAMS.vibrance,
-    clarity: DEFAULT_PARAMS.clarity,
-  })
+  const [tuneParams, setTuneParams] = useState<CorrectionParams>({ ...DEFAULT_PARAMS })
   const [tunedDataUri, setTunedDataUri] = useState<string | null>(null)
   const [tuning, setTuning] = useState(false)
   const sourceImageRef = useRef<HTMLImageElement | null>(null)
@@ -176,35 +164,11 @@ export function ReviewPanel({
   }, [])
 
   const resetParams = useCallback(() => {
-    setTuneParams({
-      ...FIXED_AESTHETIC,
-      exposure: DEFAULT_PARAMS.exposure,
-      straightenAngle: DEFAULT_PARAMS.straightenAngle,
-      verticalPerspective: DEFAULT_PARAMS.verticalPerspective,
-      shadows: DEFAULT_PARAMS.shadows,
-      highlights: DEFAULT_PARAMS.highlights,
-      whites: DEFAULT_PARAMS.whites,
-      blacks: DEFAULT_PARAMS.blacks,
-      tint: DEFAULT_PARAMS.tint,
-      vibrance: DEFAULT_PARAMS.vibrance,
-      clarity: DEFAULT_PARAMS.clarity,
-    })
+    setTuneParams({ ...DEFAULT_PARAMS })
   }, [])
 
   const copyParamsToClipboard = useCallback(() => {
-    const code = `const FIXED_AESTHETIC = ${JSON.stringify(
-      {
-        contrast: tuneParams.contrast,
-        highlights: tuneParams.highlights,
-        shadows: tuneParams.shadows,
-        temperature: tuneParams.temperature,
-        saturation: tuneParams.saturation,
-        levelsClipLow: tuneParams.levelsClipLow,
-        levelsClipHigh: tuneParams.levelsClipHigh,
-      },
-      null,
-      2
-    )}`
+    const code = `const MANUAL_PARAMS = ${JSON.stringify(tuneParams, null, 2)}`
     navigator.clipboard.writeText(code)
   }, [tuneParams])
 
