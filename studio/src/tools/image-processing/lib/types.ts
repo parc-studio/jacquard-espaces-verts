@@ -21,6 +21,7 @@ export interface CorrectionParams {
   levelsClipLow: number // [0, 0.05] — black point clip percentile
   levelsClipHigh: number // [0, 0.05] — white point clip percentile
   straightenAngle: number // [-10, 10] degrees — clockwise rotation to straighten
+  verticalPerspective: number // [-1, 1] — keystone correction for converging/diverging verticals
 }
 
 /** A Sanity image asset with metadata needed for processing */

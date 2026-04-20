@@ -20,7 +20,7 @@ export type { CorrectionParams } from './types'
 // Configuration
 // ---------------------------------------------------------------------------
 
-const ANALYSIS_MODEL = 'gemini-2.5-flash-lite'
+const ANALYSIS_MODEL = 'gemini-2.5-flash'
 
 // ---------------------------------------------------------------------------
 // Self-signed JWT auth (browser Web Crypto API)
@@ -118,6 +118,7 @@ export const DEFAULT_PARAMS: CorrectionParams = {
   levelsClipLow: 0.003,
   levelsClipHigh: 0.015,
   straightenAngle: 0,
+  verticalPerspective: 0,
 }
 
 /**
@@ -125,7 +126,7 @@ export const DEFAULT_PARAMS: CorrectionParams = {
  * Swiss architectural photography style (Ruedi Walti–inspired):
  * neutral colour temperature, slightly undersaturated vegetation,
  * gentle contrast with preserved highlights and natural tones.
- * exposure, straightenAngle, shadows, highlights, whites, blacks,
+ * exposure, straightenAngle, verticalPerspective, shadows, highlights, whites, blacks,
  * vibrance, clarity, and tint are determined per-image by the AI.
  */
 export const FIXED_AESTHETIC: Pick<
@@ -143,7 +144,7 @@ const ANALYSIS_PROMPT = `You are an image analysis model. You will receive two i
 1. A **reference photo** showing the target colour grading and aesthetic (Swiss architectural photography style — neutral tones, slightly undersaturated vegetation, clean highlights).
 2. The **input photo** to analyse.
 
-Compare the input to the reference and prescribe nine correction values that will bring the input closer to the reference aesthetic.
+Compare the input to the reference and prescribe ten correction values that will bring the input closer to the reference aesthetic.
 
 ## 1. exposure (float, range −0.30 to +0.30)
 Brighten or darken to achieve correct exposure.
@@ -155,46 +156,57 @@ Brighten or darken to achieve correct exposure.
 
 ## 2. straightenAngle (float, range −10.0 to +10.0, degrees)
 Clockwise rotation to level the image.
-- Identify dominant horizontal/vertical references (rooflines, building edges, horizon).
-- Positive = clockwise. Most images need −2.0 to +2.0°. Return 0 if already level.
+- Look carefully for dominant horizontal references: rooflines, window sills, door lintels, horizon lines, water surfaces, terrace edges, path borders, fences.
+- Also check dominant vertical references: building edges, window/door frames, columns, fence posts, lamp posts, downpipes. If these lean consistently to one side, the image needs rotation.
+- For garden/landscape scenes without clear horizontal lines, rely on vertical references: tree trunks, fence posts, lamp posts, building edges in the background.
+- Positive = clockwise. Most images need −2.0 to +2.0°.
+- Only return 0 if you are highly confident the image is perfectly level. Most handheld photos have at least 0.3−0.5° of tilt.
 
-## 3. shadows (float, range −1.0 to +1.0)
+## 3. verticalPerspective (float, range −1.0 to +1.0)
+Correct converging or diverging vertical lines (keystone effect) caused by the camera tilting up or down.
+- If vertical building edges/walls/columns converge toward the top of the image (camera tilted up, shot from below) → negative value (−0.05 to −0.5).
+- If verticals diverge toward the top (camera tilted down, shot from above) → positive value (0.05 to 0.5).
+- If verticals are already parallel, or the scene has no strong vertical architectural references → 0.
+- Most ground-level architectural photos shot with the camera tilted slightly up need −0.05 to −0.25.
+- Do NOT correct intentional dramatic perspective (e.g. looking straight up at a tall building).
+
+## 4. shadows (float, range −1.0 to +1.0)
 Shadow recovery. Positive lifts shadows, negative deepens them.
 - Deep crushed shadows → +0.30 to +0.50
 - Moderate shadow loss → +0.15 to +0.30
 - Balanced → +0.05 to +0.15
 - Flat lighting / already bright shadows → −0.05 to +0.05
 
-## 4. highlights (float, range −1.0 to +1.0)
+## 5. highlights (float, range −1.0 to +1.0)
 Highlight recovery. Negative recovers blown highlights, positive lifts dull highlights.
 - Severely blown → −0.15 to −0.30
 - Moderate clipping → −0.05 to −0.15
 - Well-preserved → +0.05 to +0.15
 - Dull / needs lift → +0.15 to +0.30
 
-## 5. whites (float, range −1.0 to +1.0)
+## 6. whites (float, range −1.0 to +1.0)
 Adjust the brightest tones. Positive expands whites (brighter), negative compresses (darker).
 - Compare the brightest tones in the input to the reference.
 - Most images need −0.20 to +0.20.
 
-## 6. blacks (float, range −1.0 to +1.0)
+## 7. blacks (float, range −1.0 to +1.0)
 Adjust the darkest tones. Positive lifts blacks (milky), negative deepens (richer).
 - Compare the darkest tones in the input to the reference.
 - Most images need −0.20 to +0.20.
 
-## 7. vibrance (float, range −1.0 to +1.0)
+## 8. vibrance (float, range −1.0 to +1.0)
 Selective saturation: boosts under-saturated colours more than already-vivid ones.
 - If the input has dull muted tones compared to reference → positive (0.05 to 0.25).
 - If the input is over-vivid → negative (−0.05 to −0.25).
 - The reference style is slightly undersaturated — prefer small negative values.
 
-## 8. clarity (float, range −1.0 to +1.0)
+## 9. clarity (float, range −1.0 to +1.0)
 Midtone local contrast. Positive adds punch/texture, negative softens.
 - Architectural subjects with fine detail → +0.05 to +0.20.
 - Already harsh/contrasty midtones → −0.05 to −0.15.
 - Most images need 0.0 to +0.15.
 
-## 9. tint (float, range −1.0 to +1.0)
+## 10. tint (float, range −1.0 to +1.0)
 Green–magenta white-balance shift. Negative = green, positive = magenta.
 - Fluorescent lighting or green cast → +0.05 to +0.20.
 - Magenta cast → −0.05 to −0.20.
@@ -202,7 +214,7 @@ Green–magenta white-balance shift. Negative = green, positive = magenta.
 
 ## Output format
 Return a single JSON object with no markdown fences, no extra keys:
-{"exposure": <float>, "straightenAngle": <float>, "shadows": <float>, "highlights": <float>, "whites": <float>, "blacks": <float>, "vibrance": <float>, "clarity": <float>, "tint": <float>}`
+{"exposure": <float>, "straightenAngle": <float>, "verticalPerspective": <float>, "shadows": <float>, "highlights": <float>, "whites": <float>, "blacks": <float>, "vibrance": <float>, "clarity": <float>, "tint": <float>}`
 
 type AnalysisResult = CorrectionParams
 
@@ -497,6 +509,7 @@ async function analyzeImage(imageUrl: string, config: GcpConfig): Promise<Analys
     return {
       exposure: num('exposure', -0.3, 0.3, DEFAULT_PARAMS.exposure),
       straightenAngle: num('straightenAngle', -10, 10, DEFAULT_PARAMS.straightenAngle),
+      verticalPerspective: num('verticalPerspective', -1, 1, DEFAULT_PARAMS.verticalPerspective),
       shadows: num('shadows', -1, 1, DEFAULT_PARAMS.shadows),
       highlights: num('highlights', -1, 1, DEFAULT_PARAMS.highlights),
       whites: num('whites', -1, 1, DEFAULT_PARAMS.whites),
@@ -850,6 +863,9 @@ function formatParamSummary(params: CorrectionParams, blend?: number): string {
   if (Math.abs(params.straightenAngle) > 0.05) {
     parts.push(`redressé=${params.straightenAngle.toFixed(1)}°`)
   }
+  if (Math.abs(params.verticalPerspective) > 0.01) {
+    parts.push(`perspective=${params.verticalPerspective.toFixed(2)}`)
+  }
   if (blend !== undefined) {
     parts.push(`blend=${blend.toFixed(2)}`)
   }
@@ -871,6 +887,7 @@ export { analyzeImage }
  *
  * This is the "apply" half of the split pipeline. It handles:
  * - Canvas load at full resolution
+ * - Vertical perspective correction (keystone)
  * - Straightening (rotate + crop)
  * - OKLab colour transfer from reference (adaptive blend)
  * - AI-prescribed corrections
@@ -888,14 +905,112 @@ export async function applyImageCorrections(
   const srcUrl = `${imageUrl}${separator}fm=png`
   const img = await loadImage(srcUrl)
 
-  const w = img.naturalWidth
-  const h = img.naturalHeight
+  let curW = img.naturalWidth
+  let curH = img.naturalHeight
 
   const canvas = document.createElement('canvas')
   const ctx = canvas.getContext('2d')
   if (!ctx) throw new Error('Impossible de créer le contexte Canvas 2D.')
 
-  // Straighten if needed (rotate + crop to avoid black borders)
+  // Draw source image onto an initial canvas for geometry pipeline
+  canvas.width = curW
+  canvas.height = curH
+  ctx.drawImage(img, 0, 0)
+
+  // ---------------------------------------------------------------
+  // Phase 1: Vertical perspective correction (keystone)
+  // ---------------------------------------------------------------
+  const kVal = params.verticalPerspective
+  if (Math.abs(kVal) > 0.01) {
+    const srcData = ctx.getImageData(0, 0, curW, curH)
+    const srcPixels = srcData.data
+
+    // Compute the inscribed crop rectangle — narrowest valid row width
+    // At row y, the horizontal scale is s = 1 + k * (1 - 2*y/h)
+    // The narrowest row determines the crop width
+    const sTop = 1 + kVal // scale at y=0
+    const sBot = 1 - kVal // scale at y=h
+    const minScale = Math.min(Math.abs(sTop), Math.abs(sBot))
+    const cropW = Math.max(1, Math.round(curW * minScale))
+    const cropH = curH
+    const cx = curW / 2
+
+    // Output canvas
+    const perspCanvas = document.createElement('canvas')
+    perspCanvas.width = cropW
+    perspCanvas.height = cropH
+    const perspCtx = perspCanvas.getContext('2d')!
+    const outData = perspCtx.createImageData(cropW, cropH)
+    const outPixels = outData.data
+    const outCx = cropW / 2
+
+    for (let y = 0; y < cropH; y++) {
+      const t = curH > 1 ? y / (curH - 1) : 0.5
+      const s = 1 + kVal * (1 - 2 * t)
+
+      for (let x = 0; x < cropW; x++) {
+        // Map output pixel to source coordinates
+        const srcX = cx + (x - outCx) / s
+        const srcY = y
+
+        // Bilinear interpolation
+        const x0 = Math.floor(srcX)
+        const y0 = Math.floor(srcY)
+        const x1 = x0 + 1
+        const y1 = y0 + 1
+        const fx = srcX - x0
+        const fy = srcY - y0
+
+        // Clamp to source bounds
+        const sx0 = Math.max(0, Math.min(curW - 1, x0))
+        const sy0 = Math.max(0, Math.min(curH - 1, y0))
+        const sx1 = Math.max(0, Math.min(curW - 1, x1))
+        const sy1 = Math.max(0, Math.min(curH - 1, y1))
+
+        const i00 = (sy0 * curW + sx0) * 4
+        const i10 = (sy0 * curW + sx1) * 4
+        const i01 = (sy1 * curW + sx0) * 4
+        const i11 = (sy1 * curW + sx1) * 4
+
+        const w00 = (1 - fx) * (1 - fy)
+        const w10 = fx * (1 - fy)
+        const w01 = (1 - fx) * fy
+        const w11 = fx * fy
+
+        const outIdx = (y * cropW + x) * 4
+        outPixels[outIdx] =
+          srcPixels[i00] * w00 + srcPixels[i10] * w10 + srcPixels[i01] * w01 + srcPixels[i11] * w11
+        outPixels[outIdx + 1] =
+          srcPixels[i00 + 1] * w00 +
+          srcPixels[i10 + 1] * w10 +
+          srcPixels[i01 + 1] * w01 +
+          srcPixels[i11 + 1] * w11
+        outPixels[outIdx + 2] =
+          srcPixels[i00 + 2] * w00 +
+          srcPixels[i10 + 2] * w10 +
+          srcPixels[i01 + 2] * w01 +
+          srcPixels[i11 + 2] * w11
+        outPixels[outIdx + 3] = 255
+      }
+    }
+
+    perspCtx.putImageData(outData, 0, 0)
+
+    // Replace main canvas with perspective-corrected result
+    curW = cropW
+    curH = cropH
+    canvas.width = curW
+    canvas.height = curH
+    ctx.drawImage(perspCanvas, 0, 0)
+
+    // Release scratch
+    perspCanvas.width = 0
+    perspCanvas.height = 0
+  }
+
+  // ---------------------------------------------------------------
+  // Phase 2: Straighten if needed (rotate + crop to avoid black borders)
+  // ---------------------------------------------------------------
   let tmpCanvas: HTMLCanvasElement | undefined
   const angle = params.straightenAngle
   if (Math.abs(angle) > 0.05) {
@@ -903,28 +1018,28 @@ export async function applyImageCorrections(
     const cosA = Math.abs(Math.cos(rad))
     const sinA = Math.abs(Math.sin(rad))
 
-    const cropW = (w * cosA - h * sinA) / (cosA * cosA - sinA * sinA)
-    const cropH = (h * cosA - w * sinA) / (cosA * cosA - sinA * sinA)
-    const finalW = Math.max(1, Math.round(Math.min(cropW, w)))
-    const finalH = Math.max(1, Math.round(Math.min(cropH, h)))
+    const rotCropW = (curW * cosA - curH * sinA) / (cosA * cosA - sinA * sinA)
+    const rotCropH = (curH * cosA - curW * sinA) / (cosA * cosA - sinA * sinA)
+    const finalW = Math.max(1, Math.round(Math.min(rotCropW, curW)))
+    const finalH = Math.max(1, Math.round(Math.min(rotCropH, curH)))
 
     tmpCanvas = document.createElement('canvas')
-    tmpCanvas.width = w
-    tmpCanvas.height = h
+    tmpCanvas.width = curW
+    tmpCanvas.height = curH
     const tmpCtx = tmpCanvas.getContext('2d')!
-    tmpCtx.translate(w / 2, h / 2)
+    tmpCtx.imageSmoothingEnabled = true
+    tmpCtx.imageSmoothingQuality = 'high'
+    tmpCtx.translate(curW / 2, curH / 2)
     tmpCtx.rotate(rad)
-    tmpCtx.drawImage(img, -w / 2, -h / 2)
+    tmpCtx.drawImage(canvas, -curW / 2, -curH / 2)
 
     canvas.width = finalW
     canvas.height = finalH
-    const sx = Math.round((w - finalW) / 2)
-    const sy = Math.round((h - finalH) / 2)
+    ctx.imageSmoothingEnabled = true
+    ctx.imageSmoothingQuality = 'high'
+    const sx = Math.round((curW - finalW) / 2)
+    const sy = Math.round((curH - finalH) / 2)
     ctx.drawImage(tmpCanvas, sx, sy, finalW, finalH, 0, 0, finalW, finalH)
-  } else {
-    canvas.width = w
-    canvas.height = h
-    ctx.drawImage(img, 0, 0)
   }
 
   const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)

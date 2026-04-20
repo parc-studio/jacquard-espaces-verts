@@ -31,6 +31,7 @@
       // Annotations (sanity-plugin-link-field)
       link: Link,
     },
+    hardBreak: false,
   }
 </script>
 
@@ -66,9 +67,9 @@
 
   .portable-text :global(p) {
     font-size: var(--text-16);
-    line-height: 1.7;
-    margin-bottom: var(--size-16);
     opacity: 0.8;
+    text-wrap: balance;
+    white-space: pre-line;
   }
 
   .portable-text :global(blockquote) {
