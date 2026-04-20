@@ -123,8 +123,8 @@ export const DEFAULT_PARAMS: CorrectionParams = {
 
 /**
  * Fixed aesthetic parameters — identical for every image.
- * Swiss architectural photography style (Ruedi Walti–inspired):
- * neutral colour temperature, slightly undersaturated vegetation,
+ * Swiss architectural photography style:
+ * neutral colour temperature
  * gentle contrast with preserved highlights and natural tones.
  * exposure, straightenAngle, verticalPerspective, shadows, highlights, whites, blacks,
  * vibrance, clarity, and tint are determined per-image by the AI.
@@ -222,7 +222,7 @@ type AnalysisResult = CorrectionParams
 // Reference image — loaded once and cached
 // ---------------------------------------------------------------------------
 
-const REFERENCE_IMAGE_PATH = '/image-ref-ruedi-walti.jpg'
+const REFERENCE_IMAGE_PATH = '/image-ref.jpeg'
 
 let cachedRefImage: { base64: string; mimeType: string } | null = null
 
